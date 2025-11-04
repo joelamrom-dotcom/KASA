@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldberger Family - Clean Dashboard</title>
+    <style>
+        /* Modern CSS styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        /* Login Screen */
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .login-header h1 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        
+        .login-header p {
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            background: #38a169;
+        }
+        
+        .btn-warning {
+            background: #ed8936;
+        }
+        
+        .btn-warning:hover {
+            background: #dd6b20;
+        }
+        
+        .login-help {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            text-align: left;
+        }
+        
+        .login-help h4 {
+            margin: 0 0 10px 0;
+            color: #4a5568;
+        }
+        
+        .login-help p {
+            margin: 5px 0;
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        /* Dashboard Styles */
+        .app-container {
+            display: none;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: #2d3748;
+            color: white;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #4a5568;
+        }
+        
+        .sidebar-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-subtitle {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .user-info {
+            padding: 15px 20px;
+            border-bottom: 1px solid #4a5568;
+            background: #1a202c;
+        }
+        
+        .user-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .user-role {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+        
+        .nav {
+            padding: 20px 0;
+        }
+        
+        .nav-item {
+            margin-bottom: 5px;
+        }
+        
+        .nav-link {
+            display: block;
+            padding: 12px 20px;
+            color: #e2e8f0;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        
+        .nav-link:hover {
+            background: #4a5568;
+        }
+        
+        .nav-link.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .nav-icon {
+            margin-right: 10px;
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .content-header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .content-title {
+            font-size: 2rem;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .content-subtitle {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+        
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .section h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .icon {
+            margin-right: 10px;
+            font-size: 1.5rem;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .data-table th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .data-table tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .data-table tr:hover {
+            background: #edf2f7;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status-inactive {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .table-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-menu-toggle {
+                display: block;
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                z-index: 200;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+        }
+        
+                 .mobile-menu-toggle {
+             display: none;
+         }
+         
+         /* Modal Styles */
+         .modal-overlay {
+             position: fixed;
+             top: 0;
+             left: 0;
+             width: 100%;
+             height: 100%;
+             background: rgba(0, 0, 0, 0.5);
+             display: none;
+             align-items: center;
+             justify-content: center;
+             z-index: 1000;
+         }
+         
+         .modal {
+             background: white;
+             border-radius: 15px;
+             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+             width: 90%;
+             max-width: 500px;
+             max-height: 90vh;
+             overflow-y: auto;
+         }
+         
+         .modal-header {
+             padding: 20px 30px;
+             border-bottom: 1px solid #e2e8f0;
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+         }
+         
+         .modal-title {
+             font-size: 1.5rem;
+             color: #2d3748;
+             margin: 0;
+         }
+         
+         .modal-close {
+             background: none;
+             border: none;
+             font-size: 1.5rem;
+             cursor: pointer;
+             color: #718096;
+         }
+         
+         .modal-body {
+             padding: 30px;
+         }
+         
+         .modal-footer {
+             padding: 20px 30px;
+             border-top: 1px solid #e2e8f0;
+             display: flex;
+             gap: 10px;
+             justify-content: flex-end;
+         }
+         
+         .btn-danger {
+             background: #e53e3e;
+         }
+         
+         .btn-danger:hover {
+             background: #c53030;
+         }
+         
+         .btn-warning {
+             background: #ed8936;
+         }
+         
+         .btn-warning:hover {
+             background: #dd6b20;
+         }
+         
+         .btn-success {
+             background: #48bb78;
+         }
+         
+         .btn-success:hover {
+             background: #38a169;
+         }
+         
+         .btn-info {
+             background: #4299e1;
+         }
+         
+         .btn-info:hover {
+             background: #3182ce;
+         }
+     </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>🏠 Goldberger Family</h1>
+                <p>Secure Family Dashboard</p>
+            </div>
+            <div class="login-form">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" value="test@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" value="admin123" required>
+                </div>
+                <button class="btn" onclick="login()">Login</button>
+                
+                <button class="btn btn-warning" onclick="resetData()">Reset Data (if login fails)</button>
+                
+                <div class="login-help">
+                    <h4>Demo Accounts:</h4>
+                    <p><strong>Super Admin:</strong> test@example.com / admin123</p>
+                    <p><strong>Admin:</strong> admin@example.com / admin456</p>
+                    <p><strong>Member:</strong> test@gmail.com / member123</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="mainApp">
+        <!-- Mobile Menu Toggle -->
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+            <span>☰</span>
+        </button>
+        
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">🏠 Goldberger</div>
+                <div class="sidebar-subtitle">Family Dashboard</div>
+            </div>
+            
+            <!-- User Info -->
+            <div class="user-info">
+                <div class="user-name" id="currentUserName">Loading...</div>
+                <div class="user-role" id="currentUserRole">Loading...</div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="nav">
+                <div class="nav-item">
+                    <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+                        <span class="nav-icon">📊</span>
+                        Dashboard
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="#" class="nav-link" onclick="showSection('members')">
+                        <span class="nav-icon">👥</span>
+                        Members
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="#" class="nav-link" onclick="showSection('subscriptions')">
+                        <span class="nav-icon">💳</span>
+                        Subscriptions
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="#" class="nav-link" onclick="showSection('pricing')">
+                        <span class="nav-icon">💰</span>
+                        Pricing Plans
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="#" class="nav-link" onclick="showSection('statements')">
+                        <span class="nav-icon">📄</span>
+                        Statements
+                    </a>
+                </div>
+                <div class="nav-item" id="familiesNavItem" style="display: none;">
+                    <a href="#" class="nav-link" onclick="showSection('families')">
+                        <span class="nav-icon">🏠</span>
+                        Families
+                    </a>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard Section -->
+            <div id="dashboard-section" class="content-section">
+                <div class="content-header">
+                    <h1 class="content-title">📊 Dashboard</h1>
+                    <p class="content-subtitle">Welcome to your family management dashboard</p>
+                </div>
+                
+                <div class="section">
+                    <h2><span class="icon">⚡</span>Quick Actions</h2>
+                    <div id="quickActions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <!-- Quick actions will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2><span class="icon">📈</span>Statistics</h2>
+                    <div id="statsDisplay">
+                        <!-- Stats will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Members Section -->
+            <div id="members-section" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1 class="content-title">👥 Members</h1>
+                    <p class="content-subtitle">Manage family members and their information</p>
+                </div>
+                <div class="section">
+                    <div id="membersList"></div>
+                    <div id="membersActions"></div>
+                </div>
+            </div>
+            
+            <!-- Subscriptions Section -->
+            <div id="subscriptions-section" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1 class="content-title">💳 Subscriptions</h1>
+                    <p class="content-subtitle">Manage member subscriptions and billing</p>
+                </div>
+                <div class="section">
+                    <div id="subscriptionsList"></div>
+                    <div id="subscriptionsActions"></div>
+                </div>
+            </div>
+            
+            <!-- Pricing Plans Section -->
+            <div id="pricing-section" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1 class="content-title">💰 Pricing Plans</h1>
+                    <p class="content-subtitle">Manage pricing plans and rates</p>
+                </div>
+                <div class="section">
+                    <div id="pricingList"></div>
+                    <div id="pricingActions"></div>
+                </div>
+            </div>
+            
+            <!-- Statements Section -->
+            <div id="statements-section" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1 class="content-title">📄 Statements</h1>
+                    <p class="content-subtitle">View and manage monthly statements</p>
+                </div>
+                <div class="section">
+                    <div id="statementsList"></div>
+                    <div id="statementsActions"></div>
+                </div>
+            </div>
+            
+            <!-- Families Section (Super Admin Only) -->
+            <div id="families-section" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1 class="content-title">🏠 Families Management</h1>
+                    <p class="content-subtitle">Manage all families and create new family dashboards</p>
+                </div>
+                <div class="section">
+                    <div id="familiesList"></div>
+                    <div id="familiesActions"></div>
+                </div>
+            </div>
+                 </div>
+     </div>
+
+     <!-- ===== MODALS ===== -->
+     
+     <!-- Add/Edit Member Modal -->
+     <div id="memberModal" class="modal-overlay">
+         <div class="modal">
+             <div class="modal-header">
+                 <h3 class="modal-title" id="memberModalTitle">Add Member</h3>
+                 <button class="modal-close" onclick="closeModal('memberModal')">&times;</button>
+             </div>
+             <div class="modal-body">
+                 <div class="form-group">
+                     <label>First Name: <span style="color: #e53e3e;">*</span></label>
+                     <input type="text" id="memberFirstName" placeholder="Enter first name" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Last Name: <span style="color: #e53e3e;">*</span></label>
+                     <input type="text" id="memberLastName" placeholder="Enter last name" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Email: <span style="color: #e53e3e;">*</span></label>
+                     <input type="email" id="memberEmail" placeholder="Enter email" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Phone: <span style="color: #e53e3e;">*</span></label>
+                     <input type="tel" id="memberPhone" placeholder="Enter phone number" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Role: <span style="color: #e53e3e;">*</span></label>
+                     <select id="memberRole" required>
+                         <option value="">Select role</option>
+                         <option value="member">Member</option>
+                         <option value="admin">Admin</option>
+                         <option value="super_admin">Super Admin</option>
+                     </select>
+                 </div>
+                 <div class="form-group">
+                     <label>Password: <span style="color: #e53e3e;">*</span></label>
+                     <input type="password" id="memberPassword" placeholder="Enter password" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Pricing Plan:</label>
+                     <select id="memberPricingPlan">
+                         <option value="">Select pricing plan</option>
+                     </select>
+                 </div>
+             </div>
+             <div class="modal-footer">
+                 <button class="btn btn-danger" onclick="closeModal('memberModal')">Cancel</button>
+                 <button class="btn btn-success" onclick="saveMember()">Save Member</button>
+             </div>
+         </div>
+     </div>
+
+     <!-- Add/Edit Subscription Modal -->
+     <div id="subscriptionModal" class="modal-overlay">
+         <div class="modal">
+             <div class="modal-header">
+                 <h3 class="modal-title" id="subscriptionModalTitle">Add Subscription</h3>
+                 <button class="modal-close" onclick="closeModal('subscriptionModal')">&times;</button>
+             </div>
+             <div class="modal-body">
+                 <div class="form-group">
+                     <label>Member: <span style="color: #e53e3e;">*</span></label>
+                     <select id="subscriptionMember" required>
+                         <option value="">Select member</option>
+                     </select>
+                 </div>
+                 <div class="form-group">
+                     <label>Pricing Plan: <span style="color: #e53e3e;">*</span></label>
+                     <select id="subscriptionPlan" required>
+                         <option value="">Select pricing plan</option>
+                     </select>
+                 </div>
+                 <div class="form-group">
+                     <label>Start Date: <span style="color: #e53e3e;">*</span></label>
+                     <input type="date" id="subscriptionStartDate" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Status:</label>
+                     <select id="subscriptionStatus">
+                         <option value="active">Active</option>
+                         <option value="inactive">Inactive</option>
+                         <option value="suspended">Suspended</option>
+                     </select>
+                 </div>
+             </div>
+             <div class="modal-footer">
+                 <button class="btn btn-danger" onclick="closeModal('subscriptionModal')">Cancel</button>
+                 <button class="btn btn-success" onclick="saveSubscription()">Save Subscription</button>
+             </div>
+         </div>
+     </div>
+
+     <!-- Add/Edit Pricing Plan Modal -->
+     <div id="pricingModal" class="modal-overlay">
+         <div class="modal">
+             <div class="modal-header">
+                 <h3 class="modal-title" id="pricingModalTitle">Add Pricing Plan</h3>
+                 <button class="modal-close" onclick="closeModal('pricingModal')">&times;</button>
+             </div>
+             <div class="modal-body">
+                 <div class="form-group">
+                     <label>Plan Name: <span style="color: #e53e3e;">*</span></label>
+                     <input type="text" id="pricingTitle" placeholder="Enter plan name" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Yearly Price: <span style="color: #e53e3e;">*</span></label>
+                     <input type="number" id="pricingYearlyPrice" placeholder="Enter yearly price" step="0.01" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Monthly Price: <span style="color: #e53e3e;">*</span></label>
+                     <input type="number" id="pricingMonthlyPrice" placeholder="Enter monthly price" step="0.01" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Description:</label>
+                     <textarea id="pricingDescription" placeholder="Enter plan description" rows="3"></textarea>
+                 </div>
+             </div>
+             <div class="modal-footer">
+                 <button class="btn btn-danger" onclick="closeModal('pricingModal')">Cancel</button>
+                 <button class="btn btn-success" onclick="savePricingPlan()">Save Plan</button>
+             </div>
+         </div>
+     </div>
+
+     <!-- Add/Edit Statement Modal -->
+     <div id="statementModal" class="modal-overlay">
+         <div class="modal">
+             <div class="modal-header">
+                 <h3 class="modal-title" id="statementModalTitle">Add Statement</h3>
+                 <button class="modal-close" onclick="closeModal('statementModal')">&times;</button>
+             </div>
+             <div class="modal-body">
+                 <div class="form-group">
+                     <label>Member: <span style="color: #e53e3e;">*</span></label>
+                     <select id="statementMember" required>
+                         <option value="">Select member</option>
+                     </select>
+                 </div>
+                 <div class="form-group">
+                     <label>Amount: <span style="color: #e53e3e;">*</span></label>
+                     <input type="number" id="statementAmount" placeholder="Enter amount" step="0.01" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Billing Date: <span style="color: #e53e3e;">*</span></label>
+                     <input type="date" id="statementBillingDate" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Due Date: <span style="color: #e53e3e;">*</span></label>
+                     <input type="date" id="statementDueDate" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Status:</label>
+                     <select id="statementStatus">
+                         <option value="pending">Pending</option>
+                         <option value="paid">Paid</option>
+                         <option value="overdue">Overdue</option>
+                     </select>
+                 </div>
+             </div>
+             <div class="modal-footer">
+                 <button class="btn btn-danger" onclick="closeModal('statementModal')">Cancel</button>
+                 <button class="btn btn-success" onclick="saveStatement()">Save Statement</button>
+             </div>
+         </div>
+     </div>
+
+     <!-- Add Family Modal -->
+     <div id="familyModal" class="modal-overlay">
+         <div class="modal">
+             <div class="modal-header">
+                 <h3 class="modal-title">Create New Family</h3>
+                 <button class="modal-close" onclick="closeModal('familyModal')">&times;</button>
+             </div>
+             <div class="modal-body">
+                 <div class="form-group">
+                     <label>Family Name: <span style="color: #e53e3e;">*</span></label>
+                     <input type="text" id="familyName" placeholder="Enter family name" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Address:</label>
+                     <input type="text" id="familyAddress" placeholder="Enter family address">
+                 </div>
+                 <div class="form-group">
+                     <label>Phone:</label>
+                     <input type="tel" id="familyPhone" placeholder="Enter family phone">
+                 </div>
+                 <div class="form-group">
+                     <label>Email:</label>
+                     <input type="email" id="familyEmail" placeholder="Enter family email">
+                 </div>
+                 <div class="form-group">
+                     <label>Super Admin Email: <span style="color: #e53e3e;">*</span></label>
+                     <input type="email" id="familyAdminEmail" placeholder="Enter super admin email" required>
+                 </div>
+                 <div class="form-group">
+                     <label>Super Admin Password: <span style="color: #e53e3e;">*</span></label>
+                     <input type="password" id="familyAdminPassword" placeholder="Enter super admin password" required>
+                 </div>
+             </div>
+             <div class="modal-footer">
+                 <button class="btn btn-danger" onclick="closeModal('familyModal')">Cancel</button>
+                 <button class="btn btn-success" onclick="createNewFamily()">Create Family</button>
+             </div>
+         </div>
+     </div>
+
+     <!-- Delete Confirmation Modal -->
+     <div id="deleteConfirmModal" class="modal-overlay">
+         <div class="modal">
+             <div class="modal-header">
+                 <h3 class="modal-title">🗑️ Confirm Delete</h3>
+                 <button class="modal-close" onclick="closeModal('deleteConfirmModal')">&times;</button>
+             </div>
+             <div class="modal-body">
+                 <div class="form-group">
+                     <p id="deleteConfirmMessage">Are you sure you want to delete this item?</p>
+                     <p style="color: #e53e3e; font-size: 0.9rem; margin-top: 10px;">
+                         <strong>⚠️ Warning:</strong> This action cannot be undone.
+                     </p>
+                 </div>
+             </div>
+             <div class="modal-footer">
+                 <button class="btn btn-warning" onclick="closeModal('deleteConfirmModal')">Cancel</button>
+                 <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+             </div>
+         </div>
+     </div>
+
+     <script>
+                 // ===== DATA STRUCTURE =====
+         let currentUser = null;
+         let currentEditingId = null;
+         let currentDeletingId = null;
+         let currentDeletingType = null;
+         
+         // Global families data (for Super Admin)
+         let allFamilies = [
+             {
+                 id: "e40e4a183dfd346e6b4705504e36c78a",
+                 name: "Goldberger Family",
+                 address: "123 Main St",
+                 phone: "+1234567890",
+                 email: "family@example.com",
+                 adminEmail: "test@example.com",
+                 adminPassword: "admin123",
+                 fileName: "goldberger-family-fast.html",
+                 createdAt: "2025-08-22T16:09:24.793Z",
+                 isActive: true
+             }
+         ];
+         
+         let familyData = {
+            family: {
+                id: "e40e4a183dfd346e6b4705504e36c78a",
+                name: "Goldberger Family",
+                address: "123 Main St",
+                phone: "+1234567890",
+                email: "family@example.com",
+                createdAt: "2025-08-22T16:09:24.793Z"
+            },
+            members: [
+                {
+                    id: "7fdd0798f880c9c3267f7e2546273b4c",
+                    firstName: "Test",
+                    lastName: "Admin",
+                    email: "test@example.com",
+                    phone: "+1234567890",
+                    role: "super_admin",
+                    password: "admin123",
+                    balance: 0,
+                    isActive: true,
+                    createdAt: "2025-08-22T16:08:59.954Z"
+                },
+                {
+                    id: "joel123",
+                    firstName: "Joel",
+                    lastName: "Goldberger",
+                    email: "test@gmail.com",
+                    phone: "8454679683",
+                    role: "member",
+                    password: "member123",
+                    balance: 0,
+                    isActive: true,
+                    createdAt: "2025-08-25T14:30:00.000Z"
+                },
+                {
+                    id: "admin456",
+                    firstName: "Family",
+                    lastName: "Admin",
+                    email: "admin@example.com",
+                    phone: "+1987654321",
+                    role: "admin",
+                    password: "admin456",
+                    balance: 0,
+                    isActive: true,
+                    createdAt: "2025-08-25T15:00:00.000Z"
+                }
+            ],
+            pricePlans: [
+                {
+                    id: "plan1",
+                    title: "Basic Plan",
+                    yearlyPrice: 1200,
+                    monthlyPrice: 100,
+                    description: "Basic family membership"
+                }
+            ],
+            subscriptions: [],
+            statements: [],
+            activities: []
+        };
+
+        // ===== UTILITY FUNCTIONS =====
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        function formatCurrency(amount) {
+            return '$' + parseFloat(amount).toFixed(2);
+        }
+
+        // ===== AUTHENTICATION FUNCTIONS =====
+        function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            
+            if (!email || !password) {
+                alert('Please enter both email and password');
+                return;
+            }
+            
+            const user = familyData.members.find(m => m.email === email && m.password === password);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                
+                updateUserInfo();
+                refreshDisplay();
+                
+                // Show families nav for super admin
+                if (currentUser.role === 'super_admin') {
+                    document.getElementById('familiesNavItem').style.display = 'block';
+                }
+            } else {
+                alert('Invalid email or password. Please check your credentials.');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+
+        function resetData() {
+            localStorage.removeItem('familyData');
+            localStorage.removeItem('currentUser');
+            alert('Data reset successfully. Please try logging in again.');
+        }
+
+        function updateUserInfo() {
+            if (currentUser) {
+                document.getElementById('currentUserName').textContent = currentUser.firstName + ' ' + currentUser.lastName;
+                document.getElementById('currentUserRole').textContent = currentUser.role.replace('_', ' ').toUpperCase();
+            }
+        }
+
+        // ===== PERMISSION FUNCTIONS =====
+        function canViewAllData() {
+            return currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin');
+        }
+
+        function canEditData() {
+            return currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin');
+        }
+
+        function canDeleteData() {
+            return currentUser && currentUser.role === 'super_admin';
+        }
+
+        function getFilteredMembers() {
+            if (canViewAllData()) {
+                return familyData.members;
+            } else {
+                return familyData.members.filter(m => m.id === currentUser.id);
+            }
+        }
+
+        function getFilteredSubscriptions() {
+            if (canViewAllData()) {
+                return familyData.subscriptions;
+            } else {
+                return familyData.subscriptions.filter(s => s.memberId === currentUser.id);
+            }
+        }
+
+        function getFilteredStatements() {
+            if (canViewAllData()) {
+                return familyData.statements;
+            } else {
+                return familyData.statements.filter(s => s.memberId === currentUser.id);
+            }
+        }
+
+        // ===== DISPLAY FUNCTIONS =====
+        function showSection(sectionName) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(section => section.style.display = 'none');
+            
+            // Show selected section
+            document.getElementById(sectionName + '-section').style.display = 'block';
+            
+            // Update nav links
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => link.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Refresh the section
+            refreshDisplay();
+        }
+
+        function refreshDisplay() {
+            updateStats();
+            updateQuickActions();
+            displayMembers();
+            displaySubscriptions();
+            displayPricingPlans();
+            displayStatements();
+        }
+
+        function updateStats() {
+            const statsHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">' +
+                '<div style="background: #f7fafc; padding: 20px; border-radius: 8px; text-align: center;">' +
+                '<h3>Total Members</h3><p style="font-size: 2rem; color: #667eea;">' + familyData.members.length + '</p></div>' +
+                '<div style="background: #f7fafc; padding: 20px; border-radius: 8px; text-align: center;">' +
+                '<h3>Active Subscriptions</h3><p style="font-size: 2rem; color: #48bb78;">' + familyData.subscriptions.filter(s => s.status === 'active').length + '</p></div>' +
+                '<div style="background: #f7fafc; padding: 20px; border-radius: 8px; text-align: center;">' +
+                '<h3>Pending Statements</h3><p style="font-size: 2rem; color: #ed8936;">' + familyData.statements.filter(s => s.status === 'pending').length + '</p></div>' +
+                '<div style="background: #f7fafc; padding: 20px; border-radius: 8px; text-align: center;">' +
+                '<h3>Total Revenue</h3><p style="font-size: 2rem; color: #38a169;">' + formatCurrency(familyData.statements.reduce((sum, s) => sum + s.amount, 0)) + '</p></div>' +
+                '</div>';
+            
+            document.getElementById('statsDisplay').innerHTML = statsHtml;
+        }
+
+                 function updateQuickActions() {
+             let actionsHtml = '';
+             
+             if (canEditData()) {
+                 actionsHtml += '<button class="btn" onclick="showAddMemberForm()">➕ Add Member</button>';
+                 actionsHtml += '<button class="btn" onclick="showAddSubscriptionForm()">💳 Add Subscription</button>';
+                 actionsHtml += '<button class="btn" onclick="generateNextMonth()">📅 Generate Next Month</button>';
+             }
+             
+             if (canViewAllData()) {
+                 actionsHtml += '<button class="btn" onclick="exportData()">📥 Export Data</button>';
+             }
+             
+             document.getElementById('quickActions').innerHTML = actionsHtml;
+         }
+
+        function displayMembers() {
+            const filteredMembers = getFilteredMembers();
+            
+            if (filteredMembers.length === 0) {
+                document.getElementById('membersList').innerHTML = '<div class="empty-state">No members found</div>';
+                return;
+            }
+            
+            let membersHtml = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+            
+            filteredMembers.forEach(member => {
+                membersHtml += '<tr>';
+                membersHtml += '<td><strong>' + member.firstName + ' ' + member.lastName + '</strong></td>';
+                membersHtml += '<td>' + member.email + '</td>';
+                membersHtml += '<td>' + member.phone + '</td>';
+                membersHtml += '<td><span class="status-badge status-active">' + member.role + '</span></td>';
+                membersHtml += '<td>' + formatCurrency(member.balance) + '</td>';
+                membersHtml += '<td><span class="status-badge ' + (member.isActive ? 'status-active' : 'status-inactive') + '">' + (member.isActive ? 'Active' : 'Inactive') + '</span></td>';
+                membersHtml += '<td><div class="table-actions">';
+                                 if (canEditData()) {
+                     membersHtml += '<button class="btn btn-small" onclick="editMember(\'' + member.id + '\')">Edit</button>';
+                 }
+                 if (canDeleteData()) {
+                     membersHtml += '<button class="btn btn-small" onclick="deleteMember(\'' + member.id + '\')">Delete</button>';
+                 }
+                membersHtml += '</div></td></tr>';
+            });
+            
+            membersHtml += '</tbody></table>';
+            document.getElementById('membersList').innerHTML = membersHtml;
+            
+                         // Update actions
+             if (canEditData()) {
+                 document.getElementById('membersActions').innerHTML = '<button class="btn" onclick="showAddMemberForm()">Add Member</button>';
+             } else {
+                 document.getElementById('membersActions').innerHTML = '';
+             }
+        }
+
+        function displaySubscriptions() {
+            const filteredSubscriptions = getFilteredSubscriptions();
+            
+            if (filteredSubscriptions.length === 0) {
+                document.getElementById('subscriptionsList').innerHTML = '<div class="empty-state">No subscriptions found</div>';
+                return;
+            }
+            
+            let subscriptionsHtml = '<table class="data-table"><thead><tr><th>Plan</th><th>Member</th><th>Monthly Amount</th><th>Status</th><th>Start Date</th><th>Actions</th></tr></thead><tbody>';
+            
+            filteredSubscriptions.forEach(sub => {
+                subscriptionsHtml += '<tr>';
+                subscriptionsHtml += '<td><strong>' + (sub.pricePlanTitle || 'N/A') + '</strong></td>';
+                subscriptionsHtml += '<td>' + (getMemberName(sub.memberId) || 'N/A') + '</td>';
+                subscriptionsHtml += '<td>' + formatCurrency(sub.monthlyAmount || 0) + '</td>';
+                subscriptionsHtml += '<td><span class="status-badge status-' + (sub.status || 'inactive') + '">' + (sub.status || 'inactive') + '</span></td>';
+                subscriptionsHtml += '<td>' + (sub.startDate ? new Date(sub.startDate).toLocaleDateString() : 'N/A') + '</td>';
+                subscriptionsHtml += '<td><div class="table-actions">';
+                                 if (canEditData()) {
+                     subscriptionsHtml += '<button class="btn btn-small" onclick="editSubscription(\'' + sub.id + '\')">Edit</button>';
+                 }
+                 if (canDeleteData()) {
+                     subscriptionsHtml += '<button class="btn btn-small" onclick="deleteSubscription(\'' + sub.id + '\')">Delete</button>';
+                 }
+                subscriptionsHtml += '</div></td></tr>';
+            });
+            
+            subscriptionsHtml += '</tbody></table>';
+            document.getElementById('subscriptionsList').innerHTML = subscriptionsHtml;
+            
+                         // Update actions
+             if (canEditData()) {
+                 document.getElementById('subscriptionsActions').innerHTML = '<button class="btn" onclick="showAddSubscriptionForm()">Add Subscription</button>';
+             } else {
+                 document.getElementById('subscriptionsActions').innerHTML = '';
+             }
+        }
+
+        function displayPricingPlans() {
+            if (familyData.pricePlans.length === 0) {
+                document.getElementById('pricingList').innerHTML = '<div class="empty-state">No pricing plans found</div>';
+                return;
+            }
+            
+            let pricingHtml = '<table class="data-table"><thead><tr><th>Plan Name</th><th>Yearly Price</th><th>Monthly Price</th><th>Description</th><th>Actions</th></tr></thead><tbody>';
+            
+            familyData.pricePlans.forEach(plan => {
+                pricingHtml += '<tr>';
+                pricingHtml += '<td><strong>' + plan.title + '</strong></td>';
+                pricingHtml += '<td>' + formatCurrency(plan.yearlyPrice) + '</td>';
+                pricingHtml += '<td>' + formatCurrency(plan.monthlyPrice) + '</td>';
+                pricingHtml += '<td>' + (plan.description || 'N/A') + '</td>';
+                pricingHtml += '<td><div class="table-actions">';
+                                 if (canEditData()) {
+                     pricingHtml += '<button class="btn btn-small" onclick="editPricingPlan(\'' + plan.id + '\')">Edit</button>';
+                 }
+                 if (canDeleteData()) {
+                     pricingHtml += '<button class="btn btn-small" onclick="deletePricingPlan(\'' + plan.id + '\')">Delete</button>';
+                 }
+                pricingHtml += '</div></td></tr>';
+            });
+            
+            pricingHtml += '</tbody></table>';
+            document.getElementById('pricingList').innerHTML = pricingHtml;
+            
+                         // Update actions
+             if (canEditData()) {
+                 document.getElementById('pricingActions').innerHTML = '<button class="btn" onclick="showAddPricingPlanForm()">Add Pricing Plan</button>';
+             } else {
+                 document.getElementById('pricingActions').innerHTML = '';
+             }
+        }
+
+        function displayStatements() {
+            const filteredStatements = getFilteredStatements();
+            
+            if (filteredStatements.length === 0) {
+                document.getElementById('statementsList').innerHTML = '<div class="empty-state">No statements found</div>';
+                return;
+            }
+            
+            let statementsHtml = '<table class="data-table"><thead><tr><th>Statement #</th><th>Member</th><th>Amount</th><th>Status</th><th>Billing Date</th><th>Actions</th></tr></thead><tbody>';
+            
+            filteredStatements.forEach(stmt => {
+                statementsHtml += '<tr>';
+                statementsHtml += '<td><strong>#' + (stmt.statementNumber || 'N/A') + '</strong></td>';
+                statementsHtml += '<td>' + (getMemberName(stmt.memberId) || 'N/A') + '</td>';
+                statementsHtml += '<td>' + formatCurrency(stmt.amount || 0) + '</td>';
+                statementsHtml += '<td><span class="status-badge status-' + (stmt.status || 'pending') + '">' + (stmt.status || 'pending').toUpperCase() + '</span></td>';
+                statementsHtml += '<td>' + (stmt.billingDate ? new Date(stmt.billingDate).toLocaleDateString() : 'N/A') + '</td>';
+                statementsHtml += '<td><div class="table-actions">';
+                                 if (canEditData()) {
+                     statementsHtml += '<button class="btn btn-small" onclick="editStatement(\'' + stmt.id + '\')">Edit</button>';
+                 }
+                 statementsHtml += '<button class="btn btn-small" onclick="downloadStatement(\'' + stmt.id + '\')">📄 Download</button>';
+                 if (stmt.status === 'pending') {
+                     statementsHtml += '<button class="btn btn-small" onclick="payStatement(\'' + stmt.id + '\')">Pay Now</button>';
+                 }
+                 if (canDeleteData()) {
+                     statementsHtml += '<button class="btn btn-small" onclick="deleteStatement(\'' + stmt.id + '\')">Delete</button>';
+                 }
+                statementsHtml += '</div></td></tr>';
+            });
+            
+            statementsHtml += '</tbody></table>';
+            document.getElementById('statementsList').innerHTML = statementsHtml;
+            
+            // Update actions
+            if (canEditData()) {
+                document.getElementById('statementsActions').innerHTML = '<button class="btn" onclick="alert(\'Generate Statement functionality\')">Generate Statement</button>';
+            } else {
+                document.getElementById('statementsActions').innerHTML = '';
+            }
+        }
+
+        // ===== HELPER FUNCTIONS =====
+        function getMemberName(memberId) {
+            const member = familyData.members.find(m => m.id === memberId);
+            return member ? member.firstName + ' ' + member.lastName : 'Unknown';
+        }
+
+                 function toggleMobileMenu() {
+             const sidebar = document.getElementById('sidebar');
+             sidebar.classList.toggle('open');
+         }
+
+         // ===== MODAL FUNCTIONS =====
+         function openModal(modalId) {
+             document.getElementById(modalId).style.display = 'flex';
+         }
+
+         function closeModal(modalId) {
+             document.getElementById(modalId).style.display = 'none';
+             currentEditingId = null;
+         }
+
+         // ===== MEMBER FUNCTIONS =====
+         function showAddMemberForm() {
+             currentEditingId = null;
+             document.getElementById('memberModalTitle').textContent = 'Add Member';
+             clearMemberForm();
+             populatePricingPlanDropdown('memberPricingPlan');
+             openModal('memberModal');
+         }
+
+         function editMember(memberId) {
+             currentEditingId = memberId;
+             const member = familyData.members.find(m => m.id === memberId);
+             if (!member) return;
+
+             document.getElementById('memberModalTitle').textContent = 'Edit Member';
+             document.getElementById('memberFirstName').value = member.firstName;
+             document.getElementById('memberLastName').value = member.lastName;
+             document.getElementById('memberEmail').value = member.email;
+             document.getElementById('memberPhone').value = member.phone;
+             document.getElementById('memberRole').value = member.role;
+             document.getElementById('memberPassword').value = member.password;
+             
+             populatePricingPlanDropdown('memberPricingPlan', member.pricingPlanId);
+             openModal('memberModal');
+         }
+
+         function saveMember() {
+             const firstName = document.getElementById('memberFirstName').value.trim();
+             const lastName = document.getElementById('memberLastName').value.trim();
+             const email = document.getElementById('memberEmail').value.trim();
+             const phone = document.getElementById('memberPhone').value.trim();
+             const role = document.getElementById('memberRole').value;
+             const password = document.getElementById('memberPassword').value.trim();
+             const pricingPlanId = document.getElementById('memberPricingPlan').value;
+
+             if (!firstName || !lastName || !email || !phone || !role || !password) {
+                 alert('Please fill in all required fields');
+                 return;
+             }
+
+             if (currentEditingId) {
+                 // Edit existing member
+                 const memberIndex = familyData.members.findIndex(m => m.id === currentEditingId);
+                 if (memberIndex > -1) {
+                     familyData.members[memberIndex] = {
+                         ...familyData.members[memberIndex],
+                         firstName,
+                         lastName,
+                         email,
+                         phone,
+                         role,
+                         password,
+                         pricingPlanId: pricingPlanId || null
+                     };
+                 }
+             } else {
+                 // Add new member
+                 const newMember = {
+                     id: generateId(),
+                     firstName,
+                     lastName,
+                     email,
+                     phone,
+                     role,
+                     password,
+                     pricingPlanId: pricingPlanId || null,
+                     balance: 0,
+                     isActive: true,
+                     createdAt: new Date().toISOString()
+                 };
+                 familyData.members.push(newMember);
+             }
+
+             closeModal('memberModal');
+             refreshDisplay();
+             autoSave();
+         }
+
+         function deleteMember(memberId) {
+             currentDeletingId = memberId;
+             currentDeletingType = 'member';
+             const member = familyData.members.find(m => m.id === memberId);
+             document.getElementById('deleteConfirmMessage').innerHTML = 
+                 `Are you sure you want to delete <strong>${member.firstName} ${member.lastName}</strong>?<br><br>
+                  This will also remove all related subscriptions and statements.`;
+             openModal('deleteConfirmModal');
+         }
+
+         // ===== SUBSCRIPTION FUNCTIONS =====
+         function showAddSubscriptionForm() {
+             currentEditingId = null;
+             document.getElementById('subscriptionModalTitle').textContent = 'Add Subscription';
+             clearSubscriptionForm();
+             populateMemberDropdown('subscriptionMember');
+             populatePricingPlanDropdown('subscriptionPlan');
+             openModal('subscriptionModal');
+         }
+
+         function editSubscription(subscriptionId) {
+             currentEditingId = subscriptionId;
+             const subscription = familyData.subscriptions.find(s => s.id === subscriptionId);
+             if (!subscription) return;
+
+             document.getElementById('subscriptionModalTitle').textContent = 'Edit Subscription';
+             populateMemberDropdown('subscriptionMember', subscription.memberId);
+             populatePricingPlanDropdown('subscriptionPlan', subscription.pricePlanId);
+             document.getElementById('subscriptionStartDate').value = subscription.startDate.split('T')[0];
+             document.getElementById('subscriptionStatus').value = subscription.status;
+             openModal('subscriptionModal');
+         }
+
+         function saveSubscription() {
+             const memberId = document.getElementById('subscriptionMember').value;
+             const pricePlanId = document.getElementById('subscriptionPlan').value;
+             const startDate = document.getElementById('subscriptionStartDate').value;
+             const status = document.getElementById('subscriptionStatus').value;
+
+             if (!memberId || !pricePlanId || !startDate) {
+                 alert('Please fill in all required fields');
+                 return;
+             }
+
+             const plan = familyData.pricePlans.find(p => p.id === pricePlanId);
+             const member = familyData.members.find(m => m.id === memberId);
+
+             if (currentEditingId) {
+                 // Edit existing subscription
+                 const subIndex = familyData.subscriptions.findIndex(s => s.id === currentEditingId);
+                 if (subIndex > -1) {
+                     familyData.subscriptions[subIndex] = {
+                         ...familyData.subscriptions[subIndex],
+                         memberId,
+                         pricePlanId,
+                         pricePlanTitle: plan.title,
+                         monthlyAmount: plan.monthlyPrice,
+                         startDate: startDate + 'T00:00:00.000Z',
+                         status
+                     };
+                 }
+             } else {
+                 // Add new subscription
+                 const newSubscription = {
+                     id: generateId(),
+                     memberId,
+                     pricePlanId,
+                     pricePlanTitle: plan.title,
+                     monthlyAmount: plan.monthlyPrice,
+                     startDate: startDate + 'T00:00:00.000Z',
+                     status,
+                     currentMonth: 1,
+                     totalMonths: 12,
+                     createdAt: new Date().toISOString()
+                 };
+                 familyData.subscriptions.push(newSubscription);
+             }
+
+             closeModal('subscriptionModal');
+             refreshDisplay();
+             autoSave();
+         }
+
+         function deleteSubscription(subscriptionId) {
+             currentDeletingId = subscriptionId;
+             currentDeletingType = 'subscription';
+             const subscription = familyData.subscriptions.find(s => s.id === subscriptionId);
+             document.getElementById('deleteConfirmMessage').innerHTML = 
+                 `Are you sure you want to delete this subscription?<br><br>
+                  Plan: <strong>${subscription.pricePlanTitle}</strong><br>
+                  This will also remove all related statements.`;
+             openModal('deleteConfirmModal');
+         }
+
+         // ===== PRICING PLAN FUNCTIONS =====
+         function showAddPricingPlanForm() {
+             currentEditingId = null;
+             document.getElementById('pricingModalTitle').textContent = 'Add Pricing Plan';
+             clearPricingForm();
+             openModal('pricingModal');
+         }
+
+         function editPricingPlan(planId) {
+             currentEditingId = planId;
+             const plan = familyData.pricePlans.find(p => p.id === planId);
+             if (!plan) return;
+
+             document.getElementById('pricingModalTitle').textContent = 'Edit Pricing Plan';
+             document.getElementById('pricingTitle').value = plan.title;
+             document.getElementById('pricingYearlyPrice').value = plan.yearlyPrice;
+             document.getElementById('pricingMonthlyPrice').value = plan.monthlyPrice;
+             document.getElementById('pricingDescription').value = plan.description || '';
+             openModal('pricingModal');
+         }
+
+         function savePricingPlan() {
+             const title = document.getElementById('pricingTitle').value.trim();
+             const yearlyPrice = parseFloat(document.getElementById('pricingYearlyPrice').value);
+             const monthlyPrice = parseFloat(document.getElementById('pricingMonthlyPrice').value);
+             const description = document.getElementById('pricingDescription').value.trim();
+
+             if (!title || isNaN(yearlyPrice) || isNaN(monthlyPrice)) {
+                 alert('Please fill in all required fields with valid numbers');
+                 return;
+             }
+
+             if (currentEditingId) {
+                 // Edit existing plan
+                 const planIndex = familyData.pricePlans.findIndex(p => p.id === currentEditingId);
+                 if (planIndex > -1) {
+                     familyData.pricePlans[planIndex] = {
+                         ...familyData.pricePlans[planIndex],
+                         title,
+                         yearlyPrice,
+                         monthlyPrice,
+                         description
+                     };
+                 }
+             } else {
+                 // Add new plan
+                 const newPlan = {
+                     id: generateId(),
+                     title,
+                     yearlyPrice,
+                     monthlyPrice,
+                     description,
+                     createdAt: new Date().toISOString()
+                 };
+                 familyData.pricePlans.push(newPlan);
+             }
+
+             closeModal('pricingModal');
+             refreshDisplay();
+             autoSave();
+         }
+
+         function deletePricingPlan(planId) {
+             currentDeletingId = planId;
+             currentDeletingType = 'pricing';
+             const plan = familyData.pricePlans.find(p => p.id === planId);
+             document.getElementById('deleteConfirmMessage').innerHTML = 
+                 `Are you sure you want to delete the pricing plan <strong>${plan.title}</strong>?<br><br>
+                  Yearly Price: $${plan.yearlyPrice}<br>
+                  Monthly Price: $${plan.monthlyPrice}<br>
+                  This will also affect any subscriptions using this plan.`;
+             openModal('deleteConfirmModal');
+         }
+
+         // ===== STATEMENT FUNCTIONS =====
+         function showAddStatementForm() {
+             currentEditingId = null;
+             document.getElementById('statementModalTitle').textContent = 'Add Statement';
+             clearStatementForm();
+             populateMemberDropdown('statementMember');
+             openModal('statementModal');
+         }
+
+         function editStatement(statementId) {
+             currentEditingId = statementId;
+             const statement = familyData.statements.find(s => s.id === statementId);
+             if (!statement) return;
+
+             document.getElementById('statementModalTitle').textContent = 'Edit Statement';
+             populateMemberDropdown('statementMember', statement.memberId);
+             document.getElementById('statementAmount').value = statement.amount;
+             document.getElementById('statementBillingDate').value = statement.billingDate.split('T')[0];
+             document.getElementById('statementDueDate').value = statement.dueDate.split('T')[0];
+             document.getElementById('statementStatus').value = statement.status;
+             openModal('statementModal');
+         }
+
+         function saveStatement() {
+             const memberId = document.getElementById('statementMember').value;
+             const amount = parseFloat(document.getElementById('statementAmount').value);
+             const billingDate = document.getElementById('statementBillingDate').value;
+             const dueDate = document.getElementById('statementDueDate').value;
+             const status = document.getElementById('statementStatus').value;
+
+             if (!memberId || isNaN(amount) || !billingDate || !dueDate) {
+                 alert('Please fill in all required fields with valid values');
+                 return;
+             }
+
+             if (currentEditingId) {
+                 // Edit existing statement
+                 const stmtIndex = familyData.statements.findIndex(s => s.id === currentEditingId);
+                 if (stmtIndex > -1) {
+                     familyData.statements[stmtIndex] = {
+                         ...familyData.statements[stmtIndex],
+                         memberId,
+                         amount,
+                         billingDate: billingDate + 'T00:00:00.000Z',
+                         dueDate: dueDate + 'T00:00:00.000Z',
+                         status
+                     };
+                 }
+             } else {
+                 // Add new statement
+                 const newStatement = {
+                     id: generateId(),
+                     statementNumber: generateStatementNumber(),
+                     memberId,
+                     amount,
+                     billingDate: billingDate + 'T00:00:00.000Z',
+                     dueDate: dueDate + 'T00:00:00.000Z',
+                     status,
+                     createdAt: new Date().toISOString()
+                 };
+                 familyData.statements.push(newStatement);
+             }
+
+             closeModal('statementModal');
+             refreshDisplay();
+             autoSave();
+         }
+
+         function deleteStatement(statementId) {
+             currentDeletingId = statementId;
+             currentDeletingType = 'statement';
+             const statement = familyData.statements.find(s => s.id === statementId);
+             document.getElementById('deleteConfirmMessage').innerHTML = 
+                 `Are you sure you want to delete statement #${statement.statementNumber}?<br><br>
+                  Amount: $${statement.amount}<br>
+                  This action cannot be undone.`;
+             openModal('deleteConfirmModal');
+         }
+
+         function downloadStatement(statementId) {
+             const statement = familyData.statements.find(s => s.id === statementId);
+             const member = familyData.members.find(m => m.id === statement.memberId);
+             
+             const htmlContent = `
+                 <!DOCTYPE html>
+                 <html>
+                 <head>
+                     <title>Statement #${statement.statementNumber}</title>
+                     <style>
+                         body { font-family: Arial, sans-serif; margin: 40px; }
+                         .header { text-align: center; margin-bottom: 30px; }
+                         .details { margin-bottom: 20px; }
+                         .amount { font-size: 24px; color: #e53e3e; font-weight: bold; }
+                         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                         th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+                         th { background: #f7fafc; }
+                     </style>
+                 </head>
+                 <body>
+                     <div class="header">
+                         <h1>Goldberger Family</h1>
+                         <h2>Statement #${statement.statementNumber}</h2>
+                     </div>
+                     <div class="details">
+                         <p><strong>Member:</strong> ${member.firstName} ${member.lastName}</p>
+                         <p><strong>Billing Date:</strong> ${new Date(statement.billingDate).toLocaleDateString()}</p>
+                         <p><strong>Due Date:</strong> ${new Date(statement.dueDate).toLocaleDateString()}</p>
+                         <p><strong>Status:</strong> ${statement.status.toUpperCase()}</p>
+                         <p class="amount">Amount Due: $${statement.amount}</p>
+                     </div>
+                 </body>
+                 </html>
+             `;
+             
+             const blob = new Blob([htmlContent], { type: 'text/html' });
+             const url = URL.createObjectURL(blob);
+             const link = document.createElement('a');
+             link.href = url;
+             link.download = `statement-${statement.statementNumber}.html`;
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+             URL.revokeObjectURL(url);
+         }
+
+         function payStatement(statementId) {
+             const statement = familyData.statements.find(s => s.id === statementId);
+             if (statement) {
+                 statement.status = 'paid';
+                 const member = familyData.members.find(m => m.id === statement.memberId);
+                 if (member) {
+                     member.balance += statement.amount;
+                 }
+                 refreshDisplay();
+                 autoSave();
+                 alert('Payment processed successfully!');
+             }
+         }
+
+         // ===== FAMILY FUNCTIONS =====
+         function showAddFamilyForm() {
+             clearFamilyForm();
+             openModal('familyModal');
+         }
+
+         function createNewFamily() {
+             const familyName = document.getElementById('familyName').value.trim();
+             const familyAddress = document.getElementById('familyAddress').value.trim();
+             const familyPhone = document.getElementById('familyPhone').value.trim();
+             const familyEmail = document.getElementById('familyEmail').value.trim();
+             const adminEmail = document.getElementById('familyAdminEmail').value.trim();
+             const adminPassword = document.getElementById('familyAdminPassword').value.trim();
+             
+             if (!familyName || !adminEmail || !adminPassword) {
+                 alert('Please fill in all required fields (Family Name, Admin Email, Admin Password)');
+                 return;
+             }
+             
+             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+             if (!emailRegex.test(adminEmail)) {
+                 alert('Please enter a valid admin email address');
+                 return;
+             }
+             
+             const familyId = generateId();
+             const fileName = `${familyName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-family.html`;
+             
+             const newFamily = {
+                 id: familyId,
+                 name: familyName,
+                 address: familyAddress || 'Enter address',
+                 phone: familyPhone || 'Enter phone',
+                 email: familyEmail || 'Enter email',
+                 adminEmail: adminEmail,
+                 adminPassword: adminPassword,
+                 fileName: fileName,
+                 createdAt: new Date().toISOString(),
+                 isActive: true
+             };
+             
+             allFamilies.push(newFamily);
+             generateFamilyHTMLFile(newFamily);
+             
+             closeModal('familyModal');
+             refreshDisplay();
+             
+             alert(`Family "${familyName}" created successfully!\nHTML file: ${fileName}`);
+         }
+
+         function generateFamilyHTMLFile(family) {
+             const htmlContent = generateFamilyHTMLContent(family);
+             const blob = new Blob([htmlContent], { type: 'text/html' });
+             const url = URL.createObjectURL(blob);
+             const link = document.createElement('a');
+             link.href = url;
+             link.download = family.fileName;
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+             URL.revokeObjectURL(url);
+         }
+
+         function generateFamilyHTMLContent(family) {
+             return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${family.name} - Fast Dashboard</title>
+    <!-- Include all the CSS and JavaScript from the original file -->
+</head>
+<body>
+    <script>
+        let familyData = {
+            family: {
+                id: "${family.id}",
+                name: "${family.name}",
+                address: "${family.address}",
+                phone: "${family.phone}",
+                email: "${family.email}",
+                createdAt: "${family.createdAt}"
+            },
+            members: [
+                {
+                    id: "${generateId()}",
+                    firstName: "Super",
+                    lastName: "Admin",
+                    email: "${family.adminEmail}",
+                    phone: "${family.phone}",
+                    role: "super_admin",
+                    password: "${family.adminPassword}",
+                    balance: 0,
+                    isActive: true,
+                    createdAt: "${family.createdAt}"
+                }
+            ],
+            pricePlans: [],
+            subscriptions: [],
+            statements: [],
+            activities: []
+        };
+    </script>
+</body>
+</html>`;
+         }
+
+         function deleteFamily(familyId) {
+             currentDeletingId = familyId;
+             currentDeletingType = 'family';
+             const family = allFamilies.find(f => f.id === familyId);
+             document.getElementById('deleteConfirmMessage').innerHTML = 
+                 `Are you sure you want to delete <strong>${family.name}</strong>?<br><br>
+                  This will remove the family from the system.`;
+             openModal('deleteConfirmModal');
+         }
+
+         // ===== UTILITY FUNCTIONS =====
+         function clearMemberForm() {
+             document.getElementById('memberFirstName').value = '';
+             document.getElementById('memberLastName').value = '';
+             document.getElementById('memberEmail').value = '';
+             document.getElementById('memberPhone').value = '';
+             document.getElementById('memberRole').value = '';
+             document.getElementById('memberPassword').value = '';
+             document.getElementById('memberPricingPlan').value = '';
+         }
+
+         function clearSubscriptionForm() {
+             document.getElementById('subscriptionMember').value = '';
+             document.getElementById('subscriptionPlan').value = '';
+             document.getElementById('subscriptionStartDate').value = '';
+             document.getElementById('subscriptionStatus').value = 'active';
+         }
+
+         function clearPricingForm() {
+             document.getElementById('pricingTitle').value = '';
+             document.getElementById('pricingYearlyPrice').value = '';
+             document.getElementById('pricingMonthlyPrice').value = '';
+             document.getElementById('pricingDescription').value = '';
+         }
+
+         function clearStatementForm() {
+             document.getElementById('statementMember').value = '';
+             document.getElementById('statementAmount').value = '';
+             document.getElementById('statementBillingDate').value = '';
+             document.getElementById('statementDueDate').value = '';
+             document.getElementById('statementStatus').value = 'pending';
+         }
+
+         function clearFamilyForm() {
+             document.getElementById('familyName').value = '';
+             document.getElementById('familyAddress').value = '';
+             document.getElementById('familyPhone').value = '';
+             document.getElementById('familyEmail').value = '';
+             document.getElementById('familyAdminEmail').value = '';
+             document.getElementById('familyAdminPassword').value = '';
+         }
+
+         function populateMemberDropdown(selectId, selectedValue = '') {
+             const select = document.getElementById(selectId);
+             select.innerHTML = '<option value="">Select member</option>';
+             
+             familyData.members.forEach(member => {
+                 const option = document.createElement('option');
+                 option.value = member.id;
+                 option.textContent = `${member.firstName} ${member.lastName}`;
+                 if (member.id === selectedValue) {
+                     option.selected = true;
+                 }
+                 select.appendChild(option);
+             });
+         }
+
+         function populatePricingPlanDropdown(selectId, selectedValue = '') {
+             const select = document.getElementById(selectId);
+             select.innerHTML = '<option value="">Select pricing plan</option>';
+             
+             familyData.pricePlans.forEach(plan => {
+                 const option = document.createElement('option');
+                 option.value = plan.id;
+                 option.textContent = `${plan.title} - $${plan.monthlyPrice}/month`;
+                 if (plan.id === selectedValue) {
+                     option.selected = true;
+                 }
+                 select.appendChild(option);
+             });
+         }
+
+         function generateStatementNumber() {
+             return familyData.statements.length + 1;
+         }
+
+         function confirmDelete() {
+             if (!currentDeletingId || !currentDeletingType) return;
+             
+             switch (currentDeletingType) {
+                 case 'member':
+                     const memberIndex = familyData.members.findIndex(m => m.id === currentDeletingId);
+                     if (memberIndex > -1) {
+                         familyData.members.splice(memberIndex, 1);
+                         familyData.subscriptions = familyData.subscriptions.filter(s => s.memberId !== currentDeletingId);
+                         familyData.statements = familyData.statements.filter(s => s.memberId !== currentDeletingId);
+                     }
+                     break;
+                     
+                 case 'subscription':
+                     const subscriptionIndex = familyData.subscriptions.findIndex(s => s.id === currentDeletingId);
+                     if (subscriptionIndex > -1) {
+                         familyData.subscriptions.splice(subscriptionIndex, 1);
+                         familyData.statements = familyData.statements.filter(s => s.subscriptionId !== currentDeletingId);
+                     }
+                     break;
+                     
+                 case 'statement':
+                     const statementIndex = familyData.statements.findIndex(s => s.id === currentDeletingId);
+                     if (statementIndex > -1) {
+                         familyData.statements.splice(statementIndex, 1);
+                     }
+                     break;
+                     
+                 case 'pricing':
+                     const pricingIndex = familyData.pricePlans.findIndex(p => p.id === currentDeletingId);
+                     if (pricingIndex > -1) {
+                         familyData.pricePlans.splice(pricingIndex, 1);
+                         familyData.subscriptions.forEach(sub => {
+                             if (sub.pricePlanId === currentDeletingId) {
+                                 sub.status = 'inactive';
+                                 sub.pricePlanTitle = 'Plan Deleted';
+                             }
+                         });
+                     }
+                     break;
+                     
+                 case 'family':
+                     const familyIndex = allFamilies.findIndex(f => f.id === currentDeletingId);
+                     if (familyIndex > -1) {
+                         allFamilies.splice(familyIndex, 1);
+                     }
+                     break;
+             }
+             
+             closeModal('deleteConfirmModal');
+             refreshDisplay();
+             autoSave();
+         }
+
+         function autoSave() {
+             localStorage.setItem('familyData', JSON.stringify(familyData));
+             localStorage.setItem('allFamilies', JSON.stringify(allFamilies));
+         }
+
+         function generateNextMonth() {
+             const today = new Date();
+             const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+             
+             familyData.subscriptions.forEach(subscription => {
+                 if (subscription.status === 'active') {
+                     const member = familyData.members.find(m => m.id === subscription.memberId);
+                     if (member) {
+                         const newStatement = {
+                             id: generateId(),
+                             statementNumber: generateStatementNumber(),
+                             memberId: subscription.memberId,
+                             subscriptionId: subscription.id,
+                             amount: subscription.monthlyAmount,
+                             billingDate: nextMonth.toISOString(),
+                             dueDate: new Date(nextMonth.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                             status: 'pending',
+                             createdAt: new Date().toISOString()
+                         };
+                         familyData.statements.push(newStatement);
+                         
+                         // Add to member's balance
+                         member.balance += subscription.monthlyAmount;
+                     }
+                 }
+             });
+             
+             refreshDisplay();
+             autoSave();
+             alert('Next month statements generated successfully!');
+         }
+
+         function exportData() {
+             const data = {
+                 family: familyData.family,
+                 members: familyData.members,
+                 pricePlans: familyData.pricePlans,
+                 subscriptions: familyData.subscriptions,
+                 statements: familyData.statements,
+                 activities: familyData.activities,
+                 exportDate: new Date().toISOString()
+             };
+             
+             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+             const url = URL.createObjectURL(blob);
+             const link = document.createElement('a');
+             link.href = url;
+             link.download = `goldberger-family-data-${new Date().toISOString().split('T')[0]}.json`;
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+             URL.revokeObjectURL(url);
+         }
+
+         // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is already logged in
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                updateUserInfo();
+                refreshDisplay();
+                
+                // Show families nav for super admin
+                if (currentUser.role === 'super_admin') {
+                    document.getElementById('familiesNavItem').style.display = 'block';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

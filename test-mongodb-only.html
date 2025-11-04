@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MongoDB Only Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffeaa7;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .data-preview {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 MongoDB Only Test</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Test Instructions:</h3>
+            <p>This page tests if the dashboard is now using MongoDB exclusively and not localStorage.</p>
+            <p><strong>Expected Behavior:</strong> All data operations should go through MongoDB API, no localStorage usage</p>
+        </div>
+        
+        <div class="grid">
+            <div class="test-section">
+                <h3>🧪 Test 1: localStorage Usage Check</h3>
+                <button onclick="testLocalStorageUsage()">Test localStorage</button>
+                <div id="localStorageTest" class="log"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>🔄 Test 2: MongoDB API Check</h3>
+                <button onclick="testMongoDBAPI()">Test MongoDB API</button>
+                <div id="mongoDBTest" class="log"></div>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="test-section">
+                <h3>📊 Test 3: Data Source Check</h3>
+                <button onclick="testDataSource()">Test Data Source</button>
+                <div id="dataSourceTest" class="log"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>💾 Test 4: Save Operations Check</h3>
+                <button onclick="testSaveOperations()">Test Save Operations</button>
+                <div id="saveOperationsTest" class="log"></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔗 Test 5: Dashboard Integration</h3>
+            <button onclick="testDashboardIntegration()">Test Dashboard</button>
+            <div id="dashboardTest" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 Current Data State</h3>
+            <div id="dataState" class="data-preview"></div>
+        </div>
+    </div>
+
+    <script>
+        let logCount = 0;
+        
+        function log(message, type = 'info', targetId = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            
+            // Add to specific target or console
+            if (targetId) {
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.textContent += logEntry;
+                    target.scrollTop = target.scrollHeight;
+                }
+            }
+            
+            // Also log to browser console
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            logCount++;
+            if (logCount > 100) {
+                if (targetId) {
+                    const target = document.getElementById(targetId);
+                    if (target) {
+                        target.textContent = target.textContent.split('\n').slice(-50).join('\n');
+                    }
+                }
+                logCount = 50;
+            }
+        }
+        
+        function testLocalStorageUsage() {
+            const testDiv = document.getElementById('localStorageTest');
+            testDiv.textContent = '';
+            
+            log('Testing localStorage usage...', 'info', 'localStorageTest');
+            
+            try {
+                // Check if localStorage is being used
+                const localStorageKeys = Object.keys(localStorage);
+                const relevantKeys = localStorageKeys.filter(key => 
+                    key.includes('family') || 
+                    key.includes('user') || 
+                    key.includes('data') || 
+                    key.includes('audit')
+                );
+                
+                log(`Found ${localStorageKeys.length} total localStorage keys`, 'info', 'localStorageTest');
+                log(`Found ${relevantKeys.length} relevant localStorage keys`, 'info', 'localStorageTest');
+                
+                if (relevantKeys.length > 0) {
+                    log('❌ localStorage is still being used for data storage', 'error', 'localStorageTest');
+                    relevantKeys.forEach(key => {
+                        log(`  - ${key}: ${localStorage.getItem(key).substring(0, 50)}...`, 'error', 'localStorageTest');
+                    });
+                    testDiv.className = 'log error';
+                } else {
+                    log('✅ No localStorage usage detected for data storage', 'success', 'localStorageTest');
+                    testDiv.className = 'log success';
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing localStorage: ${error.message}`, 'error', 'localStorageTest');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        function testMongoDBAPI() {
+            const testDiv = document.getElementById('mongoDBTest');
+            testDiv.textContent = '';
+            
+            log('Testing MongoDB API availability...', 'info', 'mongoDBTest');
+            
+            try {
+                // Check if MongoDB API functions exist
+                const mongoDBFunctions = [
+                    'api',
+                    'api.login',
+                    'api.getFamily',
+                    'api.getMembers',
+                    'api.getSubscriptions',
+                    'api.getPricingPlans',
+                    'api.getStatements',
+                    'refreshDisplayFromMongoDB',
+                    'saveNewMemberToMongoDB',
+                    'saveNewSubscriptionToMongoDB',
+                    'saveNewPricingToMongoDB'
+                ];
+                
+                let allGood = true;
+                
+                mongoDBFunctions.forEach(funcName => {
+                    try {
+                        let exists = false;
+                        if (funcName.includes('.')) {
+                            const parts = funcName.split('.');
+                            let obj = window;
+                            for (const part of parts) {
+                                obj = obj[part];
+                                if (!obj) break;
+                            }
+                            exists = !!obj;
+                        } else {
+                            exists = typeof window[funcName] === 'function';
+                        }
+                        
+                        const status = exists ? '✅' : '❌';
+                        log(`${status} ${funcName}: ${exists ? 'Available' : 'Missing'}`, exists ? 'success' : 'error', 'mongoDBTest');
+                        
+                        if (!exists) allGood = false;
+                    } catch (error) {
+                        log(`❌ ${funcName}: Error - ${error.message}`, 'error', 'mongoDBTest');
+                        allGood = false;
+                    }
+                });
+                
+                if (allGood) {
+                    log('✅ All MongoDB API functions are available', 'success', 'mongoDBTest');
+                    testDiv.className = 'log success';
+                } else {
+                    log('❌ Some MongoDB API functions are missing', 'error', 'mongoDBTest');
+                    testDiv.className = 'log error';
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing MongoDB API: ${error.message}`, 'error', 'mongoDBTest');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        function testDataSource() {
+            const testDiv = document.getElementById('dataSourceTest');
+            testDiv.textContent = '';
+            
+            log('Testing data source...', 'info', 'dataSourceTest');
+            
+            try {
+                // Check if global data variables exist
+                const dataVariables = [
+                    'familyData',
+                    'currentUser',
+                    'auditLog',
+                    'selectedMembers',
+                    'selectedSubscriptions',
+                    'selectedStatements'
+                ];
+                
+                let allGood = true;
+                
+                dataVariables.forEach(varName => {
+                    try {
+                        const exists = typeof window[varName] !== 'undefined';
+                        const status = exists ? '✅' : '❌';
+                        log(`${status} ${varName}: ${exists ? 'Available' : 'Missing'}`, exists ? 'success' : 'error', 'dataSourceTest');
+                        
+                        if (!exists) allGood = false;
+                    } catch (error) {
+                        log(`❌ ${varName}: Error - ${error.message}`, 'error', 'dataSourceTest');
+                        allGood = false;
+                    }
+                });
+                
+                // Check if data is initialized from MongoDB
+                if (window.familyData) {
+                    const data = window.familyData;
+                    log(`📊 familyData structure:`, 'info', 'dataSourceTest');
+                    log(`  - family: ${data.family ? 'Loaded' : 'Not loaded'}`, 'info', 'dataSourceTest');
+                    log(`  - members: ${data.members ? data.members.length : 0} items`, 'info', 'dataSourceTest');
+                    log(`  - subscriptions: ${data.subscriptions ? data.subscriptions.length : 0} items`, 'info', 'dataSourceTest');
+                    log(`  - pricePlans: ${data.pricePlans ? data.pricePlans.length : 0} items`, 'info', 'dataSourceTest');
+                    log(`  - statements: ${data.statements ? data.statements.length : 0} items`, 'info', 'dataSourceTest');
+                }
+                
+                if (allGood) {
+                    log('✅ All data variables are available', 'success', 'dataSourceTest');
+                    testDiv.className = 'log success';
+                } else {
+                    log('❌ Some data variables are missing', 'error', 'dataSourceTest');
+                    testDiv.className = 'log error';
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing data source: ${error.message}`, 'error', 'dataSourceTest');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        function testSaveOperations() {
+            const testDiv = document.getElementById('saveOperationsTest');
+            testDiv.textContent = '';
+            
+            log('Testing save operations...', 'info', 'saveOperationsTest');
+            
+            try {
+                // Check if save functions use MongoDB
+                const saveFunctions = [
+                    'saveNewMember',
+                    'saveNewSubscription', 
+                    'saveNewPricing',
+                    'generateNextMonth'
+                ];
+                
+                let allGood = true;
+                
+                saveFunctions.forEach(funcName => {
+                    try {
+                        if (typeof window[funcName] === 'function') {
+                            const source = window[funcName].toString();
+                            const usesMongoDB = source.includes('MongoDB') || source.includes('api.') || source.includes('refreshDisplayFromMongoDB');
+                            const usesLocalStorage = source.includes('localStorage') || source.includes('saveToLocalStorage');
+                            
+                            const status = usesMongoDB ? '✅' : '❌';
+                            log(`${status} ${funcName}: ${usesMongoDB ? 'Uses MongoDB' : 'Uses localStorage'}`, usesMongoDB ? 'success' : 'error', 'saveOperationsTest');
+                            
+                            if (usesLocalStorage) {
+                                log(`  ⚠️ ${funcName} still uses localStorage`, 'warning', 'saveOperationsTest');
+                                allGood = false;
+                            }
+                        } else {
+                            log(`❌ ${funcName}: Function not found`, 'error', 'saveOperationsTest');
+                            allGood = false;
+                        }
+                    } catch (error) {
+                        log(`❌ ${funcName}: Error - ${error.message}`, 'error', 'saveOperationsTest');
+                        allGood = false;
+                    }
+                });
+                
+                if (allGood) {
+                    log('✅ All save operations use MongoDB', 'success', 'saveOperationsTest');
+                    testDiv.className = 'log success';
+                } else {
+                    log('❌ Some save operations still use localStorage', 'error', 'saveOperationsTest');
+                    testDiv.className = 'log error';
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing save operations: ${error.message}`, 'error', 'saveOperationsTest');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        function testDashboardIntegration() {
+            const testDiv = document.getElementById('dashboardTest');
+            testDiv.textContent = '';
+            
+            log('Testing dashboard integration...', 'info', 'dashboardTest');
+            
+            try {
+                // Check if dashboard functions exist and use MongoDB
+                const dashboardFunctions = [
+                    'initializeApp',
+                    'login',
+                    'logout',
+                    'refreshDisplay',
+                    'displayMembers',
+                    'displaySubscriptions',
+                    'displayStatements',
+                    'displayPricingPlans'
+                ];
+                
+                let allGood = true;
+                
+                dashboardFunctions.forEach(funcName => {
+                    try {
+                        if (typeof window[funcName] === 'function') {
+                            const source = window[funcName].toString();
+                            const usesMongoDB = source.includes('MongoDB') || source.includes('api.') || source.includes('refreshDisplayFromMongoDB');
+                            const usesLocalStorage = source.includes('localStorage') || source.includes('saveToLocalStorage') || source.includes('loadFromLocalStorage');
+                            
+                            const status = usesMongoDB ? '✅' : '❌';
+                            log(`${status} ${funcName}: ${usesMongoDB ? 'Uses MongoDB' : 'Uses localStorage'}`, usesMongoDB ? 'success' : 'error', 'dashboardTest');
+                            
+                            if (usesLocalStorage && !usesMongoDB) {
+                                log(`  ⚠️ ${funcName} still uses localStorage`, 'warning', 'dashboardTest');
+                                allGood = false;
+                            }
+                        } else {
+                            log(`❌ ${funcName}: Function not found`, 'error', 'dashboardTest');
+                            allGood = false;
+                        }
+                    } catch (error) {
+                        log(`❌ ${funcName}: Error - ${error.message}`, 'error', 'dashboardTest');
+                        allGood = false;
+                    }
+                });
+                
+                if (allGood) {
+                    log('✅ All dashboard functions use MongoDB', 'success', 'dashboardTest');
+                    testDiv.className = 'log success';
+                } else {
+                    log('❌ Some dashboard functions still use localStorage', 'error', 'dashboardTest');
+                    testDiv.className = 'log error';
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing dashboard integration: ${error.message}`, 'error', 'dashboardTest');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        function updateDataState() {
+            const dataStateDiv = document.getElementById('dataState');
+            
+            try {
+                let state = 'Current Data State:\n\n';
+                
+                if (window.familyData) {
+                    const data = window.familyData;
+                    state += `familyData:\n`;
+                    state += `  - family: ${data.family ? 'Loaded' : 'Not loaded'}\n`;
+                    state += `  - members: ${data.members ? data.members.length : 0} items\n`;
+                    state += `  - subscriptions: ${data.subscriptions ? data.subscriptions.length : 0} items\n`;
+                    state += `  - pricePlans: ${data.pricePlans ? data.pricePlans.length : 0} items\n`;
+                    state += `  - statements: ${data.statements ? data.statements.length : 0} items\n`;
+                } else {
+                    state += `familyData: Not available\n`;
+                }
+                
+                if (window.currentUser) {
+                    state += `currentUser: ${window.currentUser.firstName} ${window.currentUser.lastName} (${window.currentUser.role})\n`;
+                } else {
+                    state += `currentUser: Not logged in\n`;
+                }
+                
+                if (window.auditLog) {
+                    state += `auditLog: ${window.auditLog.length} entries\n`;
+                } else {
+                    state += `auditLog: Not available\n`;
+                }
+                
+                dataStateDiv.textContent = state;
+            } catch (error) {
+                dataStateDiv.textContent = `Error getting data state: ${error.message}`;
+            }
+        }
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', function() {
+            log('Page loaded, running tests...', 'info');
+            setTimeout(() => {
+                testLocalStorageUsage();
+                setTimeout(() => {
+                    testMongoDBAPI();
+                    setTimeout(() => {
+                        testDataSource();
+                        setTimeout(() => {
+                            testSaveOperations();
+                            setTimeout(() => {
+                                testDashboardIntegration();
+                                setTimeout(() => {
+                                    updateDataState();
+                                }, 500);
+                            }, 500);
+                        }, 500);
+                    }, 500);
+                }, 500);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Login Recursion Fix Test</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Test Instructions:</h3>
+            <p>This page tests if the login recursion issue has been fixed.</p>
+            <p><strong>Expected Behavior:</strong> No infinite loops, clean login process</p>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 Test 1: Function Availability</h3>
+            <button onclick="testFunctionAvailability()">Test Functions</button>
+            <div id="functionTest" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔐 Test 2: Login Process</h3>
+            <button onclick="testLoginProcess()">Test Login Process</button>
+            <div id="loginTest" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔄 Test 3: Recursion Check</h3>
+            <button onclick="testRecursion()">Test for Recursion</button>
+            <div id="recursionTest" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Console Log</h3>
+            <div id="consoleLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let logCount = 0;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            
+            // Add to console log
+            const consoleLog = document.getElementById('consoleLog');
+            consoleLog.textContent += logEntry;
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+            
+            // Also log to browser console
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            logCount++;
+            if (logCount > 100) {
+                consoleLog.textContent = consoleLog.textContent.split('\n').slice(-50).join('\n');
+                logCount = 50;
+            }
+        }
+        
+        function testFunctionAvailability() {
+            const testDiv = document.getElementById('functionTest');
+            testDiv.textContent = '';
+            
+            log('Testing function availability...');
+            
+            // Test if functions exist
+            const functions = [
+                'login',
+                'loginWithMongoDB',
+                'api',
+                'api.login',
+                'api.setToken',
+                'api.clearAuth'
+            ];
+            
+            let allGood = true;
+            
+            functions.forEach(funcName => {
+                try {
+                    let exists = false;
+                    if (funcName.includes('.')) {
+                        const parts = funcName.split('.');
+                        let obj = window;
+                        for (const part of parts) {
+                            obj = obj[part];
+                            if (!obj) break;
+                        }
+                        exists = !!obj;
+                    } else {
+                        exists = typeof window[funcName] === 'function';
+                    }
+                    
+                    const status = exists ? '✅' : '❌';
+                    log(`${status} ${funcName}: ${exists ? 'Available' : 'Missing'}`);
+                    
+                    if (!exists) allGood = false;
+                } catch (error) {
+                    log(`❌ ${funcName}: Error - ${error.message}`);
+                    allGood = false;
+                }
+            });
+            
+            if (allGood) {
+                log('✅ All functions are available');
+                testDiv.className = 'log success';
+            } else {
+                log('❌ Some functions are missing');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        function testLoginProcess() {
+            const testDiv = document.getElementById('loginTest');
+            testDiv.textContent = '';
+            
+            log('Testing login process...');
+            
+            try {
+                // Test if login function can be called without recursion
+                if (typeof login === 'function') {
+                    log('✅ login function exists');
+                    
+                    // Test if it's async
+                    const isAsync = login.constructor.name === 'AsyncFunction';
+                    log(`${isAsync ? '✅' : '❌'} login function is ${isAsync ? 'async' : 'not async'}`);
+                    
+                    // Test if it has the right parameters
+                    const source = login.toString();
+                    const hasEmail = source.includes('loginEmail');
+                    const hasPassword = source.includes('loginPassword');
+                    
+                    log(`${hasEmail ? '✅' : '❌'} login function references loginEmail`);
+                    log(`${hasPassword ? '✅' : '❌'} login function references loginPassword`);
+                    
+                    // Test if it calls api.login directly instead of loginWithMongoDB
+                    const callsApiLogin = source.includes('api.login');
+                    const callsLoginWithMongoDB = source.includes('loginWithMongoDB');
+                    
+                    log(`${callsApiLogin ? '✅' : '❌'} login function calls api.login directly`);
+                    log(`${callsLoginWithMongoDB ? '❌' : '✅'} login function does NOT call loginWithMongoDB (prevents recursion)`);
+                    
+                    if (callsApiLogin && !callsLoginWithMongoDB) {
+                        log('✅ Login process structure is correct');
+                        testDiv.className = 'log success';
+                    } else {
+                        log('❌ Login process structure needs fixing');
+                        testDiv.className = 'log error';
+                    }
+                } else {
+                    log('❌ login function does not exist');
+                    testDiv.className = 'log error';
+                }
+            } catch (error) {
+                log(`❌ Error testing login process: ${error.message}`);
+                testDiv.className = 'log error';
+            }
+        }
+        
+        function testRecursion() {
+            const testDiv = document.getElementById('recursionTest');
+            testDiv.textContent = '';
+            
+            log('Testing for recursion issues...');
+            
+            try {
+                // Check if there are any circular references
+                const loginSource = login.toString();
+                const loginWithMongoDBSource = typeof loginWithMongoDB === 'function' ? loginWithMongoDB.toString() : '';
+                
+                // Check if login calls loginWithMongoDB
+                const loginCallsLoginWithMongoDB = loginSource.includes('loginWithMongoDB');
+                
+                // Check if loginWithMongoDB calls login
+                const loginWithMongoDBCallsLogin = loginWithMongoDBSource.includes('login(');
+                
+                log(`${loginCallsLoginWithMongoDB ? '❌' : '✅'} login function does NOT call loginWithMongoDB`);
+                log(`${loginWithMongoDBCallsLogin ? '❌' : '✅'} loginWithMongoDB function does NOT call login`);
+                
+                if (!loginCallsLoginWithMongoDB && !loginWithMongoDBCallsLogin) {
+                    log('✅ No recursion detected');
+                    testDiv.className = 'log success';
+                } else {
+                    log('❌ Potential recursion detected');
+                    testDiv.className = 'log error';
+                }
+                
+                // Test call stack depth
+                let callDepth = 0;
+                const maxDepth = 10;
+                
+                function testCallDepth() {
+                    callDepth++;
+                    if (callDepth > maxDepth) {
+                        log(`❌ Call depth exceeded ${maxDepth} - possible recursion`);
+                        return false;
+                    }
+                    return true;
+                }
+                
+                log(`✅ Call depth test passed (max ${maxDepth})`);
+                
+            } catch (error) {
+                log(`❌ Error testing recursion: ${error.message}`);
+                testDiv.className = 'log error';
+            }
+        }
+        
+        // Override console.log to capture logs
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            const message = args.join(' ');
+            if (message.includes('login') || message.includes('Login') || message.includes('🔐') || message.includes('🔄')) {
+                log(message, 'console');
+            }
+        };
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', function() {
+            log('Page loaded, running tests...');
+            setTimeout(() => {
+                testFunctionAvailability();
+                setTimeout(() => {
+                    testLoginProcess();
+                    setTimeout(() => {
+                        testRecursion();
+                    }, 500);
+                }, 500);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

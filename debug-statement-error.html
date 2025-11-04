@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Statement Generation Error</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Statement Generation Error</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Debug Steps:</h3>
+            <p>This page will help identify the exact cause of the 500 error in statement generation.</p>
+        </div>
+        
+        <div class="grid">
+            <div class="test-section">
+                <h3>🔑 Step 1: Test Authentication</h3>
+                <button onclick="testAuthentication()">Test Login</button>
+                <div id="authTest" class="log"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>📊 Step 2: Check Subscription Data</h3>
+                <button onclick="testSubscriptionData()">Check Subscriptions</button>
+                <div id="subscriptionTest" class="log"></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🚨 Step 3: Test Statement Generation</h3>
+            <button onclick="testStatementGeneration()">Generate Statements</button>
+            <div id="statementTest" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 Current Token & User Info</h3>
+            <div id="userInfo" class="log"></div>
+        </div>
+    </div>
+
+    <script src="api-client.js"></script>
+    <script>
+        let logCount = 0;
+        
+        function log(message, type = 'info', targetId = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            
+            if (targetId) {
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.textContent += logEntry;
+                    target.scrollTop = target.scrollHeight;
+                }
+            }
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            logCount++;
+            if (logCount > 100) {
+                if (targetId) {
+                    const target = document.getElementById(targetId);
+                    if (target) {
+                        target.textContent = target.textContent.split('\n').slice(-50).join('\n');
+                    }
+                }
+                logCount = 50;
+            }
+        }
+        
+        async function testAuthentication() {
+            const testDiv = document.getElementById('authTest');
+            testDiv.textContent = '';
+            
+            log('Testing authentication...', 'info', 'authTest');
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Login successful', 'success', 'authTest');
+                    log(`Token: ${data.token.substring(0, 50)}...`, 'info', 'authTest');
+                    log(`User: ${data.user.firstName} ${data.user.lastName}`, 'info', 'authTest');
+                    log(`Role: ${data.user.role}`, 'info', 'authTest');
+                    log(`Family ID: ${data.user.familyId}`, 'info', 'authTest');
+                    
+                    // Store token for other tests
+                    localStorage.setItem('debugToken', data.token);
+                    localStorage.setItem('debugUser', JSON.stringify(data.user));
+                    
+                    testDiv.className = 'log success';
+                } else {
+                    log(`❌ Login failed: ${data.error}`, 'error', 'authTest');
+                    testDiv.className = 'log error';
+                }
+                
+            } catch (error) {
+                log(`❌ Authentication error: ${error.message}`, 'error', 'authTest');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        async function testSubscriptionData() {
+            const testDiv = document.getElementById('subscriptionTest');
+            testDiv.textContent = '';
+            
+            log('Testing subscription data...', 'info', 'subscriptionTest');
+            
+            try {
+                const token = localStorage.getItem('debugToken');
+                if (!token) {
+                    log('❌ No token found. Please run authentication test first.', 'error', 'subscriptionTest');
+                    testDiv.className = 'log error';
+                    return;
+                }
+                
+                const response = await fetch('http://localhost:3000/api/debug/subscriptions', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Subscription data retrieved successfully', 'success', 'subscriptionTest');
+                    log(`User: ${data.user.role} (${data.user.userId})`, 'info', 'subscriptionTest');
+                    log(`Family ID: ${data.user.familyId}`, 'info', 'subscriptionTest');
+                    log(`Found ${data.count} subscriptions`, 'info', 'subscriptionTest');
+                    
+                    data.subscriptions.forEach((sub, index) => {
+                        log(`Subscription ${index + 1}:`, 'info', 'subscriptionTest');
+                        log(`  - ID: ${sub.id}`, 'info', 'subscriptionTest');
+                        log(`  - Member: ${sub.memberName}`, 'info', 'subscriptionTest');
+                        log(`  - Plan: ${sub.pricePlanTitle || 'No Plan'}`, 'info', 'subscriptionTest');
+                        log(`  - Amount: ${sub.monthlyAmount || 'Missing'}`, 'info', 'subscriptionTest');
+                        log(`  - Status: ${sub.status}`, 'info', 'subscriptionTest');
+                        log(`  - Progress: ${sub.currentMonth}/${sub.totalMonths}`, 'info', 'subscriptionTest');
+                    });
+                    
+                    testDiv.className = 'log success';
+                } else {
+                    log(`❌ Subscription data failed: ${data.error}`, 'error', 'subscriptionTest');
+                    if (data.details) {
+                        log(`Details: ${data.details}`, 'error', 'subscriptionTest');
+                    }
+                    testDiv.className = 'log error';
+                }
+                
+            } catch (error) {
+                log(`❌ Subscription data error: ${error.message}`, 'error', 'subscriptionTest');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        async function testStatementGeneration() {
+            const testDiv = document.getElementById('statementTest');
+            testDiv.textContent = '';
+            
+            log('Testing statement generation...', 'info', 'statementTest');
+            
+            try {
+                const token = localStorage.getItem('debugToken');
+                if (!token) {
+                    log('❌ No token found. Please run authentication test first.', 'error', 'statementTest');
+                    testDiv.className = 'log error';
+                    return;
+                }
+                
+                const response = await fetch('http://localhost:3000/api/statements/generate-next-month', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Statement generation successful!', 'success', 'statementTest');
+                    log(`Generated ${data.count} statements`, 'success', 'statementTest');
+                    
+                    if (data.statements && data.statements.length > 0) {
+                        data.statements.forEach((stmt, index) => {
+                            log(`Statement ${index + 1}:`, 'info', 'statementTest');
+                            log(`  - Number: ${stmt.statementNumber}`, 'info', 'statementTest');
+                            log(`  - Amount: $${stmt.amount}`, 'info', 'statementTest');
+                            log(`  - Status: ${stmt.status}`, 'info', 'statementTest');
+                        });
+                    }
+                    
+                    testDiv.className = 'log success';
+                } else {
+                    log(`❌ Statement generation failed: ${data.error}`, 'error', 'statementTest');
+                    if (data.details) {
+                        log(`Details: ${data.details}`, 'error', 'statementTest');
+                    }
+                    testDiv.className = 'log error';
+                }
+                
+            } catch (error) {
+                log(`❌ Statement generation error: ${error.message}`, 'error', 'statementTest');
+                testDiv.className = 'log error';
+            }
+        }
+        
+        function updateUserInfo() {
+            const userInfoDiv = document.getElementById('userInfo');
+            const token = localStorage.getItem('debugToken');
+            const user = localStorage.getItem('debugUser');
+            
+            let info = 'Current Debug Info:\n\n';
+            
+            if (token) {
+                info += `Token: ${token.substring(0, 50)}...\n`;
+            } else {
+                info += 'Token: Not set\n';
+            }
+            
+            if (user) {
+                const userObj = JSON.parse(user);
+                info += `User: ${userObj.firstName} ${userObj.lastName}\n`;
+                info += `Role: ${userObj.role}\n`;
+                info += `Family ID: ${userObj.familyId}\n`;
+            } else {
+                info += 'User: Not set\n';
+            }
+            
+            userInfoDiv.textContent = info;
+        }
+        
+        // Auto-run on page load
+        window.addEventListener('load', function() {
+            log('Debug page loaded', 'info');
+            updateUserInfo();
+        });
+    </script>
+</body>
+</html>

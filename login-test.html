@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MongoDB Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 MongoDB Login Test</h1>
+        <p>Test the MongoDB authentication with the correct credentials:</p>
+        
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="Enter email">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+        
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="clearResult()">Clear</button>
+        
+        <div id="result"></div>
+        
+        <div class="info" style="margin-top: 30px;">
+            <h3>📋 Default Credentials:</h3>
+            <p><strong>Super Admin:</strong> test@example.com / admin123</p>
+            <p><strong>Admin:</strong> admin@example.com / admin456</p>
+            <p><strong>Member:</strong> test@gmail.com / member123</p>
+        </div>
+    </div>
+
+    <script>
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showResult('Please enter both email and password', 'error');
+                return;
+            }
+            
+            try {
+                showResult('🔄 Testing login...', 'info');
+                
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ Login Successful!\n\nUser: ${data.user.firstName} ${data.user.lastName}\nRole: ${data.user.role}\nEmail: ${data.user.email}\nToken: ${data.token.substring(0, 50)}...`, 'success');
+                } else {
+                    showResult(`❌ Login Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Connection Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testConnection() {
+            try {
+                showResult('🔄 Testing server connection...', 'info');
+                
+                const response = await fetch('http://localhost:3000/api/init-data', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ Server Connection Successful!\n\nMessage: ${data.message}`, 'success');
+                } else {
+                    showResult(`❌ Server Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Connection Error: ${error.message}\n\nMake sure the server is running on port 3000`, 'error');
+            }
+        }
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+        }
+        
+        function clearResult() {
+            document.getElementById('result').textContent = '';
+            document.getElementById('result').className = 'result';
+        }
+    </script>
+</body>
+</html>
