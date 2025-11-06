@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Family, FamilyMember, Payment, Withdrawal, LifecycleEventPayment } from '@/lib/models'
+import { Family, FamilyMember, Payment, Withdrawal, LifecycleEventPayment, PaymentPlan } from '@/lib/models'
 import { calculateFamilyBalance } from '@/lib/calculations'
 
 // GET - Get family by ID with full details
@@ -53,10 +53,64 @@ export async function PUT(
   try {
     await connectDB()
     const body = await request.json()
+    console.log('PUT /api/kasa/families/[id] - Received body:', JSON.stringify(body, null, 2))
     
+    // Build update object explicitly to ensure all fields are included
+    const updateData: any = {}
+    
+    // Handle all string fields - include them as-is (including empty strings)
+    // This ensures Hebrew names and other fields are saved correctly
+    if ('name' in body) updateData.name = body.name
+    if ('hebrewName' in body) updateData.hebrewName = body.hebrewName
+    if ('husbandFirstName' in body) updateData.husbandFirstName = body.husbandFirstName
+    if ('husbandHebrewName' in body) updateData.husbandHebrewName = body.husbandHebrewName
+    if ('husbandFatherHebrewName' in body) updateData.husbandFatherHebrewName = body.husbandFatherHebrewName
+    if ('wifeFirstName' in body) updateData.wifeFirstName = body.wifeFirstName
+    if ('wifeHebrewName' in body) updateData.wifeHebrewName = body.wifeHebrewName
+    if ('wifeFatherHebrewName' in body) updateData.wifeFatherHebrewName = body.wifeFatherHebrewName
+    if ('husbandCellPhone' in body) updateData.husbandCellPhone = body.husbandCellPhone
+    if ('wifeCellPhone' in body) updateData.wifeCellPhone = body.wifeCellPhone
+    if ('address' in body) updateData.address = body.address
+    if ('street' in body) updateData.street = body.street
+    if ('phone' in body) updateData.phone = body.phone
+    if ('email' in body) updateData.email = body.email
+    if ('city' in body) updateData.city = body.city
+    if ('state' in body) updateData.state = body.state
+    if ('zip' in body) updateData.zip = body.zip
+    if ('currentPayment' in body) updateData.currentPayment = body.currentPayment || 0
+    
+    // Convert weddingDate to Date object if provided
+    if ('weddingDate' in body && body.weddingDate) {
+      updateData.weddingDate = new Date(body.weddingDate)
+    }
+    
+    // Handle paymentPlanId separately
+    if ('paymentPlanId' in body && body.paymentPlanId) {
+      try {
+        const paymentPlan = await PaymentPlan.findById(body.paymentPlanId)
+        if (!paymentPlan) {
+          return NextResponse.json(
+            { error: `Payment plan with ID ${body.paymentPlanId} not found` },
+            { status: 400 }
+          )
+        }
+        updateData.paymentPlanId = paymentPlan._id
+        console.log(`Updated family ${params.id} with payment plan ID: ${paymentPlan.name} (ID: ${body.paymentPlanId})`)
+      } catch (error) {
+        console.error('Error finding payment plan by ID:', error)
+        return NextResponse.json(
+          { error: 'Failed to find payment plan', details: error instanceof Error ? error.message : 'Unknown error' },
+          { status: 500 }
+        )
+      }
+    }
+    
+    console.log('PUT /api/kasa/families/[id] - Update data:', JSON.stringify(updateData, null, 2))
+    
+    // Use $set to explicitly set all fields
     const family = await Family.findByIdAndUpdate(
       params.id,
-      body,
+      { $set: updateData },
       { new: true, runValidators: true }
     )
     
@@ -66,6 +120,17 @@ export async function PUT(
         { status: 404 }
       )
     }
+
+    const updatedFamily = family.toObject()
+    console.log('PUT /api/kasa/families/[id] - Updated family:', JSON.stringify({
+      _id: updatedFamily._id,
+      name: updatedFamily.name,
+      hebrewName: updatedFamily.hebrewName,
+      husbandHebrewName: updatedFamily.husbandHebrewName,
+      husbandFatherHebrewName: updatedFamily.husbandFatherHebrewName,
+      wifeHebrewName: updatedFamily.wifeHebrewName,
+      wifeFatherHebrewName: updatedFamily.wifeFatherHebrewName
+    }, null, 2))
 
     return NextResponse.json(family)
   } catch (error: any) {

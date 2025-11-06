@@ -36,9 +36,10 @@ npm install
 ```
 
 2. Set up environment variables (create `.env.local`):
-```
+```env
 MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key (optional)
+STRIPE_SECRET_KEY=your_stripe_secret_key (optional)
 ```
 
 3. Run the development server:
@@ -47,6 +48,33 @@ npm run dev
 ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Deployment
+
+### Quick Deploy to Vercel (Recommended)
+
+1. Install Vercel CLI: `npm install -g vercel`
+2. Run: `vercel` in the project directory
+3. Follow the prompts
+4. Add environment variables in Vercel dashboard
+5. Your app will be live at `https://your-app.vercel.app`
+
+For detailed deployment instructions, see [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+
+### Package for Sharing
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\package-for-sharing.ps1
+```
+
+**Mac/Linux:**
+```bash
+chmod +x scripts/package-for-sharing.sh
+./scripts/package-for-sharing.sh
+```
+
+This creates a ZIP file excluding `node_modules` and sensitive files that you can share.
 
 ## Project Structure
 

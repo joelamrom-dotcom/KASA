@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Suppress react-jewish-datepicker mouseover errors */
+@layer base {
+  /* Global error suppression for the datepicker library */
+  body {
+    --suppress-mouseover-error: true;
+  }
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;

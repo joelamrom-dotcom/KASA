@@ -1,39 +1,35 @@
 import mongoose, { Schema } from 'mongoose'
-import connectDB from './database'
-
-// Initialize connection
-connectDB().catch(console.error)
 
 // Payment Plan Schema
 const PaymentPlanSchema = new Schema({
   name: { type: String, required: true },
-  ageStart: { type: Number, required: true },
-  ageEnd: { type: Number, default: null },
+  planNumber: { type: Number, required: true, unique: true },
   yearlyPrice: { type: Number, required: true },
-}, { timestamps: true })
-
-// Lifecycle Event Schema
-const LifecycleEventSchema = new Schema({
-  type: { 
-    type: String, 
-    enum: ['chasena', 'bar_mitzvah', 'birth_boy', 'birth_girl'],
-    required: true 
-  },
-  name: { type: String, required: true },
-  amount: { type: Number, required: true },
+  description: String,
 }, { timestamps: true })
 
 // Family Schema
 const FamilySchema = new Schema({
   name: { type: String, required: true },
+  hebrewName: String, // Required in frontend, optional in schema for backward compatibility
   weddingDate: { type: Date, required: true },
+  husbandFirstName: String,
+  husbandHebrewName: String, // Required in frontend, optional in schema for backward compatibility
+  husbandFatherHebrewName: String, // Husband's father's Hebrew first name
+  wifeFirstName: String,
+  wifeHebrewName: String, // Required in frontend, optional in schema for backward compatibility
+  wifeFatherHebrewName: String, // Wife's father's Hebrew first name
+  husbandCellPhone: String,
+  wifeCellPhone: String,
   address: String,
+  street: String,
   phone: String,
   email: String,
   city: String,
   state: String,
   zip: String,
-  currentPlan: { type: Number, default: 1 },
+  currentPlan: { type: Number, default: 1 }, // Keep for backward compatibility
+  paymentPlanId: { type: Schema.Types.ObjectId, ref: 'PaymentPlan' }, // Reference to PaymentPlan by ID
   currentPayment: { type: Number, default: 0 },
   openBalance: { type: Number, default: 0 },
 }, { timestamps: true })
@@ -42,9 +38,19 @@ const FamilySchema = new Schema({
 const FamilyMemberSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
   firstName: { type: String, required: true },
+  hebrewFirstName: String, // Required in frontend, optional in schema for backward compatibility
   lastName: { type: String, required: true },
-  birthDate: { type: Date, required: true },
-  gender: { type: String, enum: ['male', 'female'] },
+  hebrewLastName: String, // Required in frontend, optional in schema for backward compatibility
+  birthDate: Date,
+  hebrewBirthDate: String,
+  gender: String,
+  barMitzvahDate: Date,
+  batMitzvahDate: Date,
+  weddingDate: Date,
+  paymentPlan: Number, // Keep for backward compatibility
+  paymentPlanId: { type: Schema.Types.ObjectId, ref: 'PaymentPlan' }, // Reference to PaymentPlan by ID
+  paymentPlanAssigned: { type: Boolean, default: false },
+  notes: String,
 }, { timestamps: true })
 
 // Payment Schema
@@ -52,12 +58,29 @@ const PaymentSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
   amount: { type: Number, required: true },
   paymentDate: { type: Date, required: true },
-  year: { type: Number, required: true },
-  type: { 
+  year: Number, // Year for calculation purposes
+  type: String, // 'membership' | 'donation' | 'other'
+  paymentMethod: { 
     type: String, 
-    enum: ['membership', 'donation', 'other'],
-    default: 'membership'
+    enum: ['cash', 'credit_card', 'check', 'quick_pay'],
+    default: 'cash'
   },
+  // Credit Card Information
+  ccInfo: {
+    last4: String, // Last 4 digits of card
+    cardType: String, // Visa, Mastercard, etc.
+    expiryMonth: String,
+    expiryYear: String,
+    nameOnCard: String
+  },
+  // Check Information
+  checkInfo: {
+    checkNumber: String,
+    bankName: String,
+    routingNumber: String
+  },
+  // Stripe Integration
+  stripePaymentIntentId: String, // Stripe payment intent ID for credit card payments
   notes: String,
 }, { timestamps: true })
 
@@ -66,78 +89,92 @@ const WithdrawalSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
   amount: { type: Number, required: true },
   withdrawalDate: { type: Date, required: true },
-  reason: { type: String, required: true },
-  year: { type: Number, required: true },
+  reason: String,
+  notes: String,
+}, { timestamps: true })
+
+// Lifecycle Event Schema (Event Types)
+const LifecycleEventSchema = new Schema({
+  type: { type: String, required: true, unique: true, lowercase: true },
+  name: { type: String, required: true },
+  amount: { type: Number, required: true },
 }, { timestamps: true })
 
 // Lifecycle Event Payment Schema
 const LifecycleEventPaymentSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
-  eventType: { 
-    type: String, 
-    enum: ['chasena', 'bar_mitzvah', 'birth_boy', 'birth_girl'],
-    required: true 
-  },
-  amount: { type: Number, required: true },
+  memberId: { type: Schema.Types.ObjectId, ref: 'FamilyMember' },
+  eventType: { type: String, required: true, lowercase: true },
   eventDate: { type: Date, required: true },
-  year: { type: Number, required: true },
+  amount: { type: Number, required: true },
   notes: String,
+  year: Number, // Year for calculation purposes
 }, { timestamps: true })
 
 // Yearly Calculation Schema
 const YearlyCalculationSchema = new Schema({
   year: { type: Number, required: true, unique: true },
-  // Age group counts
+  // Plan-based counts
+  plan1: { type: Number, default: 0 },
+  plan2: { type: Number, default: 0 },
+  plan3: { type: Number, default: 0 },
+  plan4: { type: Number, default: 0 },
+  plan1Name: { type: String },
+  plan2Name: { type: String },
+  plan3Name: { type: String },
+  plan4Name: { type: String },
+  incomePlan1: { type: Number, default: 0 },
+  incomePlan2: { type: Number, default: 0 },
+  incomePlan3: { type: Number, default: 0 },
+  incomePlan4: { type: Number, default: 0 },
+  totalPayments: { type: Number, default: 0 }, // All payments from the year
+  planIncome: { type: Number, default: 0 }, // Income from payment plans only
+  // Age group counts (backward compatibility)
   ageGroup0to4: { type: Number, default: 0 },
   ageGroup5to8: { type: Number, default: 0 },
   ageGroup9to16: { type: Number, default: 0 },
   ageGroup17plus: { type: Number, default: 0 },
-  // Income calculations
+  // Income calculations (backward compatibility)
   incomeAgeGroup0to4: { type: Number, default: 0 },
   incomeAgeGroup5to8: { type: Number, default: 0 },
   incomeAgeGroup9to16: { type: Number, default: 0 },
   incomeAgeGroup17plus: { type: Number, default: 0 },
   totalIncome: { type: Number, default: 0 },
-  extraDonation: { type: Number, default: 0 },
-  calculatedIncome: { type: Number, default: 0 },
-  // Expense calculations
-  chasenaCount: { type: Number, default: 0 },
-  chasenaAmount: { type: Number, default: 0 },
-  barMitzvahCount: { type: Number, default: 0 },
-  barMitzvahAmount: { type: Number, default: 0 },
-  birthBoyCount: { type: Number, default: 0 },
-  birthBoyAmount: { type: Number, default: 0 },
-  birthGirlCount: { type: Number, default: 0 },
-  birthGirlAmount: { type: Number, default: 0 },
   totalExpenses: { type: Number, default: 0 },
-  extraExpense: { type: Number, default: 0 },
-  calculatedExpenses: { type: Number, default: 0 },
-  // Balance
-  balance: { type: Number, default: 0 },
+  totalWithdrawals: { type: Number, default: 0 },
+  netIncome: { type: Number, default: 0 },
 }, { timestamps: true })
 
 // Statement Schema
 const StatementSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
-  statementNumber: { type: String, required: true, unique: true },
+  statementNumber: { type: String, required: true },
   date: { type: Date, required: true },
   fromDate: { type: Date, required: true },
   toDate: { type: Date, required: true },
-  openingBalance: { type: Number, default: 0 },
-  income: { type: Number, default: 0 },
-  withdrawals: { type: Number, default: 0 },
-  expenses: { type: Number, default: 0 },
-  closingBalance: { type: Number, default: 0 },
+  openingBalance: { type: Number, required: true },
+  income: { type: Number, required: true },
+  withdrawals: { type: Number, required: true },
+  expenses: { type: Number, required: true },
+  closingBalance: { type: Number, required: true },
+}, { timestamps: true })
+
+// Email Configuration Schema
+const EmailConfigSchema = new Schema({
+  email: { type: String, required: true },
+  password: { type: String, required: true }, // Encrypted or stored securely
+  fromName: { type: String, default: 'Kasa Family Management' },
+  isActive: { type: Boolean, default: true },
 }, { timestamps: true })
 
 // Export models
 export const PaymentPlan = mongoose.models.PaymentPlan || mongoose.model('PaymentPlan', PaymentPlanSchema)
-export const LifecycleEvent = mongoose.models.LifecycleEvent || mongoose.model('LifecycleEvent', LifecycleEventSchema)
 export const Family = mongoose.models.Family || mongoose.model('Family', FamilySchema)
 export const FamilyMember = mongoose.models.FamilyMember || mongoose.model('FamilyMember', FamilyMemberSchema)
 export const Payment = mongoose.models.Payment || mongoose.model('Payment', PaymentSchema)
 export const Withdrawal = mongoose.models.Withdrawal || mongoose.model('Withdrawal', WithdrawalSchema)
+export const LifecycleEvent = mongoose.models.LifecycleEvent || mongoose.model('LifecycleEvent', LifecycleEventSchema)
 export const LifecycleEventPayment = mongoose.models.LifecycleEventPayment || mongoose.model('LifecycleEventPayment', LifecycleEventPaymentSchema)
 export const YearlyCalculation = mongoose.models.YearlyCalculation || mongoose.model('YearlyCalculation', YearlyCalculationSchema)
 export const Statement = mongoose.models.Statement || mongoose.model('Statement', StatementSchema)
-
+export const EmailConfig = mongoose.models.EmailConfig || mongoose.model('EmailConfig', EmailConfigSchema)

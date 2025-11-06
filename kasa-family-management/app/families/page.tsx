@@ -10,41 +10,112 @@ import {
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
+// QWERTY to Hebrew keyboard mapping
+const qwertyToHebrew: { [key: string]: string } = {
+  // Lowercase letters
+  'q': '/', 'w': "'", 'e': 'ק', 'r': 'ר', 't': 'א', 'y': 'ט', 'u': 'ו', 'i': 'ן', 'o': 'ם', 'p': 'פ',
+  'a': 'ש', 's': 'ד', 'd': 'ג', 'f': 'כ', 'g': 'ע', 'h': 'י', 'j': 'ח', 'k': 'ל', 'l': 'ך',
+  'z': 'ז', 'x': 'ס', 'c': 'ב', 'v': 'ה', 'b': 'נ', 'n': 'מ', 'm': 'צ',
+  // Uppercase letters (with Shift)
+  'Q': '/', 'W': "'", 'E': 'ק', 'R': 'ר', 'T': 'א', 'Y': 'ט', 'U': 'ו', 'I': 'ן', 'O': 'ם', 'P': 'פ',
+  'A': 'ש', 'S': 'ד', 'D': 'ג', 'F': 'כ', 'G': 'ע', 'H': 'י', 'J': 'ח', 'K': 'ל', 'L': 'ך',
+  'Z': 'ז', 'X': 'ס', 'C': 'ב', 'V': 'ה', 'B': 'נ', 'N': 'מ', 'M': 'צ',
+  // Numbers and special characters
+  '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', '0': '0',
+  '-': '-', '=': '=', '[': ']', ']': '[', '\\': '\\', ';': 'ף', "'": ',', ',': 'ת', '.': 'ץ', '/': '.',
+  ' ': ' ' // Space
+}
+
+// Convert QWERTY input to Hebrew characters
+const convertToHebrew = (text: string): string => {
+  return text.split('').map(char => qwertyToHebrew[char] || char).join('')
+}
+
+// Handler for Hebrew input fields
+const handleHebrewInput = (e: React.KeyboardEvent<HTMLInputElement>, currentValue: string, setValue: (value: string) => void) => {
+  const input = e.currentTarget
+  const cursorPosition = input.selectionStart || 0
+  
+  // Only convert if typing a regular character (not special keys like Backspace, Delete, Arrow keys, etc.)
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault()
+    const hebrewChar = qwertyToHebrew[e.key] || e.key
+    const newValue = currentValue.slice(0, cursorPosition) + hebrewChar + currentValue.slice(cursorPosition)
+    setValue(newValue)
+    
+    // Set cursor position after the inserted character
+    setTimeout(() => {
+      input.setSelectionRange(cursorPosition + 1, cursorPosition + 1)
+    }, 0)
+  }
+}
+
 interface Family {
   _id: string
   name: string
+  hebrewName?: string
   weddingDate: string
+  husbandFirstName?: string
+  husbandHebrewName?: string
+  husbandFatherHebrewName?: string
+  wifeFirstName?: string
+  wifeHebrewName?: string
+  wifeFatherHebrewName?: string
+  husbandCellPhone?: string
+  wifeCellPhone?: string
   email?: string
   phone?: string
+  address?: string
+  street?: string
   city?: string
   state?: string
-  currentPlan: number
+  zip?: string
+  paymentPlanId?: string // MongoDB ObjectId reference to PaymentPlan (may be missing for old families)
+  currentPlan?: number // Legacy field - will be auto-converted to paymentPlanId
   currentPayment: number
   openBalance: number
   memberCount?: number
 }
 
+interface PaymentPlan {
+  _id: string
+  name: string
+  yearlyPrice: number
+  planNumber?: number // Optional for backward compatibility
+}
+
 export default function FamiliesPage() {
   const [families, setFamilies] = useState<Family[]>([])
+  const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingFamily, setEditingFamily] = useState<Family | null>(null)
   const [formData, setFormData] = useState({
     name: '',
+    hebrewName: '',
     weddingDate: '',
+    husbandFirstName: '',
+    husbandHebrewName: '',
+    husbandFatherHebrewName: '',
+    wifeFirstName: '',
+    wifeHebrewName: '',
+    wifeFatherHebrewName: '',
+    husbandCellPhone: '',
+    wifeCellPhone: '',
     address: '',
+    street: '',
     phone: '',
     email: '',
     city: '',
     state: '',
     zip: '',
-    currentPlan: 1,
-    currentPayment: 0,
-    openBalance: 0
+    paymentPlanId: '', // Store payment plan ID instead of plan number
+    currentPayment: 0
   })
 
   useEffect(() => {
     fetchFamilies()
+    fetchPaymentPlans()
   }, [])
 
   const fetchFamilies = async () => {
@@ -65,6 +136,49 @@ export default function FamiliesPage() {
     }
   }
 
+  const fetchPaymentPlans = async () => {
+    try {
+      const res = await fetch('/api/kasa/payment-plans')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setPaymentPlans(data)
+        // No default selection - user must explicitly choose
+      }
+    } catch (error) {
+      console.error('Error fetching payment plans:', error)
+    }
+  }
+
+  const getPlanNameById = (planId?: string, currentPlan?: number): string => {
+    // Debug logging
+    if (!planId && currentPlan) {
+      console.log(`Looking up plan for currentPlan: ${currentPlan}, paymentPlans:`, paymentPlans)
+    }
+    
+    if (planId) {
+      const plan = paymentPlans.find(p => p._id === planId)
+      if (plan) {
+        console.log(`Found plan by ID: ${plan.name}`)
+        return plan.name
+      }
+      console.log(`Plan ID ${planId} not found in paymentPlans`)
+    }
+    
+    // Fallback: try to find by currentPlan number (for old families)
+    if (currentPlan && paymentPlans.length > 0) {
+      console.log(`Trying to find plan by planNumber: ${currentPlan}`)
+      const plan = paymentPlans.find((p: any) => p.planNumber === currentPlan)
+      if (plan) {
+        console.log(`Found plan by planNumber: ${plan.name}`)
+        return plan.name
+      }
+      console.log(`Plan with planNumber ${currentPlan} not found. Available plans:`, paymentPlans.map((p: any) => ({ name: p.name, planNumber: p.planNumber, _id: p._id })))
+    }
+    
+    console.log(`Could not find plan. planId: ${planId}, currentPlan: ${currentPlan}, paymentPlans count: ${paymentPlans.length}`)
+    return 'Unknown Plan'
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -74,6 +188,30 @@ export default function FamiliesPage() {
       
       const method = editingFamily ? 'PUT' : 'POST'
       
+      // Log what we're sending (for debugging)
+      console.log('Submitting family data:', {
+        method,
+        url,
+        formData: {
+          ...formData,
+          // Show Hebrew names specifically
+          hebrewName: formData.hebrewName,
+          husbandHebrewName: formData.husbandHebrewName,
+          husbandFatherHebrewName: formData.husbandFatherHebrewName,
+          wifeHebrewName: formData.wifeHebrewName,
+          wifeFatherHebrewName: formData.wifeFatherHebrewName
+        }
+      })
+      
+      // Explicitly log Hebrew names to verify they're being sent
+      console.log('Hebrew names being sent:', {
+        hebrewName: formData.hebrewName || '(empty)',
+        husbandHebrewName: formData.husbandHebrewName || '(empty)',
+        husbandFatherHebrewName: formData.husbandFatherHebrewName || '(empty)',
+        wifeHebrewName: formData.wifeHebrewName || '(empty)',
+        wifeFatherHebrewName: formData.wifeFatherHebrewName || '(empty)'
+      })
+      
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -81,30 +219,54 @@ export default function FamiliesPage() {
       })
 
       if (res.ok) {
+        const result = await res.json()
+        console.log('Family saved successfully:', result)
         setShowModal(false)
         setEditingFamily(null)
         resetForm()
         fetchFamilies()
+      } else {
+        const error = await res.json()
+        console.error('Error saving family:', error)
+        alert(`Error saving family: ${error.error || error.details || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error saving family:', error)
+      alert('Error saving family. Please check the console for details.')
     }
   }
 
   const handleEdit = (family: Family) => {
     setEditingFamily(family)
+    
+    // Use paymentPlanId directly (ID-based system)
+    if (!family.paymentPlanId) {
+      console.error('Family does not have paymentPlanId set')
+      alert('Error: Family is missing payment plan. Please update the family.')
+      return
+    }
+    
     setFormData({
       name: family.name,
+      hebrewName: family.hebrewName || '',
       weddingDate: new Date(family.weddingDate).toISOString().split('T')[0],
-      address: '',
+      husbandFirstName: family.husbandFirstName || '',
+      husbandHebrewName: family.husbandHebrewName || '',
+      husbandFatherHebrewName: family.husbandFatherHebrewName || '',
+      wifeFirstName: family.wifeFirstName || '',
+      wifeHebrewName: family.wifeHebrewName || '',
+      wifeFatherHebrewName: family.wifeFatherHebrewName || '',
+      husbandCellPhone: family.husbandCellPhone || '',
+      wifeCellPhone: family.wifeCellPhone || '',
+      address: family.address || '',
+      street: family.street || '',
       phone: family.phone || '',
       email: family.email || '',
       city: family.city || '',
       state: family.state || '',
-      zip: '',
-      currentPlan: family.currentPlan,
-      currentPayment: family.currentPayment,
-      openBalance: family.openBalance
+      zip: family.zip || '',
+      paymentPlanId: family.paymentPlanId,
+      currentPayment: family.currentPayment
     })
     setShowModal(true)
   }
@@ -123,18 +285,28 @@ export default function FamiliesPage() {
   }
 
   const resetForm = () => {
+    // No default selection - user must explicitly choose
     setFormData({
       name: '',
+      hebrewName: '',
       weddingDate: '',
+      husbandFirstName: '',
+      husbandHebrewName: '',
+      husbandFatherHebrewName: '',
+      wifeFirstName: '',
+      wifeHebrewName: '',
+      wifeFatherHebrewName: '',
+      husbandCellPhone: '',
+      wifeCellPhone: '',
       address: '',
+      street: '',
       phone: '',
       email: '',
       city: '',
       state: '',
       zip: '',
-      currentPlan: 1,
-      currentPayment: 0,
-      openBalance: 0
+      paymentPlanId: '', // Empty - requires user selection
+      currentPayment: 0
     })
   }
 
@@ -194,7 +366,7 @@ export default function FamiliesPage() {
                     <UserGroupIcon className="h-4 w-4" />
                     {family.memberCount || 0}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">Plan {family.currentPlan}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{getPlanNameById(family.paymentPlanId, family.currentPlan)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     ${family.openBalance.toLocaleString()}
                   </td>
@@ -248,6 +420,7 @@ export default function FamiliesPage() {
               resetForm()
             }}
             editing={!!editingFamily}
+            paymentPlans={paymentPlans}
           />
           </div>
         )}
@@ -261,13 +434,15 @@ function FamilyModal({
   setFormData,
   onSubmit,
   onClose,
-  editing
+  editing,
+  paymentPlans
 }: {
   formData: any
   setFormData: (data: any) => void
   onSubmit: (e: React.FormEvent) => void
   onClose: () => void
   editing: boolean
+  paymentPlans: PaymentPlan[]
 }) {
   return (
     <div className="glass-strong rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/30">
@@ -285,30 +460,125 @@ function FamilyModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Wedding Date *</label>
+              <label className="block text-sm font-medium mb-1">Family Name (Hebrew) *</label>
               <input
-                type="date"
+                type="text"
                 required
-                value={formData.weddingDate}
-                onChange={(e) => setFormData({ ...formData, weddingDate: e.target.value })}
-                className="w-full border rounded px-3 py-2"
+                dir="rtl"
+                lang="he"
+                inputMode="text"
+                value={formData.hebrewName}
+                onChange={(e) => setFormData({ ...formData, hebrewName: e.target.value })}
+                onKeyDown={(e) => handleHebrewInput(e, formData.hebrewName, (value) => setFormData({ ...formData, hebrewName: value }))}
+                className="w-full border rounded px-3 py-2 text-right font-hebrew"
+                placeholder="שם משפחה בעברית"
+                style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
+              <label className="block text-sm font-medium mb-1">Husband First Name</label>
               <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                type="text"
+                value={formData.husbandFirstName}
+                onChange={(e) => setFormData({ ...formData, husbandFirstName: e.target.value })}
                 className="w-full border rounded px-3 py-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Phone</label>
+              <label className="block text-sm font-medium mb-1">Husband First Name (Hebrew) *</label>
+              <input
+                type="text"
+                required
+                dir="rtl"
+                lang="he"
+                inputMode="text"
+                value={formData.husbandHebrewName}
+                onChange={(e) => setFormData({ ...formData, husbandHebrewName: e.target.value })}
+                onKeyDown={(e) => handleHebrewInput(e, formData.husbandHebrewName, (value) => setFormData({ ...formData, husbandHebrewName: value }))}
+                className="w-full border rounded px-3 py-2 text-right font-hebrew"
+                placeholder="שם פרטי בעברית"
+                style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Husband's Father First Name (Hebrew)</label>
+              <input
+                type="text"
+                dir="rtl"
+                lang="he"
+                inputMode="text"
+                value={formData.husbandFatherHebrewName}
+                onChange={(e) => setFormData({ ...formData, husbandFatherHebrewName: e.target.value })}
+                onKeyDown={(e) => handleHebrewInput(e, formData.husbandFatherHebrewName, (value) => setFormData({ ...formData, husbandFatherHebrewName: value }))}
+                className="w-full border rounded px-3 py-2 text-right font-hebrew"
+                placeholder="שם פרטי של האב בעברית"
+                style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Wife First Name</label>
+              <input
+                type="text"
+                value={formData.wifeFirstName}
+                onChange={(e) => setFormData({ ...formData, wifeFirstName: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Wife First Name (Hebrew) *</label>
+              <input
+                type="text"
+                required
+                dir="rtl"
+                lang="he"
+                inputMode="text"
+                value={formData.wifeHebrewName}
+                onChange={(e) => setFormData({ ...formData, wifeHebrewName: e.target.value })}
+                onKeyDown={(e) => handleHebrewInput(e, formData.wifeHebrewName, (value) => setFormData({ ...formData, wifeHebrewName: value }))}
+                className="w-full border rounded px-3 py-2 text-right font-hebrew"
+                placeholder="שם פרטי בעברית"
+                style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Wife's Father First Name (Hebrew)</label>
+              <input
+                type="text"
+                dir="rtl"
+                lang="he"
+                inputMode="text"
+                value={formData.wifeFatherHebrewName}
+                onChange={(e) => setFormData({ ...formData, wifeFatherHebrewName: e.target.value })}
+                onKeyDown={(e) => handleHebrewInput(e, formData.wifeFatherHebrewName, (value) => setFormData({ ...formData, wifeFatherHebrewName: value }))}
+                className="w-full border rounded px-3 py-2 text-right font-hebrew"
+                placeholder="שם פרטי של האב בעברית"
+                style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Husband Cell Phone</label>
               <input
                 type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={formData.husbandCellPhone}
+                onChange={(e) => setFormData({ ...formData, husbandCellPhone: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Wife Cell Phone</label>
+              <input
+                type="tel"
+                value={formData.wifeCellPhone}
+                onChange={(e) => setFormData({ ...formData, wifeCellPhone: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium mb-1">Street</label>
+              <input
+                type="text"
+                value={formData.street}
+                onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                 className="w-full border rounded px-3 py-2"
               />
             </div>
@@ -331,26 +601,48 @@ function FamilyModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Current Plan</label>
-              <select
-                value={formData.currentPlan}
-                onChange={(e) => setFormData({ ...formData, currentPlan: parseInt(e.target.value) })}
-                className="w-full border rounded px-3 py-2"
-              >
-                <option value={1}>Plan 1 (0-4 years) - $1,200</option>
-                <option value={2}>Plan 2 (5-8 years) - $1,500</option>
-                <option value={3}>Plan 3 (9-16 years) - $1,800</option>
-                <option value={4}>Plan 4 (17+ years) - $2,500</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Open Balance</label>
+              <label className="block text-sm font-medium mb-1">Email</label>
               <input
-                type="number"
-                value={formData.openBalance}
-                onChange={(e) => setFormData({ ...formData, openBalance: parseFloat(e.target.value) || 0 })}
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full border rounded px-3 py-2"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Wedding Date *</label>
+              <input
+                type="date"
+                required
+                value={formData.weddingDate}
+                onChange={(e) => setFormData({ ...formData, weddingDate: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Payment Plan *</label>
+              <select
+                required
+                value={formData.paymentPlanId || ''}
+                onChange={(e) => setFormData({ ...formData, paymentPlanId: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="">Select a payment plan...</option>
+                {paymentPlans.map((plan) => (
+                  <option key={plan._id} value={plan._id}>
+                    {plan.name} - ${plan.yearlyPrice.toLocaleString()}/year
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="flex gap-4 justify-end mt-6">

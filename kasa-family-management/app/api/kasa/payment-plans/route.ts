@@ -1,15 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { PaymentPlan } from '@/lib/models'
+import { PaymentPlan, Family } from '@/lib/models'
 
-// GET - Get all payment plans
+// GET - Get all payment plans with family counts
 export async function GET() {
   try {
     await connectDB()
-    const plans = await PaymentPlan.find({}).sort({ ageStart: 1 })
-    return NextResponse.json(plans)
+    // Sort by planNumber to ensure consistent order (Plan 1, Plan 2, Plan 3, Plan 4)
+    const plans = await PaymentPlan.find({}).sort({ planNumber: 1 })
+    
+    // Get family counts for each plan
+    const plansWithFamilies = await Promise.all(
+      plans.map(async (plan, index) => {
+        try {
+          // Find families by paymentPlanId (ID-based system)
+          const families = await Family.find({ paymentPlanId: plan._id })
+          const planObj = plan.toObject ? plan.toObject() : plan
+          return {
+            _id: planObj._id?.toString() || planObj._id,
+            name: planObj.name,
+            yearlyPrice: planObj.yearlyPrice,
+            planNumber: planObj.planNumber, // Include planNumber in response
+            createdAt: planObj.createdAt,
+            updatedAt: planObj.updatedAt,
+            familyCount: families.length,
+            families: families.map(f => {
+              const familyObj = f.toObject ? f.toObject() : f
+              return {
+                _id: familyObj._id?.toString() || familyObj._id,
+                name: familyObj.name,
+                weddingDate: familyObj.weddingDate
+              }
+            })
+          }
+        } catch (planError: any) {
+          console.error(`Error processing plan ${plan._id}:`, planError)
+          console.error('Plan error stack:', planError.stack)
+          const planObj = plan.toObject ? plan.toObject() : plan
+          return {
+            _id: planObj._id?.toString() || planObj._id,
+            name: planObj.name,
+            yearlyPrice: planObj.yearlyPrice,
+            planNumber: planObj.planNumber, // Include planNumber in response
+            createdAt: planObj.createdAt,
+            updatedAt: planObj.updatedAt,
+            familyCount: 0,
+            families: []
+          }
+        }
+      })
+    )
+    
+    return NextResponse.json(plansWithFamilies)
   } catch (error: any) {
     console.error('Error fetching payment plans:', error)
+    console.error('Error stack:', error.stack)
     return NextResponse.json(
       { error: 'Failed to fetch payment plans', details: error.message },
       { status: 500 }
@@ -22,20 +67,31 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB()
     const body = await request.json()
-    const { name, ageStart, ageEnd, yearlyPrice } = body
+    const { name, yearlyPrice, planNumber } = body
 
-    if (!name || ageStart === undefined || !yearlyPrice) {
+    if (!name || !yearlyPrice) {
       return NextResponse.json(
-        { error: 'Name, ageStart, and yearlyPrice are required' },
+        { error: 'Name and yearlyPrice are required' },
         { status: 400 }
       )
     }
 
+    // If planNumber not provided, auto-assign based on existing plans
+    let finalPlanNumber = planNumber
+    if (!finalPlanNumber) {
+      const existingPlans = await PaymentPlan.find({}).sort({ planNumber: 1 })
+      if (existingPlans.length > 0) {
+        const maxPlanNumber = Math.max(...existingPlans.map(p => p.planNumber || 0))
+        finalPlanNumber = maxPlanNumber + 1
+      } else {
+        finalPlanNumber = 1
+      }
+    }
+
     const plan = await PaymentPlan.create({
       name,
-      ageStart,
-      ageEnd: ageEnd || null,
-      yearlyPrice
+      yearlyPrice,
+      planNumber: finalPlanNumber
     })
 
     return NextResponse.json(plan, { status: 201 })
@@ -47,4 +103,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

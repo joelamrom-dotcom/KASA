@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { LifecycleEventPayment } from '@/lib/models'
+import { LifecycleEventPayment, LifecycleEvent } from '@/lib/models'
 
 // GET - Get all lifecycle events for a family
 export async function GET(
@@ -30,17 +30,31 @@ export async function POST(
     const body = await request.json()
     const { eventType, amount, eventDate, year, notes } = body
 
-    if (!eventType || !amount || !eventDate || !year) {
+    if (!eventType || !eventDate || !year) {
       return NextResponse.json(
-        { error: 'Event type, amount, event date, and year are required' },
+        { error: 'Event type, event date, and year are required' },
         { status: 400 }
       )
     }
 
+    // Look up event type from database to get the amount
+    let eventAmount = amount
+    if (!eventAmount) {
+      const eventTypeRecord = await LifecycleEvent.findOne({ type: eventType.toLowerCase() })
+      if (eventTypeRecord) {
+        eventAmount = eventTypeRecord.amount
+      } else {
+        return NextResponse.json(
+          { error: `Event type '${eventType}' not found in database. Please create it first or provide an amount.` },
+          { status: 400 }
+        )
+      }
+    }
+
     const event = await LifecycleEventPayment.create({
       familyId: params.id,
-      eventType,
-      amount: parseFloat(amount),
+      eventType: eventType.toLowerCase(),
+      amount: parseFloat(eventAmount),
       eventDate: new Date(eventDate),
       year: parseInt(year),
       notes: notes || undefined

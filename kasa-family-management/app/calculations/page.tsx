@@ -6,6 +6,22 @@ import { PlusIcon, CalculatorIcon } from '@heroicons/react/24/outline'
 interface YearlyCalculation {
   _id: string
   year: number
+  // Plan-based data
+  plan1: number
+  plan2: number
+  plan3: number
+  plan4: number
+  plan1Name?: string
+  plan2Name?: string
+  plan3Name?: string
+  plan4Name?: string
+  incomePlan1: number
+  incomePlan2: number
+  incomePlan3: number
+  incomePlan4: number
+  totalPayments?: number
+  planIncome?: number
+  // Backward compatibility
   ageGroup0to4: number
   ageGroup5to8: number
   ageGroup9to16: number
@@ -35,6 +51,7 @@ export default function CalculationsPage() {
   const [calculations, setCalculations] = useState<YearlyCalculation[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [selectedYear, setSelectedYear] = useState<number | null>(null)
   const [formData, setFormData] = useState({
     year: new Date().getFullYear(),
     extraDonation: 0,
@@ -49,13 +66,19 @@ export default function CalculationsPage() {
     try {
       const res = await fetch('/api/kasa/calculations')
       const data = await res.json()
-      setCalculations(data)
+      const sorted = data.sort((a: YearlyCalculation, b: YearlyCalculation) => b.year - a.year)
+      setCalculations(sorted)
+      // Auto-select the most recent year if available and none selected
+      if (sorted.length > 0) {
+        setSelectedYear(prev => prev || sorted[0].year)
+      }
     } catch (error) {
       console.error('Error fetching calculations:', error)
     } finally {
       setLoading(false)
     }
   }
+
 
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,7 +91,9 @@ export default function CalculationsPage() {
       if (res.ok) {
         setShowModal(false)
         setFormData({ year: new Date().getFullYear(), extraDonation: 0, extraExpense: 0 })
-        fetchCalculations()
+        await fetchCalculations()
+        // Select the newly calculated year
+        setSelectedYear(formData.year)
       }
     } catch (error) {
       console.error('Error calculating:', error)
@@ -93,10 +118,91 @@ export default function CalculationsPage() {
           </button>
         </div>
 
-        <div className="space-y-6">
-          {calculations.map((calc) => (
-            <div key={calc._id} className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-2xl font-bold mb-4">Year {calc.year}</h2>
+        {/* Year Selector and Summary */}
+        {calculations.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="flex items-center gap-4 mb-4">
+              <label className="text-sm font-medium">Select Year:</label>
+              <select
+                value={selectedYear || ''}
+                onChange={(e) => setSelectedYear(e.target.value ? parseInt(e.target.value) : null)}
+                className="border rounded px-4 py-2"
+              >
+                <option value="">View All Years Summary</option>
+                {calculations.map((calc) => (
+                  <option key={calc._id} value={calc.year}>
+                    {calc.year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Summary Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Year</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Income</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expenses</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {calculations.map((calc) => (
+                    <tr 
+                      key={calc._id} 
+                      className={`hover:bg-gray-50 cursor-pointer ${selectedYear === calc.year ? 'bg-blue-50' : ''}`}
+                      onClick={() => setSelectedYear(calc.year)}
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {calc.year}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600">
+                        ${calc.calculatedIncome.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">
+                        ${calc.calculatedExpenses.toLocaleString()}
+                      </td>
+                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right font-bold ${
+                        calc.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        ${calc.balance.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedYear(calc.year)
+                          }}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed View - Show selected year only */}
+        {selectedYear && calculations.filter(calc => calc.year === selectedYear).length > 0 && (
+          <div className="space-y-6">
+            {calculations.filter(calc => calc.year === selectedYear).map((calc) => (
+              <div key={calc._id} className="bg-white rounded-lg shadow p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold">Year {calc.year}</h2>
+                  <button
+                    onClick={() => setSelectedYear(null)}
+                    className="text-gray-600 hover:text-gray-800 text-sm"
+                  >
+                    Close Details
+                  </button>
+                </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Income Section */}
@@ -104,20 +210,28 @@ export default function CalculationsPage() {
                   <h3 className="text-lg font-semibold mb-4 text-green-600">Income</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>Age 0-4 ({calc.ageGroup0to4} members):</span>
-                      <span className="font-medium">${calc.incomeAgeGroup0to4.toLocaleString()}</span>
+                      <span>{calc.plan1Name || 'Plan 1'} ({calc.plan1 || calc.ageGroup0to4 || 0} members):</span>
+                      <span className="font-medium">${(calc.incomePlan1 || calc.incomeAgeGroup0to4 || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Age 5-8 ({calc.ageGroup5to8} members):</span>
-                      <span className="font-medium">${calc.incomeAgeGroup5to8.toLocaleString()}</span>
+                      <span>{calc.plan2Name || 'Plan 2'} ({calc.plan2 || calc.ageGroup5to8 || 0} members):</span>
+                      <span className="font-medium">${(calc.incomePlan2 || calc.incomeAgeGroup5to8 || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Age 9-16 ({calc.ageGroup9to16} members):</span>
-                      <span className="font-medium">${calc.incomeAgeGroup9to16.toLocaleString()}</span>
+                      <span>{calc.plan3Name || 'Plan 3'} ({calc.plan3 || calc.ageGroup9to16 || 0} members):</span>
+                      <span className="font-medium">${(calc.incomePlan3 || calc.incomeAgeGroup9to16 || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Age 17+ ({calc.ageGroup17plus} members):</span>
-                      <span className="font-medium">${calc.incomeAgeGroup17plus.toLocaleString()}</span>
+                      <span>{calc.plan4Name || 'Plan 4'} ({calc.plan4 || calc.ageGroup17plus || 0} members):</span>
+                      <span className="font-medium">${(calc.incomePlan4 || calc.incomeAgeGroup17plus || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2 mt-2">
+                      <span>Plan Income:</span>
+                      <span className="font-medium">${(calc.planIncome || (calc.incomePlan1 || calc.incomeAgeGroup0to4 || 0) + (calc.incomePlan2 || calc.incomeAgeGroup5to8 || 0) + (calc.incomePlan3 || calc.incomeAgeGroup9to16 || 0) + (calc.incomePlan4 || calc.incomeAgeGroup17plus || 0)).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Payments ({calc.totalPayments ? 'from year' : 'N/A'}):</span>
+                      <span className="font-medium">${(calc.totalPayments || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2 mt-2">
                       <span>Total Income:</span>
@@ -181,7 +295,8 @@ export default function CalculationsPage() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
 
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

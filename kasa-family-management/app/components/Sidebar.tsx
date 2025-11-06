@@ -8,25 +8,38 @@ import {
   CalculatorIcon,
   DocumentTextIcon,
   ChartBarIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  CreditCardIcon,
+  CalendarIcon,
+  CogIcon,
+  PresentationChartBarIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
   UserGroupIcon as UserGroupIconSolid,
   CalculatorIcon as CalculatorIconSolid,
   DocumentTextIcon as DocumentTextIconSolid,
-  ChartBarIcon as ChartBarIconSolid
+  ChartBarIcon as ChartBarIconSolid,
+  CreditCardIcon as CreditCardIconSolid,
+  CalendarIcon as CalendarIconSolid,
+  CogIcon as CogIconSolid,
+  PresentationChartBarIcon as PresentationChartBarIconSolid,
+  CurrencyDollarIcon as CurrencyDollarIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
   const pathname = usePathname()
 
   const navItems = [
-    { href: '/', label: 'Home', icon: HomeIcon, iconSolid: HomeIconSolid },
-    { href: '/dashboard', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
+    { href: '/', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
     { href: '/families', label: 'Families', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
+    { href: '/payments', label: 'Payments', icon: CurrencyDollarIcon, iconSolid: CurrencyDollarIconSolid },
     { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
+    { href: '/events', label: 'Events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
+    { href: '/reports', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
     { href: '/statements', label: 'Statements', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
+    { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
   ]
 
   return (
