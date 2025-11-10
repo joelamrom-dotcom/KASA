@@ -30,8 +30,8 @@ const FamilySchema = new Schema({
   zip: String,
   currentPlan: { type: Number, default: 1 }, // Keep for backward compatibility
   paymentPlanId: { type: Schema.Types.ObjectId, ref: 'PaymentPlan' }, // Reference to PaymentPlan by ID
-  currentPayment: { type: Number, default: 0 },
-  openBalance: { type: Number, default: 0 },
+  currentPayment: { type: Number, default: 0 }, // Keep for backward compatibility
+  openBalance: { type: Number, default: 0 }, // Deprecated - no longer used in UI, kept for backward compatibility
 }, { timestamps: true })
 
 // Family Member Schema
@@ -47,6 +47,18 @@ const FamilyMemberSchema = new Schema({
   barMitzvahDate: Date,
   batMitzvahDate: Date,
   weddingDate: Date,
+  spouseName: String, // Keep for backward compatibility
+  // Spouse information fields (for auto-conversion)
+  spouseFirstName: String,
+  spouseHebrewName: String,
+  spouseFatherHebrewName: String,
+  spouseCellPhone: String,
+  phone: String, // Phone for the new family
+  email: String, // Email for the new family
+  address: String, // Address for the new family
+  city: String, // City for the new family
+  state: String, // State for the new family
+  zip: String, // ZIP for the new family
   paymentPlan: Number, // Keep for backward compatibility
   paymentPlanId: { type: Schema.Types.ObjectId, ref: 'PaymentPlan' }, // Reference to PaymentPlan by ID
   paymentPlanAssigned: { type: Boolean, default: false },
@@ -81,6 +93,9 @@ const PaymentSchema = new Schema({
   },
   // Stripe Integration
   stripePaymentIntentId: String, // Stripe payment intent ID for credit card payments
+  savedPaymentMethodId: { type: Schema.Types.ObjectId, ref: 'SavedPaymentMethod' }, // Reference to saved payment method if used
+  recurringPaymentId: { type: Schema.Types.ObjectId, ref: 'RecurringPayment' }, // Reference to recurring payment if part of subscription
+  paymentFrequency: { type: String, enum: ['one-time', 'monthly'], default: 'one-time' }, // Payment frequency
   notes: String,
 }, { timestamps: true })
 
@@ -167,6 +182,39 @@ const EmailConfigSchema = new Schema({
   isActive: { type: Boolean, default: true },
 }, { timestamps: true })
 
+// Cycle Configuration Schema (Membership Year Configuration)
+const CycleConfigSchema = new Schema({
+  cycleStartMonth: { type: Number, required: true, min: 1, max: 12 }, // 1-12 (January-December)
+  cycleStartDay: { type: Number, required: true, min: 1, max: 31 }, // Day of month
+  description: { type: String, default: 'Membership cycle start date' },
+  isActive: { type: Boolean, default: true },
+}, { timestamps: true })
+
+// Saved Payment Method Schema (Cards on File)
+const SavedPaymentMethodSchema = new Schema({
+  familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  stripePaymentMethodId: { type: String, required: true }, // Stripe payment method ID
+  last4: { type: String, required: true }, // Last 4 digits
+  cardType: { type: String, required: true }, // Visa, Mastercard, etc.
+  expiryMonth: { type: Number, required: true },
+  expiryYear: { type: Number, required: true },
+  nameOnCard: String,
+  isDefault: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
+}, { timestamps: true })
+
+// Recurring Payment Schema
+const RecurringPaymentSchema = new Schema({
+  familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  savedPaymentMethodId: { type: Schema.Types.ObjectId, ref: 'SavedPaymentMethod', required: true },
+  amount: { type: Number, required: true },
+  frequency: { type: String, enum: ['monthly'], default: 'monthly' },
+  startDate: { type: Date, required: true },
+  nextPaymentDate: { type: Date, required: true },
+  isActive: { type: Boolean, default: true },
+  notes: String,
+}, { timestamps: true })
+
 // Export models
 export const PaymentPlan = mongoose.models.PaymentPlan || mongoose.model('PaymentPlan', PaymentPlanSchema)
 export const Family = mongoose.models.Family || mongoose.model('Family', FamilySchema)
@@ -178,3 +226,6 @@ export const LifecycleEventPayment = mongoose.models.LifecycleEventPayment || mo
 export const YearlyCalculation = mongoose.models.YearlyCalculation || mongoose.model('YearlyCalculation', YearlyCalculationSchema)
 export const Statement = mongoose.models.Statement || mongoose.model('Statement', StatementSchema)
 export const EmailConfig = mongoose.models.EmailConfig || mongoose.model('EmailConfig', EmailConfigSchema)
+export const CycleConfig = mongoose.models.CycleConfig || mongoose.model('CycleConfig', CycleConfigSchema)
+export const SavedPaymentMethod = mongoose.models.SavedPaymentMethod || mongoose.model('SavedPaymentMethod', SavedPaymentMethodSchema)
+export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.model('RecurringPayment', RecurringPaymentSchema)

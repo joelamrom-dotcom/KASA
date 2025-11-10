@@ -18,7 +18,9 @@ interface StripePaymentFormProps {
   year: number
   type: string
   notes?: string
-  onSuccess: (paymentIntentId: string) => void
+  saveCard?: boolean
+  paymentFrequency?: 'one-time' | 'monthly'
+  onSuccess: (paymentIntentId: string, paymentMethodId?: string) => void
   onError: (error: string) => void
 }
 
@@ -29,6 +31,8 @@ function PaymentForm({
   year,
   type,
   notes,
+  saveCard = false,
+  paymentFrequency = 'one-time',
   onSuccess,
   onError
 }: StripePaymentFormProps) {
@@ -52,14 +56,23 @@ function PaymentForm({
           })
         })
 
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}: ${res.statusText}` }))
+          console.error('Payment intent creation failed:', errorData)
+          onError(errorData.error || `Server error: ${res.status} ${res.statusText}`)
+          return
+        }
+
         const data = await res.json()
         if (data.clientSecret) {
           setClientSecret(data.clientSecret)
           setPaymentIntentId(data.paymentIntentId)
         } else {
-          onError(data.error || 'Failed to create payment intent')
+          console.error('No clientSecret in response:', data)
+          onError(data.error || 'Failed to create payment intent - no client secret returned')
         }
       } catch (error: any) {
+        console.error('Error creating payment intent:', error)
         onError(error.message || 'Failed to initialize payment')
       }
     }
@@ -67,10 +80,12 @@ function PaymentForm({
     if (amount > 0) {
       createPaymentIntent()
     }
-  }, [amount, familyId, type])
+  }, [amount, familyId, type, onError])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault()
+    }
 
     if (!stripe || !elements) {
       return
@@ -103,6 +118,29 @@ function PaymentForm({
       }
 
       if (paymentIntent?.status === 'succeeded') {
+        let savedPaymentMethodId = undefined
+
+        // Save payment method if requested
+        if (saveCard && paymentIntent.payment_method) {
+          try {
+            const saveRes = await fetch(`/api/kasa/families/${familyId}/saved-payment-methods`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                paymentMethodId: paymentIntent.payment_method as string,
+                setAsDefault: true
+              })
+            })
+            if (saveRes.ok) {
+              const saved = await saveRes.json()
+              savedPaymentMethodId = saved._id
+            }
+          } catch (err) {
+            console.error('Error saving payment method:', err)
+            // Continue even if saving fails
+          }
+        }
+
         // Confirm payment in our backend
         const res = await fetch('/api/kasa/stripe/confirm-payment', {
           method: 'POST',
@@ -113,13 +151,15 @@ function PaymentForm({
             paymentDate,
             year,
             type,
-            notes
+            notes,
+            paymentFrequency,
+            savedPaymentMethodId: savedPaymentMethodId || (saveCard && paymentIntent.payment_method ? 'will_be_saved' : undefined)
           })
         })
 
         const data = await res.json()
         if (res.ok && data.success) {
-          onSuccess(paymentIntent.id)
+          onSuccess(paymentIntent.id, savedPaymentMethodId)
         } else {
           onError(data.error || 'Failed to save payment')
         }
@@ -149,7 +189,7 @@ function PaymentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
         <label className="block text-sm font-medium mb-2 text-gray-700">
           Card Details
@@ -160,13 +200,14 @@ function PaymentForm({
       </div>
       
       <button
-        type="submit"
+        type="button"
+        onClick={handleSubmit}
         disabled={!stripe || processing || !clientSecret}
         className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {processing ? 'Processing...' : `Pay $${amount.toFixed(2)}`}
       </button>
-    </form>
+    </div>
   )
 }
 

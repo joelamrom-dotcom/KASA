@@ -8,6 +8,7 @@ import {
   DocumentTextIcon,
   BoltIcon
 } from '@heroicons/react/24/outline'
+import Pagination from '@/app/components/Pagination'
 
 interface Payment {
   _id: string
@@ -64,6 +65,8 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [allPayments, setAllPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   const [filters, setFilters] = useState({
     year: '',
     paymentMethod: '',
@@ -97,6 +100,7 @@ export default function PaymentsPage() {
     }
 
     setPayments(filtered)
+    setCurrentPage(1) // Reset to first page when filters change
   }
 
   useEffect(() => {
@@ -271,7 +275,7 @@ export default function PaymentsPage() {
                   </td>
                 </tr>
               ) : (
-                payments.map((payment) => {
+                payments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((payment) => {
                   const MethodIcon = paymentMethodIcons[payment.paymentMethod as keyof typeof paymentMethodIcons] || CurrencyDollarIcon
                   return (
                     <tr key={payment._id} className="hover:bg-white/20 transition-colors">
@@ -319,6 +323,15 @@ export default function PaymentsPage() {
               )}
             </tbody>
           </table>
+          {payments.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(payments.length / itemsPerPage)}
+              totalItems={payments.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
 
         {/* Summary Cards */}

@@ -18,7 +18,11 @@ export async function PUT(
     }
     
     const body = await request.json()
-    const { firstName, hebrewFirstName, lastName, hebrewLastName, birthDate, hebrewBirthDate, gender, weddingDate, spouseName } = body
+    const { 
+      firstName, hebrewFirstName, lastName, hebrewLastName, birthDate, hebrewBirthDate, gender, 
+      weddingDate, spouseName, spouseFirstName, spouseHebrewName, spouseFatherHebrewName, 
+      spouseCellPhone, phone, email, address, city, state, zip 
+    } = body
 
     // Validate required fields
     if (!firstName || !lastName || !birthDate) {
@@ -89,6 +93,42 @@ export async function PUT(
     }
     if (spouseName) {
       updateData.spouseName = spouseName.trim()
+    }
+    // Handle spouse information fields
+    if ('spouseFirstName' in body) {
+      updateData.spouseFirstName = spouseFirstName || null
+    }
+    if ('spouseHebrewName' in body) {
+      updateData.spouseHebrewName = spouseHebrewName || null
+    }
+    if ('spouseFatherHebrewName' in body) {
+      updateData.spouseFatherHebrewName = spouseFatherHebrewName || null
+    }
+    if ('spouseCellPhone' in body) {
+      updateData.spouseCellPhone = spouseCellPhone || null
+    }
+    if ('phone' in body) {
+      updateData.phone = phone || null
+    }
+    if ('email' in body) {
+      updateData.email = email || null
+    }
+    // Handle address fields - always update if present in body (even if empty)
+    if ('address' in body) {
+      const addressValue = typeof address === 'string' ? address.trim() : ''
+      updateData.address = addressValue || null
+    }
+    if ('city' in body) {
+      const cityValue = typeof city === 'string' ? city.trim() : ''
+      updateData.city = cityValue || null
+    }
+    if ('state' in body) {
+      const stateValue = typeof state === 'string' ? state.trim() : ''
+      updateData.state = stateValue || null
+    }
+    if ('zip' in body) {
+      const zipValue = typeof zip === 'string' ? zip.trim() : ''
+      updateData.zip = zipValue || null
     }
     
     // Validate ObjectIds

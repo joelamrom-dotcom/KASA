@@ -206,8 +206,13 @@ export default function LifecycleEventTypesPage() {
               ) : (
                 eventTypes.map((eventType) => (
                   <tr key={eventType._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                      {eventType.name}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => handleEdit(eventType)}
+                        className="font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer text-left"
+                      >
+                        {eventType.name}
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
                       ${eventType.amount.toLocaleString()}

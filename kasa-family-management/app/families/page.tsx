@@ -5,10 +5,10 @@ import {
   PlusIcon, 
   PencilIcon, 
   TrashIcon,
-  EyeIcon,
   UserGroupIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import Pagination from '@/app/components/Pagination'
 
 // QWERTY to Hebrew keyboard mapping
 const qwertyToHebrew: { [key: string]: string } = {
@@ -48,6 +48,28 @@ const handleHebrewInput = (e: React.KeyboardEvent<HTMLInputElement>, currentValu
       input.setSelectionRange(cursorPosition + 1, cursorPosition + 1)
     }, 0)
   }
+}
+
+// Helper function to capitalize first letter of each word
+const capitalizeName = (text: string): string => {
+  if (!text) return text
+  return text
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}
+
+// Helper function to format phone number (numbers only)
+const formatPhone = (value: string): string => {
+  // Remove all non-numeric characters
+  return value.replace(/\D/g, '')
+}
+
+// Helper function to validate email format
+const validateEmail = (email: string): boolean => {
+  if (!email) return true // Empty is valid (optional field)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
 }
 
 interface Family {
@@ -90,6 +112,8 @@ export default function FamiliesPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingFamily, setEditingFamily] = useState<Family | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   const [formData, setFormData] = useState({
     name: '',
     hebrewName: '',
@@ -181,6 +205,25 @@ export default function FamiliesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Apply formatting before submission
+    const formattedData = {
+      ...formData,
+      name: capitalizeName(formData.name),
+      husbandFirstName: capitalizeName(formData.husbandFirstName),
+      wifeFirstName: capitalizeName(formData.wifeFirstName),
+      husbandCellPhone: formatPhone(formData.husbandCellPhone),
+      wifeCellPhone: formatPhone(formData.wifeCellPhone),
+      phone: formatPhone(formData.phone),
+      email: formData.email || ''
+    }
+    
+    // Validate email if provided
+    if (formattedData.email && !validateEmail(formattedData.email)) {
+      alert('Please enter a valid email address')
+      return
+    }
+    
     try {
       const url = editingFamily 
         ? `/api/kasa/families/${editingFamily._id}`
@@ -193,29 +236,29 @@ export default function FamiliesPage() {
         method,
         url,
         formData: {
-          ...formData,
+          ...formattedData,
           // Show Hebrew names specifically
-          hebrewName: formData.hebrewName,
-          husbandHebrewName: formData.husbandHebrewName,
-          husbandFatherHebrewName: formData.husbandFatherHebrewName,
-          wifeHebrewName: formData.wifeHebrewName,
-          wifeFatherHebrewName: formData.wifeFatherHebrewName
+          hebrewName: formattedData.hebrewName,
+          husbandHebrewName: formattedData.husbandHebrewName,
+          husbandFatherHebrewName: formattedData.husbandFatherHebrewName,
+          wifeHebrewName: formattedData.wifeHebrewName,
+          wifeFatherHebrewName: formattedData.wifeFatherHebrewName
         }
       })
       
       // Explicitly log Hebrew names to verify they're being sent
       console.log('Hebrew names being sent:', {
-        hebrewName: formData.hebrewName || '(empty)',
-        husbandHebrewName: formData.husbandHebrewName || '(empty)',
-        husbandFatherHebrewName: formData.husbandFatherHebrewName || '(empty)',
-        wifeHebrewName: formData.wifeHebrewName || '(empty)',
-        wifeFatherHebrewName: formData.wifeFatherHebrewName || '(empty)'
+        hebrewName: formattedData.hebrewName || '(empty)',
+        husbandHebrewName: formattedData.husbandHebrewName || '(empty)',
+        husbandFatherHebrewName: formattedData.husbandFatherHebrewName || '(empty)',
+        wifeHebrewName: formattedData.wifeHebrewName || '(empty)',
+        wifeFatherHebrewName: formattedData.wifeFatherHebrewName || '(empty)'
       })
       
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formattedData)
       })
 
       if (res.ok) {
@@ -356,9 +399,16 @@ export default function FamiliesPage() {
               </tr>
             </thead>
             <tbody className="bg-white/10 divide-y divide-white/20">
-              {families.map((family) => (
+              {families.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
                 <tr key={family._id} className="hover:bg-white/20 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap font-medium">{family.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Link
+                      href={`/families/${family._id}`}
+                      className="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
+                    >
+                      {family.name}
+                    </Link>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {new Date(family.weddingDate).toLocaleDateString()}
                   </td>
@@ -372,13 +422,6 @@ export default function FamiliesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <Link
-                        href={`/families/${family._id}`}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                        title="View Details"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </Link>
                       <Link
                         href={`/families/${family._id}?tab=members&add=true`}
                         className="text-purple-600 hover:text-purple-800 transition-colors"
@@ -406,6 +449,13 @@ export default function FamiliesPage() {
               ))}
             </tbody>
           </table>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(families.length / itemsPerPage)}
+            totalItems={families.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {showModal && (
@@ -456,6 +506,11 @@ function FamilyModal({
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    setFormData({ ...formData, name: capitalizeName(e.target.value) })
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
               />
             </div>
@@ -481,6 +536,11 @@ function FamilyModal({
                 type="text"
                 value={formData.husbandFirstName}
                 onChange={(e) => setFormData({ ...formData, husbandFirstName: e.target.value })}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    setFormData({ ...formData, husbandFirstName: capitalizeName(e.target.value) })
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
               />
             </div>
@@ -521,6 +581,11 @@ function FamilyModal({
                 type="text"
                 value={formData.wifeFirstName}
                 onChange={(e) => setFormData({ ...formData, wifeFirstName: e.target.value })}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    setFormData({ ...formData, wifeFirstName: capitalizeName(e.target.value) })
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
               />
             </div>
@@ -560,8 +625,18 @@ function FamilyModal({
               <input
                 type="tel"
                 value={formData.husbandCellPhone}
-                onChange={(e) => setFormData({ ...formData, husbandCellPhone: e.target.value })}
+                onChange={(e) => {
+                  const formatted = formatPhone(e.target.value)
+                  setFormData({ ...formData, husbandCellPhone: formatted })
+                }}
+                onKeyDown={(e) => {
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault()
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
+                placeholder="1234567890"
+                pattern="[0-9]*"
               />
             </div>
             <div>
@@ -569,8 +644,18 @@ function FamilyModal({
               <input
                 type="tel"
                 value={formData.wifeCellPhone}
-                onChange={(e) => setFormData({ ...formData, wifeCellPhone: e.target.value })}
+                onChange={(e) => {
+                  const formatted = formatPhone(e.target.value)
+                  setFormData({ ...formData, wifeCellPhone: formatted })
+                }}
+                onKeyDown={(e) => {
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault()
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
+                placeholder="1234567890"
+                pattern="[0-9]*"
               />
             </div>
             <div className="col-span-2">
@@ -606,6 +691,11 @@ function FamilyModal({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onBlur={(e) => {
+                  if (e.target.value && !validateEmail(e.target.value)) {
+                    alert('Please enter a valid email address')
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
               />
             </div>
@@ -614,8 +704,18 @@ function FamilyModal({
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => {
+                  const formatted = formatPhone(e.target.value)
+                  setFormData({ ...formData, phone: formatted })
+                }}
+                onKeyDown={(e) => {
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault()
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
+                placeholder="1234567890"
+                pattern="[0-9]*"
               />
             </div>
             <div>

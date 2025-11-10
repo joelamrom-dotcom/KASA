@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 interface LifecycleEvent {
   _id: string
@@ -160,8 +161,17 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredEvents.map((event) => (
                     <tr key={event._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {event.familyName}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {event.familyId ? (
+                          <Link
+                            href={`/families/${event.familyId}`}
+                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
+                          >
+                            {event.familyName}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-gray-900">{event.familyName}</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

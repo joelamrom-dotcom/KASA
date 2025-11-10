@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { calculateHebrewAge, convertToHebrewDate } from '@/lib/hebrew-date'
 import StripePaymentForm from '@/app/components/StripePaymentForm'
+import Pagination from '@/app/components/Pagination'
 
 // QWERTY to Hebrew keyboard mapping
 const qwertyToHebrew: { [key: string]: string } = {
@@ -49,6 +50,28 @@ const handleHebrewInput = (e: React.KeyboardEvent<HTMLInputElement>, currentValu
       input.setSelectionRange(cursorPosition + 1, cursorPosition + 1)
     }, 0)
   }
+}
+
+// Helper function to capitalize first letter of each word
+const capitalizeName = (text: string): string => {
+  if (!text) return text
+  return text
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}
+
+// Helper function to format phone number (numbers only)
+const formatPhone = (value: string): string => {
+  // Remove all non-numeric characters
+  return value.replace(/\D/g, '')
+}
+
+// Helper function to validate email format
+const validateEmail = (email: string): boolean => {
+  if (!email) return true // Empty is valid (optional field)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
 }
 
 interface FamilyDetails {
@@ -90,31 +113,49 @@ export default function FamilyDetailPage() {
     password: '',
     fromName: 'Kasa Family Management'
   })
-  const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'payments' | 'events' | 'contacts' | 'statements'>('overview')
-  const [showContactModal, setShowContactModal] = useState(false)
-  const [contactForm, setContactForm] = useState({
+  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements'>('info')
+  const [showInfoModal, setShowInfoModal] = useState(false)
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState<string>('')
+  const [infoForm, setInfoForm] = useState({
+    name: '',
+    hebrewName: '',
+    weddingDate: '',
+    husbandFirstName: '',
+    husbandHebrewName: '',
+    husbandFatherHebrewName: '',
+    wifeFirstName: '',
+    wifeHebrewName: '',
+    wifeFatherHebrewName: '',
+    husbandCellPhone: '',
+    wifeCellPhone: '',
     address: '',
+    street: '',
     phone: '',
     email: '',
     city: '',
     state: '',
-    zip: ''
+    zip: '',
+    paymentPlanId: ''
   })
   
   // Check URL params for tab navigation
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const tab = urlParams.get('tab')
-    if (tab === 'members') {
-      setActiveTab('members')
+    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements') {
+      setActiveTab(tab as any)
       // Auto-open modal if coming from quick add
-      if (urlParams.get('add') === 'true') {
+      if (tab === 'members' && urlParams.get('add') === 'true') {
         // Will be handled after data loads
       }
     }
   }, [])
   const [showMemberModal, setShowMemberModal] = useState(false)
   const [editingMember, setEditingMember] = useState<any>(null)
+  const [viewingMemberId, setViewingMemberId] = useState<string | null>(null)
+  const [editingMemberField, setEditingMemberField] = useState<string | null>(null)
+  const [editMemberValue, setEditMemberValue] = useState<string>('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [useStripe, setUseStripe] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
@@ -127,7 +168,17 @@ export default function FamilyDetailPage() {
     hebrewBirthDate: '',
     gender: '' as '' | 'male' | 'female',
     weddingDate: '',
-    spouseName: ''
+    spouseName: '',
+    spouseFirstName: '',
+    spouseHebrewName: '',
+    spouseFatherHebrewName: '',
+    spouseCellPhone: '',
+    phone: '',
+    email: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: ''
   })
   const [paymentForm, setPaymentForm] = useState({
     amount: 0,
@@ -135,6 +186,10 @@ export default function FamilyDetailPage() {
     year: new Date().getFullYear(),
     type: 'membership' as 'membership' | 'donation' | 'other',
     paymentMethod: 'cash' as 'cash' | 'credit_card' | 'check' | 'quick_pay',
+    paymentFrequency: 'one-time' as 'one-time' | 'monthly',
+    saveCard: false,
+    useSavedCard: false,
+    selectedSavedCardId: '',
     // Credit Card Info
     ccLast4: '',
     ccCardType: '',
@@ -147,6 +202,22 @@ export default function FamilyDetailPage() {
     checkRoutingNumber: '',
     notes: ''
   })
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<any[]>([])
+  const [loadingSavedCards, setLoadingSavedCards] = useState(false)
+  
+  // Pagination state for each table
+  const [membersPage, setMembersPage] = useState(1)
+  const [paymentsPage, setPaymentsPage] = useState(1)
+  const [eventsPage, setEventsPage] = useState(1)
+  const itemsPerPage = 10
+
+  // Disable Stripe if amount is 0 or less
+  useEffect(() => {
+    if (paymentForm.amount <= 0) {
+      setUseStripe(false)
+    }
+  }, [paymentForm.amount])
+
   const [eventForm, setEventForm] = useState({
     eventType: 'chasena' as 'chasena' | 'bar_mitzvah' | 'birth_boy' | 'birth_girl',
     amount: 12180,
@@ -164,6 +235,29 @@ export default function FamilyDetailPage() {
     fetchLifecycleEventTypes()
     fetchEmailConfig()
   }, [params.id])
+
+  // Fetch saved payment methods when payment modal opens or credit card is selected
+  useEffect(() => {
+    if (showPaymentModal && paymentForm.paymentMethod === 'credit_card' && params.id) {
+      fetchSavedPaymentMethods()
+    }
+  }, [showPaymentModal, paymentForm.paymentMethod, params.id])
+
+  const fetchSavedPaymentMethods = async () => {
+    try {
+      setLoadingSavedCards(true)
+      const res = await fetch(`/api/kasa/families/${params.id}/saved-payment-methods`)
+      if (res.ok) {
+        const data = await res.json()
+        setSavedPaymentMethods(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching saved payment methods:', error)
+      setSavedPaymentMethods([])
+    } finally {
+      setLoadingSavedCards(false)
+    }
+  }
 
   const fetchEmailConfig = async () => {
     try {
@@ -608,14 +702,7 @@ export default function FamilyDetailPage() {
 
   useEffect(() => {
     if (data?.family) {
-      setContactForm({
-        address: data.family.address || '',
-        phone: data.family.phone || '',
-        email: data.family.email || '',
-        city: data.family.city || '',
-        state: data.family.state || '',
-        zip: data.family.zip || ''
-      })
+      // Info form is set when Edit button is clicked
       
       // Auto-open modal if coming from quick add
       const urlParams = new URLSearchParams(window.location.search)
@@ -630,7 +717,17 @@ export default function FamilyDetailPage() {
           hebrewBirthDate: '', 
           gender: '',
           weddingDate: '',
-          spouseName: ''
+          spouseName: '',
+          spouseFirstName: '',
+          spouseHebrewName: '',
+          spouseFatherHebrewName: '',
+          spouseCellPhone: '',
+          phone: '',
+          email: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: ''
         })
         setEditingMember(null)
         setShowMemberModal(true)
@@ -639,6 +736,535 @@ export default function FamilyDetailPage() {
       }
     }
   }, [data])
+
+  const handleFieldEdit = (fieldName: string, currentValue: any) => {
+    // Convert date to string format if it's a date field
+    if (fieldName === 'weddingDate' && currentValue) {
+      const date = new Date(currentValue)
+      setEditValue(date.toISOString().split('T')[0])
+    } else {
+      setEditValue(currentValue || '')
+    }
+    setEditingField(fieldName)
+  }
+
+  const handleFieldSave = async (fieldName: string) => {
+    try {
+      const updateData: any = {}
+      let finalValue = editValue || ''
+      
+      // Apply formatting based on field type
+      const phoneFields = ['phone', 'husbandCellPhone', 'wifeCellPhone']
+      const emailFields = ['email']
+      const nameFields = ['name', 'firstName', 'lastName', 'husbandFirstName', 'wifeFirstName']
+      
+      if (phoneFields.includes(fieldName)) {
+        finalValue = formatPhone(finalValue)
+      } else if (emailFields.includes(fieldName)) {
+        if (finalValue && !validateEmail(finalValue)) {
+          alert('Please enter a valid email address')
+          return
+        }
+      } else if (nameFields.includes(fieldName)) {
+        finalValue = capitalizeName(finalValue)
+      }
+      
+      // Convert date string to Date object if it's a date field
+      if (fieldName === 'weddingDate' && finalValue) {
+        updateData[fieldName] = new Date(finalValue)
+      } else if (fieldName === 'paymentPlanId') {
+        // Handle payment plan ID
+        updateData[fieldName] = finalValue || null
+      } else if (fieldName === 'street') {
+        // Update both street and address fields
+        updateData.street = finalValue || ''
+        updateData.address = finalValue || ''
+      } else {
+        updateData[fieldName] = finalValue || ''
+      }
+
+      const res = await fetch(`/api/kasa/families/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      })
+
+      if (res.ok) {
+        setEditingField(null)
+        setEditValue('')
+        fetchFamilyDetails()
+      } else {
+        const errorData = await res.json()
+        alert(`Error updating field: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error updating field:', error)
+      alert('Error updating field. Please try again.')
+    }
+  }
+
+  const handleFieldCancel = () => {
+    setEditingField(null)
+    setEditValue('')
+  }
+
+  // Helper function to render editable field
+  const renderEditableField = (
+    fieldName: string,
+    displayValue: string | React.ReactNode,
+    fieldType: 'text' | 'date' | 'select' | 'hebrew' | 'phone' | 'email' | 'name' = 'text',
+    options?: { value: string; label: string }[]
+  ) => {
+    const isEditing = editingField === fieldName
+    const currentValue = data?.family?.[fieldName] || ''
+
+    // Determine input type and handlers based on field type
+    const getInputProps = () => {
+      if (fieldType === 'phone') {
+        return {
+          type: 'tel' as const,
+          value: editValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            const formatted = formatPhone(e.target.value)
+            setEditValue(formatted)
+          },
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleFieldSave(fieldName)
+            if (e.key === 'Escape') handleFieldCancel()
+            // Allow numbers, backspace, delete, arrow keys, tab
+            if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+              e.preventDefault()
+            }
+          },
+          placeholder: '1234567890',
+          pattern: '[0-9]*'
+        }
+      } else if (fieldType === 'email') {
+        return {
+          type: 'email' as const,
+          value: editValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            setEditValue(e.target.value)
+          },
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') {
+              if (validateEmail(editValue)) {
+                handleFieldSave(fieldName)
+              } else {
+                alert('Please enter a valid email address')
+              }
+            }
+            if (e.key === 'Escape') handleFieldCancel()
+          },
+          onBlur: () => {
+            if (editValue && !validateEmail(editValue)) {
+              alert('Please enter a valid email address')
+            }
+          }
+        }
+      } else if (fieldType === 'name') {
+        return {
+          type: 'text' as const,
+          value: editValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            setEditValue(e.target.value)
+          },
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleFieldSave(fieldName)
+            if (e.key === 'Escape') handleFieldCancel()
+          },
+          onBlur: () => {
+            if (editValue) {
+              const capitalized = capitalizeName(editValue)
+              setEditValue(capitalized)
+            }
+          }
+        }
+      } else if (fieldType === 'date') {
+        return {
+          type: 'date' as const,
+          value: editValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value),
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleFieldSave(fieldName)
+            if (e.key === 'Escape') handleFieldCancel()
+          }
+        }
+      } else if (fieldType === 'hebrew') {
+        return {
+          type: 'text' as const,
+          dir: 'rtl' as const,
+          lang: 'he' as const,
+          value: editValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value),
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleFieldSave(fieldName)
+            if (e.key === 'Escape') handleFieldCancel()
+            handleHebrewInput(e, editValue, setEditValue)
+          },
+          style: { fontFamily: 'Arial Hebrew, David, sans-serif' }
+        }
+      } else {
+        return {
+          type: 'text' as const,
+          value: editValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value),
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleFieldSave(fieldName)
+            if (e.key === 'Escape') handleFieldCancel()
+          }
+        }
+      }
+    }
+
+    return (
+      <div className="border border-gray-200 rounded px-3 py-2 relative group">
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            {fieldType === 'select' && options ? (
+              <select
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') handleFieldCancel()
+                }}
+                className="flex-1 border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              >
+                <option value="">Select...</option>
+                {options.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                {...getInputProps()}
+                className="flex-1 border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            )}
+            <button
+              onClick={() => handleFieldSave(fieldName)}
+              className="text-green-600 hover:text-green-800 font-bold"
+              title="Save"
+            >
+              ✓
+            </button>
+            <button
+              onClick={handleFieldCancel}
+              className="text-red-600 hover:text-red-800 font-bold"
+              title="Cancel"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div className="flex-1">{displayValue}</div>
+            <button
+              onClick={() => handleFieldEdit(fieldName, currentValue)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600 ml-2"
+              title="Edit"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Helper function to render editable member field
+  const renderEditableMemberField = (
+    fieldName: string,
+    displayValue: string | React.ReactNode,
+    fieldType: 'text' | 'date' | 'select' | 'hebrew' | 'phone' | 'email' | 'name' = 'text',
+    options?: { value: string; label: string }[],
+    memberId: string
+  ) => {
+    const isEditing = editingMemberField === `${memberId}-${fieldName}`
+    const member = data?.members?.find((m: any) => m._id === memberId)
+    const currentValue = member?.[fieldName] || ''
+
+    // Determine input type and handlers based on field type
+    const getInputProps = () => {
+      if (fieldType === 'phone') {
+        return {
+          type: 'tel' as const,
+          value: editMemberValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            const formatted = formatPhone(e.target.value)
+            setEditMemberValue(formatted)
+          },
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleMemberFieldSave(fieldName, memberId)
+            if (e.key === 'Escape') handleMemberFieldCancel()
+            // Allow numbers, backspace, delete, arrow keys, tab
+            if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+              e.preventDefault()
+            }
+          },
+          placeholder: '1234567890',
+          pattern: '[0-9]*'
+        }
+      } else if (fieldType === 'email') {
+        return {
+          type: 'email' as const,
+          value: editMemberValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            setEditMemberValue(e.target.value)
+          },
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') {
+              if (validateEmail(editMemberValue)) {
+                handleMemberFieldSave(fieldName, memberId)
+              } else {
+                alert('Please enter a valid email address')
+              }
+            }
+            if (e.key === 'Escape') handleMemberFieldCancel()
+          },
+          onBlur: () => {
+            if (editMemberValue && !validateEmail(editMemberValue)) {
+              alert('Please enter a valid email address')
+            }
+          }
+        }
+      } else if (fieldType === 'name') {
+        return {
+          type: 'text' as const,
+          value: editMemberValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            setEditMemberValue(e.target.value)
+          },
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleMemberFieldSave(fieldName, memberId)
+            if (e.key === 'Escape') handleMemberFieldCancel()
+          },
+          onBlur: () => {
+            if (editMemberValue) {
+              const capitalized = capitalizeName(editMemberValue)
+              setEditMemberValue(capitalized)
+            }
+          }
+        }
+      } else if (fieldType === 'date') {
+        return {
+          type: 'date' as const,
+          value: editMemberValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditMemberValue(e.target.value),
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleMemberFieldSave(fieldName, memberId)
+            if (e.key === 'Escape') handleMemberFieldCancel()
+          }
+        }
+      } else if (fieldType === 'hebrew') {
+        return {
+          type: 'text' as const,
+          dir: 'rtl' as const,
+          lang: 'he' as const,
+          value: editMemberValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditMemberValue(e.target.value),
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleMemberFieldSave(fieldName, memberId)
+            if (e.key === 'Escape') handleMemberFieldCancel()
+            handleHebrewInput(e, editMemberValue, setEditMemberValue)
+          },
+          style: { fontFamily: 'Arial Hebrew, David, sans-serif' }
+        }
+      } else {
+        return {
+          type: 'text' as const,
+          value: editMemberValue,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditMemberValue(e.target.value),
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') handleMemberFieldSave(fieldName, memberId)
+            if (e.key === 'Escape') handleMemberFieldCancel()
+          }
+        }
+      }
+    }
+
+    return (
+      <div className="border border-gray-200 rounded px-3 py-2 relative group">
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            {fieldType === 'select' && options ? (
+              <select
+                value={editMemberValue}
+                onChange={(e) => setEditMemberValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') handleMemberFieldCancel()
+                }}
+                className="flex-1 border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              >
+                <option value="">Select...</option>
+                {options.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                {...getInputProps()}
+                className="flex-1 border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            )}
+            <button
+              onClick={() => handleMemberFieldSave(fieldName, memberId)}
+              className="text-green-600 hover:text-green-800 font-bold"
+              title="Save"
+            >
+              ✓
+            </button>
+            <button
+              onClick={handleMemberFieldCancel}
+              className="text-red-600 hover:text-red-800 font-bold"
+              title="Cancel"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div className="flex-1">{displayValue}</div>
+            <button
+              onClick={() => handleMemberFieldEdit(fieldName, currentValue, memberId)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600 ml-2"
+              title="Edit"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const handleMemberFieldEdit = (fieldName: string, currentValue: any, memberId: string) => {
+    // Convert date to string format if it's a date field
+    if ((fieldName === 'birthDate' || fieldName === 'weddingDate') && currentValue) {
+      const date = new Date(currentValue)
+      setEditMemberValue(date.toISOString().split('T')[0])
+    } else {
+      setEditMemberValue(currentValue || '')
+    }
+    setEditingMemberField(`${memberId}-${fieldName}`)
+  }
+
+  const handleMemberFieldSave = async (fieldName: string, memberId: string) => {
+    try {
+      const member = data?.members?.find((m: any) => m._id === memberId)
+      if (!member) {
+        alert('Member not found')
+        return
+      }
+
+      let finalValue = editMemberValue || ''
+      
+      // Apply formatting based on field type
+      const phoneFields = ['phone', 'spouseCellPhone']
+      const emailFields = ['email']
+      const nameFields = ['firstName', 'lastName', 'spouseFirstName', 'spouseName']
+      const addressFields = ['city', 'state', 'address'] // Fields that should be capitalized
+      
+      if (phoneFields.includes(fieldName)) {
+        finalValue = formatPhone(finalValue)
+      } else if (emailFields.includes(fieldName)) {
+        if (finalValue && !validateEmail(finalValue)) {
+          alert('Please enter a valid email address')
+          return
+        }
+      } else if (nameFields.includes(fieldName) || addressFields.includes(fieldName)) {
+        finalValue = capitalizeName(finalValue.trim())
+      } else {
+        // For other text fields, trim whitespace
+        finalValue = finalValue.trim()
+      }
+
+      const updateData: any = {
+        // Always include required fields from current member data
+        firstName: member.firstName || '',
+        lastName: member.lastName || '',
+        birthDate: member.birthDate ? new Date(member.birthDate) : new Date(),
+        // Include optional fields that might exist
+        hebrewFirstName: member.hebrewFirstName || '',
+        hebrewLastName: member.hebrewLastName || '',
+        gender: member.gender || '',
+        weddingDate: member.weddingDate ? new Date(member.weddingDate) : undefined,
+        spouseName: member.spouseName || '',
+        spouseFirstName: member.spouseFirstName || '',
+        spouseHebrewName: member.spouseHebrewName || '',
+        spouseFatherHebrewName: member.spouseFatherHebrewName || '',
+        spouseCellPhone: member.spouseCellPhone || '',
+        phone: member.phone || '',
+        email: member.email || '',
+        address: member.address || '',
+        city: member.city || '',
+        state: member.state || '',
+        zip: member.zip || ''
+      }
+      
+      // Update the specific field being edited
+      if (fieldName === 'birthDate' || fieldName === 'weddingDate') {
+        if (finalValue) {
+          updateData[fieldName] = new Date(finalValue)
+          // Auto-calculate Hebrew date for birthDate
+          if (fieldName === 'birthDate') {
+            const hebrewDate = convertToHebrewDate(new Date(finalValue))
+            updateData.hebrewBirthDate = hebrewDate
+          }
+        } else {
+          updateData[fieldName] = null
+        }
+      } else {
+        // For text fields, explicitly set the value
+        // Use the trimmed finalValue, or empty string if it's empty
+        updateData[fieldName] = finalValue
+      }
+
+      // Remove undefined values
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined) {
+          delete updateData[key]
+        }
+      })
+
+      // Ensure the field is explicitly set in updateData (important for fields that might be null/undefined)
+      updateData[fieldName] = finalValue
+      
+      console.log('Saving member field:', { fieldName, finalValue, updateData, 'fieldInUpdateData': fieldName in updateData })
+
+      const res = await fetch(`/api/kasa/families/${params.id}/members/${memberId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      })
+
+      if (res.ok) {
+        const updatedMember = await res.json()
+        console.log('Member updated successfully:', updatedMember)
+        console.log('Updated field value:', updatedMember[fieldName])
+        setEditingMemberField(null)
+        setEditMemberValue('')
+        // Refresh the data to show the updated value
+        await fetchFamilyDetails()
+      } else {
+        const errorData = await res.json()
+        console.error('Error updating field:', errorData)
+        alert(`Error updating field: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error updating member field:', error)
+      alert('Error updating field. Please try again.')
+    }
+  }
+
+  const handleMemberFieldCancel = () => {
+    setEditingMemberField(null)
+    setEditMemberValue('')
+  }
 
   const fetchFamilyDetails = async () => {
     try {
@@ -705,16 +1331,46 @@ export default function FamilyDetailPage() {
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Apply formatting before submission
+    const formattedForm = {
+      ...memberForm,
+      firstName: capitalizeName(memberForm.firstName),
+      lastName: capitalizeName(memberForm.lastName),
+      spouseFirstName: memberForm.spouseFirstName ? capitalizeName(memberForm.spouseFirstName) : '',
+      spouseName: memberForm.spouseName ? capitalizeName(memberForm.spouseName) : '',
+      phone: memberForm.phone ? formatPhone(memberForm.phone) : '',
+      spouseCellPhone: memberForm.spouseCellPhone ? formatPhone(memberForm.spouseCellPhone) : '',
+      email: memberForm.email || '',
+      weddingDate: memberForm.weddingDate || undefined,
+      address: memberForm.address || undefined,
+      city: memberForm.city || undefined,
+      state: memberForm.state || undefined,
+      zip: memberForm.zip || undefined
+    }
+    
+    // Validate email if provided
+    if (formattedForm.email && !validateEmail(formattedForm.email)) {
+      alert('Please enter a valid email address')
+      return
+    }
+    
     try {
       const res = await fetch('/api/kasa/families/' + params.id + '/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...memberForm, familyId: params.id })
+        body: JSON.stringify({ ...formattedForm, familyId: params.id })
       })
       if (res.ok) {
         setShowMemberModal(false)
         setEditingMember(null)
-        setMemberForm({ firstName: '', hebrewFirstName: '', lastName: '', hebrewLastName: '', birthDate: '', hebrewBirthDate: '', gender: '' })
+        setMemberForm({ 
+          firstName: '', hebrewFirstName: '', lastName: '', hebrewLastName: '', 
+          birthDate: '', hebrewBirthDate: '', gender: '', weddingDate: '', 
+          spouseName: '', spouseFirstName: '', spouseHebrewName: '', 
+          spouseFatherHebrewName: '', spouseCellPhone: '', phone: '', 
+          email: '', address: '', city: '', state: '', zip: '' 
+        })
         fetchFamilyDetails()
       } else {
         const error = await res.json()
@@ -737,7 +1393,17 @@ export default function FamilyDetailPage() {
       hebrewBirthDate: member.hebrewBirthDate || convertToHebrewDate(new Date(member.birthDate)),
       gender: member.gender || '',
       weddingDate: member.weddingDate ? new Date(member.weddingDate).toISOString().split('T')[0] : '',
-      spouseName: member.spouseName || ''
+      spouseName: member.spouseName || '',
+      spouseFirstName: member.spouseFirstName || '',
+      spouseHebrewName: member.spouseHebrewName || '',
+      spouseFatherHebrewName: member.spouseFatherHebrewName || '',
+      spouseCellPhone: member.spouseCellPhone || '',
+      phone: member.phone || '',
+      email: member.email || '',
+      address: member.address || '',
+      city: member.city || '',
+      state: member.state || '',
+      zip: member.zip || ''
     })
     setShowMemberModal(true)
   }
@@ -746,26 +1412,51 @@ export default function FamilyDetailPage() {
     e.preventDefault()
     if (!editingMember) return
     
+    // Apply formatting before submission
+    const formattedData = {
+      firstName: capitalizeName(memberForm.firstName),
+      hebrewFirstName: memberForm.hebrewFirstName,
+      lastName: capitalizeName(memberForm.lastName),
+      hebrewLastName: memberForm.hebrewLastName,
+      birthDate: memberForm.birthDate,
+      hebrewBirthDate: memberForm.hebrewBirthDate,
+      gender: memberForm.gender,
+      weddingDate: memberForm.weddingDate || undefined,
+      spouseName: memberForm.spouseName ? capitalizeName(memberForm.spouseName) : undefined,
+      spouseFirstName: memberForm.spouseFirstName ? capitalizeName(memberForm.spouseFirstName) : undefined,
+      spouseHebrewName: memberForm.spouseHebrewName || undefined,
+      spouseFatherHebrewName: memberForm.spouseFatherHebrewName || undefined,
+      spouseCellPhone: memberForm.spouseCellPhone ? formatPhone(memberForm.spouseCellPhone) : undefined,
+      phone: memberForm.phone ? formatPhone(memberForm.phone) : undefined,
+      email: memberForm.email || undefined,
+      address: memberForm.address || undefined,
+      city: memberForm.city || undefined,
+      state: memberForm.state || undefined,
+      zip: memberForm.zip || undefined
+    }
+    
+    // Validate email if provided
+    if (formattedData.email && !validateEmail(formattedData.email)) {
+      alert('Please enter a valid email address')
+      return
+    }
+    
     try {
       const res = await fetch(`/api/kasa/families/${params.id}/members/${editingMember._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: memberForm.firstName,
-          hebrewFirstName: memberForm.hebrewFirstName,
-          lastName: memberForm.lastName,
-          hebrewLastName: memberForm.hebrewLastName,
-          birthDate: memberForm.birthDate,
-          hebrewBirthDate: memberForm.hebrewBirthDate,
-          gender: memberForm.gender,
-          weddingDate: memberForm.weddingDate || undefined,
-          spouseName: memberForm.spouseName || undefined
-        })
+        body: JSON.stringify(formattedData)
       })
       if (res.ok) {
         setShowMemberModal(false)
         setEditingMember(null)
-        setMemberForm({ firstName: '', hebrewFirstName: '', lastName: '', hebrewLastName: '', birthDate: '', hebrewBirthDate: '', gender: '', weddingDate: '', spouseName: '' })
+        setMemberForm({ 
+          firstName: '', hebrewFirstName: '', lastName: '', hebrewLastName: '', 
+          birthDate: '', hebrewBirthDate: '', gender: '', weddingDate: '', 
+          spouseName: '', spouseFirstName: '', spouseHebrewName: '', 
+          spouseFatherHebrewName: '', spouseCellPhone: '', phone: '', 
+          email: '', address: '', city: '', state: '', zip: '' 
+        })
         if (memberForm.weddingDate) {
           alert(`Wedding date set. ${memberForm.firstName} ${memberForm.lastName} will be automatically converted to a new family on ${new Date(memberForm.weddingDate).toLocaleDateString()}.`)
         }
@@ -805,9 +1496,67 @@ export default function FamilyDetailPage() {
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Skip if using Stripe (Stripe handles its own submission)
+    if (paymentForm.paymentMethod === 'credit_card' && useStripe) {
+      return
+    }
+    
     // Validate amount
     if (!paymentForm.amount || paymentForm.amount <= 0) {
       alert('Please enter a valid amount greater than 0')
+      return
+    }
+
+    // Handle charging saved card
+    if (paymentForm.paymentMethod === 'credit_card' && paymentForm.useSavedCard && paymentForm.selectedSavedCardId) {
+      try {
+        const res = await fetch(`/api/kasa/families/${params.id}/charge-saved-card`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            savedPaymentMethodId: paymentForm.selectedSavedCardId,
+            amount: paymentForm.amount,
+            paymentDate: paymentForm.paymentDate,
+            year: paymentForm.year,
+            type: paymentForm.type,
+            notes: paymentForm.notes,
+            paymentFrequency: paymentForm.paymentFrequency
+          })
+        })
+
+        const data = await res.json()
+        if (res.ok && data.success) {
+          setShowPaymentModal(false)
+          setUseStripe(false)
+          setPaymentForm({
+            amount: 0,
+            paymentDate: new Date().toISOString().split('T')[0],
+            year: new Date().getFullYear(),
+            type: 'membership',
+            paymentMethod: 'cash',
+            paymentFrequency: 'one-time',
+            saveCard: false,
+            useSavedCard: false,
+            selectedSavedCardId: '',
+            ccLast4: '',
+            ccCardType: '',
+            ccExpiryMonth: '',
+            ccExpiryYear: '',
+            ccNameOnCard: '',
+            checkNumber: '',
+            checkBankName: '',
+            checkRoutingNumber: '',
+            notes: ''
+          })
+          fetchFamilyDetails()
+          fetchSavedPaymentMethods()
+        } else {
+          alert(`Error charging card: ${data.error || 'Unknown error'}`)
+        }
+      } catch (error: any) {
+        console.error('Error charging saved card:', error)
+        alert('Error charging saved card. Please check the console for details.')
+      }
       return
     }
     
@@ -828,6 +1577,7 @@ export default function FamilyDetailPage() {
         year: paymentForm.year,
         type: paymentForm.type,
         paymentMethod: selectedPaymentMethod,
+        paymentFrequency: paymentForm.paymentFrequency,
         notes: paymentForm.notes || undefined
       }
 
@@ -873,6 +1623,10 @@ export default function FamilyDetailPage() {
           year: new Date().getFullYear(),
           type: 'membership',
           paymentMethod: 'cash',
+          paymentFrequency: 'one-time',
+          saveCard: false,
+          useSavedCard: false,
+          selectedSavedCardId: '',
           ccLast4: '',
           ccCardType: '',
           ccExpiryMonth: '',
@@ -884,6 +1638,7 @@ export default function FamilyDetailPage() {
           notes: ''
         })
         fetchFamilyDetails()
+        fetchSavedPaymentMethods()
       } else {
         const errorData = await res.json()
         alert(`Error adding payment: ${errorData.error || 'Unknown error'}`)
@@ -970,33 +1725,10 @@ export default function FamilyDetailPage() {
         </button>
 
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-3xl font-bold mb-2 text-gray-800">{data.family.name}</h1>
-              {data.family.email && (
-                <p className="text-gray-600 flex items-center gap-2">
-                  {data.family.email}
-                </p>
-              )}
-              {data.family.phone && (
-                <p className="text-gray-600 flex items-center gap-2">
-                  {data.family.phone}
-                </p>
-              )}
-              {(data.family.address || data.family.city) && (
-                <p className="text-gray-600 flex items-center gap-2 mt-1">
-                  {[data.family.address, data.family.city, data.family.state, data.family.zip].filter(Boolean).join(', ')}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={() => setShowContactModal(true)}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-xl text-sm hover:shadow-lg transition-all"
-            >
-              Edit Contacts
-            </button>
+          <div className="mb-4">
+            <h1 className="text-3xl font-bold mb-2 text-gray-800">{data.family.name}</h1>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-white/20">
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mt-4 pt-4 border-t border-white/20">
             <div>
               <p className="text-sm text-gray-600">Wedding Date</p>
               <p className="font-medium">{new Date(data.family.weddingDate).toLocaleDateString()}</p>
@@ -1013,19 +1745,30 @@ export default function FamilyDetailPage() {
               <p className="text-sm text-gray-600">Members</p>
               <p className="font-medium">{data.members.length}</p>
             </div>
+            <div>
+              <p className="text-sm text-gray-600">Total Payments</p>
+              <p className="font-medium text-green-600">${data.balance.totalPayments.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Lifecycle Events</p>
+              <p className="font-medium text-blue-600">${data.balance.totalLifecyclePayments.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Plan Cost (Annual)</p>
+              <p className="font-medium text-orange-600">-${(data.balance.planCost || 0).toLocaleString()}</p>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow mt-3">
           <div className="border-b">
             <nav className="flex">
               {[
-                { id: 'overview', label: 'Overview' },
+                { id: 'info', label: 'Info' },
                 { id: 'members', label: 'Members' },
                 { id: 'payments', label: 'Payments' },
                 { id: 'events', label: 'Lifecycle Events' },
-                { id: 'statements', label: 'Statements' },
-                { id: 'contacts', label: 'Contacts' }
+                { id: 'statements', label: 'Statements' }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -1043,35 +1786,213 @@ export default function FamilyDetailPage() {
           </div>
 
           <div className="p-6">
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Financial Summary</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div className="bg-gray-50 p-4 rounded">
-                      <p className="text-sm text-gray-600">Opening Balance</p>
-                      <p className="text-xl font-bold">${data.balance.openingBalance.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-green-50 p-4 rounded">
-                      <p className="text-sm text-gray-600">Total Payments</p>
-                      <p className="text-xl font-bold text-green-600">${data.balance.totalPayments.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-red-50 p-4 rounded">
-                      <p className="text-sm text-gray-600">Total Withdrawals</p>
-                      <p className="text-xl font-bold text-red-600">${data.balance.totalWithdrawals.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded">
-                      <p className="text-sm text-gray-600">Lifecycle Events</p>
-                      <p className="text-xl font-bold text-blue-600">${data.balance.totalLifecyclePayments.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-orange-50 p-4 rounded">
-                      <p className="text-sm text-gray-600">Plan Cost (Annual)</p>
-                      <p className="text-xl font-bold text-orange-600">-${(data.balance.planCost || 0).toLocaleString()}</p>
+            {activeTab === 'info' && (
+              <div>
+                <div className="flex justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">Family Information</h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (data?.family) {
+                        setInfoForm({
+                          name: data.family.name || '',
+                          hebrewName: data.family.hebrewName || '',
+                          weddingDate: data.family.weddingDate ? new Date(data.family.weddingDate).toISOString().split('T')[0] : '',
+                          husbandFirstName: data.family.husbandFirstName || '',
+                          husbandHebrewName: data.family.husbandHebrewName || '',
+                          husbandFatherHebrewName: data.family.husbandFatherHebrewName || '',
+                          wifeFirstName: data.family.wifeFirstName || '',
+                          wifeHebrewName: data.family.wifeHebrewName || '',
+                          wifeFatherHebrewName: data.family.wifeFatherHebrewName || '',
+                          husbandCellPhone: data.family.husbandCellPhone || '',
+                          wifeCellPhone: data.family.wifeCellPhone || '',
+                          address: data.family.address || '',
+                          street: data.family.street || '',
+                          phone: data.family.phone || '',
+                          email: data.family.email || '',
+                          city: data.family.city || '',
+                          state: data.family.state || '',
+                          zip: data.family.zip || '',
+                          paymentPlanId: data.family.paymentPlanId?.toString() || ''
+                        })
+                        setShowInfoModal(true)
+                      }
+                    }}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:shadow-lg transition-all text-sm"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                    Edit Info
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {/* Basic Information */}
+                  <div className="glass-strong rounded-lg p-4 border border-white/30">
+                    <h4 className="text-base font-semibold mb-2 text-gray-800">Basic Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Family Name</label>
+                        {renderEditableField(
+                          'name',
+                          <p className="text-base font-semibold text-gray-900">{data.family.name || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'name'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Family Name (Hebrew)</label>
+                        {renderEditableField(
+                          'hebrewName',
+                          <p className="text-base font-semibold text-gray-900" dir="rtl">{data.family.hebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'hebrew'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Wedding Date</label>
+                        {renderEditableField(
+                          'weddingDate',
+                          <p className="text-base font-semibold text-gray-900">{data.family.weddingDate ? new Date(data.family.weddingDate).toLocaleDateString() : <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'date'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Payment Plan</label>
+                        {renderEditableField(
+                          'paymentPlanId',
+                          <p className="text-base font-semibold text-gray-900">{getPlanNameById(data.family.paymentPlanId)}</p>,
+                          'select',
+                          paymentPlans.map(plan => ({ value: plan._id, label: plan.name }))
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-4 bg-yellow-50 p-4 rounded">
-                    <p className="text-sm text-gray-600">Current Balance</p>
-                    <p className="text-2xl font-bold">${data.balance.balance.toLocaleString()}</p>
+
+                  {/* Husband Information */}
+                  <div className="glass-strong rounded-lg p-4 border border-white/30">
+                    <h4 className="text-base font-semibold mb-2 text-gray-800">Husband Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">First Name</label>
+                        {renderEditableField(
+                          'husbandFirstName',
+                          <p className="text-base font-semibold text-gray-900">{data.family.husbandFirstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'name'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Hebrew Name</label>
+                        {renderEditableField(
+                          'husbandHebrewName',
+                          <p className="text-base font-semibold text-gray-900" dir="rtl">{data.family.husbandHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'hebrew'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Father's Hebrew Name</label>
+                        {renderEditableField(
+                          'husbandFatherHebrewName',
+                          <p className="text-base font-semibold text-gray-900" dir="rtl">{data.family.husbandFatherHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'hebrew'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Cell Phone</label>
+                        {renderEditableField(
+                          'husbandCellPhone',
+                          <p className="text-base font-semibold text-gray-900">{data.family.husbandCellPhone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'phone'
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Wife Information */}
+                  <div className="glass-strong rounded-lg p-4 border border-white/30">
+                    <h4 className="text-base font-semibold mb-2 text-gray-800">Wife Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">First Name</label>
+                        {renderEditableField(
+                          'wifeFirstName',
+                          <p className="text-base font-semibold text-gray-900">{data.family.wifeFirstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'name'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Hebrew Name</label>
+                        {renderEditableField(
+                          'wifeHebrewName',
+                          <p className="text-base font-semibold text-gray-900" dir="rtl">{data.family.wifeHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'hebrew'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Father's Hebrew Name</label>
+                        {renderEditableField(
+                          'wifeFatherHebrewName',
+                          <p className="text-base font-semibold text-gray-900" dir="rtl">{data.family.wifeFatherHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'hebrew'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Cell Phone</label>
+                        {renderEditableField(
+                          'wifeCellPhone',
+                          <p className="text-base font-semibold text-gray-900">{data.family.wifeCellPhone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'phone'
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="glass-strong rounded-lg p-4 border border-white/30">
+                    <h4 className="text-base font-semibold mb-2 text-gray-800">Contact Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Email</label>
+                        {renderEditableField(
+                          'email',
+                          <p className="text-base font-semibold text-gray-900">{data.family.email || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'email'
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Phone</label>
+                        {renderEditableField(
+                          'phone',
+                          <p className="text-base font-semibold text-gray-900">{data.family.phone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                          'phone'
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Street Address</label>
+                        {renderEditableField(
+                          'street',
+                          <p className="text-base font-semibold text-gray-900">{data.family.street || data.family.address || <span className="text-gray-400 font-normal">Not provided</span>}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">City</label>
+                        {renderEditableField(
+                          'city',
+                          <p className="text-base font-semibold text-gray-900">{data.family.city || <span className="text-gray-400 font-normal">Not provided</span>}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">State</label>
+                        {renderEditableField(
+                          'state',
+                          <p className="text-base font-semibold text-gray-900">{data.family.state || <span className="text-gray-400 font-normal">Not provided</span>}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">ZIP Code</label>
+                        {renderEditableField(
+                          'zip',
+                          <p className="text-base font-semibold text-gray-900">{data.family.zip || <span className="text-gray-400 font-normal">Not provided</span>}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1079,35 +2000,373 @@ export default function FamilyDetailPage() {
 
             {activeTab === 'members' && (
               <div>
-                <div className="flex justify-between mb-6">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-1">Family Members (Children)</h3>
-                    <p className="text-sm text-gray-600">Add children to track their ages for payment plan calculations</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const familyLastName = getFamilyLastName()
-                      setMemberForm({ 
-                        firstName: '', 
-                        hebrewFirstName: '',
-                        lastName: familyLastName, 
-                        hebrewLastName: '',
-                        birthDate: '', 
-                        hebrewBirthDate: '', 
-                        gender: '',
-                        weddingDate: '',
-                        spouseName: ''
-                      })
-                      setEditingMember(null)
-                      setShowMemberModal(true)
-                    }}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-                  >
-                    <PlusIcon className="h-5 w-5" />
-                    Add Child
-                  </button>
-                </div>
-                {data.members.length === 0 ? (
+                {viewingMemberId && data.members.find((m: any) => m._id === viewingMemberId) ? (
+                  // Member Detail View (Full Screen)
+                  (() => {
+                    const member = data.members.find((m: any) => m._id === viewingMemberId)
+                    if (!member) return null
+                    
+                    // Calculate Hebrew date if missing
+                    let displayHebrewDate = member.hebrewBirthDate
+                    if (!displayHebrewDate && member.birthDate) {
+                      displayHebrewDate = convertToHebrewDate(new Date(member.birthDate))
+                    }
+                    
+                    // Calculate age
+                    let age: number
+                    if (displayHebrewDate) {
+                      const hebrewAge = calculateHebrewAge(displayHebrewDate)
+                      if (hebrewAge !== null) {
+                        age = hebrewAge
+                      } else {
+                        const today = new Date()
+                        const birthDate = new Date(member.birthDate)
+                        age = today.getFullYear() - birthDate.getFullYear()
+                        const monthDiff = today.getMonth() - birthDate.getMonth()
+                        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                          age--
+                        }
+                      }
+                    } else {
+                      const today = new Date()
+                      const birthDate = new Date(member.birthDate)
+                      age = today.getFullYear() - birthDate.getFullYear()
+                      const monthDiff = today.getMonth() - birthDate.getMonth()
+                      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                        age--
+                      }
+                    }
+                    
+                    return (
+                      <div>
+                        <div className="flex justify-between items-center mb-6">
+                          <div>
+                            <button
+                              onClick={() => setViewingMemberId(null)}
+                              className="text-blue-600 hover:text-blue-800 mb-2 flex items-center gap-2"
+                            >
+                              ← Back to Members List
+                            </button>
+                            <h3 className="text-xl font-semibold text-gray-800">
+                              {member.firstName} {member.lastName} - Details
+                            </h3>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          {/* Basic Information */}
+                          <div className="glass-strong rounded-lg p-4 border border-white/30">
+                            <h4 className="text-base font-semibold mb-3 text-gray-800">Basic Information</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">First Name</label>
+                                {renderEditableMemberField(
+                                  'firstName',
+                                  <p className="text-base font-semibold text-gray-900">{member.firstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                  'name',
+                                  undefined,
+                                  member._id
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">First Name (Hebrew)</label>
+                                {renderEditableMemberField(
+                                  'hebrewFirstName',
+                                  <p className="text-base font-semibold text-gray-900" dir="rtl">{member.hebrewFirstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                  'hebrew',
+                                  undefined,
+                                  member._id
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Last Name</label>
+                                {renderEditableMemberField(
+                                  'lastName',
+                                  <p className="text-base font-semibold text-gray-900">{member.lastName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                  'name',
+                                  undefined,
+                                  member._id
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Last Name (Hebrew)</label>
+                                {renderEditableMemberField(
+                                  'hebrewLastName',
+                                  <p className="text-base font-semibold text-gray-900" dir="rtl">{member.hebrewLastName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                  'hebrew',
+                                  undefined,
+                                  member._id
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Gender</label>
+                                {renderEditableMemberField(
+                                  'gender',
+                                  <p className="text-base font-semibold text-gray-900 capitalize">{member.gender || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                  'select',
+                                  [
+                                    { value: 'male', label: 'Male' },
+                                    { value: 'female', label: 'Female' }
+                                  ],
+                                  member._id
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Birth Information */}
+                          <div className="glass-strong rounded-lg p-4 border border-white/30">
+                            <h4 className="text-base font-semibold mb-3 text-gray-800">Birth Information</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Birth Date</label>
+                                {renderEditableMemberField(
+                                  'birthDate',
+                                  <p className="text-base font-semibold text-gray-900">{member.birthDate ? new Date(member.birthDate).toLocaleDateString() : <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                  'date',
+                                  undefined,
+                                  member._id
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Hebrew Birth Date (Auto-calculated)</label>
+                                <div className="border border-gray-200 rounded px-3 py-2">
+                                  <p className="text-base font-semibold text-gray-900" dir="rtl">{displayHebrewDate || <span className="text-gray-400 font-normal">Not provided</span>}</p>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Current Age</label>
+                                <div className="border border-gray-200 rounded px-3 py-2">
+                                  <p className="text-base font-semibold text-gray-900">{age} years</p>
+                                </div>
+                              </div>
+                              {member.barMitzvahDate && (
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Bar/Bat Mitzvah Date</label>
+                                  <div className="border border-gray-200 rounded px-3 py-2">
+                                    <p className="text-base font-semibold text-gray-900">{new Date(member.barMitzvahDate).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Marriage Information - Show if age >= 18 or if fields have values */}
+                          {(age >= 18 || member.weddingDate || member.spouseName || member.spouseFirstName || member.email || member.address || member.phone) && (
+                            <div className="glass-strong rounded-lg p-4 border border-white/30">
+                              <h4 className="text-base font-semibold mb-3 text-gray-800">Marriage Information</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Wedding Date</label>
+                                  {renderEditableMemberField(
+                                    'weddingDate',
+                                    <p className="text-base font-semibold text-gray-900">{member.weddingDate ? new Date(member.weddingDate).toLocaleDateString() : <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'date',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Spouse First Name</label>
+                                  {renderEditableMemberField(
+                                    'spouseFirstName',
+                                    <p className="text-base font-semibold text-gray-900">{member.spouseFirstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'name',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Spouse Hebrew Name</label>
+                                  {renderEditableMemberField(
+                                    'spouseHebrewName',
+                                    <p className="text-base font-semibold text-gray-900" dir="rtl">{member.spouseHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'hebrew',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Spouse Father's Hebrew Name</label>
+                                  {renderEditableMemberField(
+                                    'spouseFatherHebrewName',
+                                    <p className="text-base font-semibold text-gray-900" dir="rtl">{member.spouseFatherHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'hebrew',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Spouse Cell Phone</label>
+                                  {renderEditableMemberField(
+                                    'spouseCellPhone',
+                                    <p className="text-base font-semibold text-gray-900">{member.spouseCellPhone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'phone',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Phone</label>
+                                {renderEditableMemberField(
+                                  'phone',
+                                  <p className="text-base font-semibold text-gray-900">{member.phone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                  'phone',
+                                  undefined,
+                                  member._id
+                                )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Email</label>
+                                {renderEditableMemberField(
+                                  'email',
+                                  <p className="text-base font-semibold text-gray-900">{member.email || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                  'email',
+                                  undefined,
+                                  member._id
+                                )}
+                                </div>
+                                <div className="md:col-span-2">
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Address</label>
+                                  {renderEditableMemberField(
+                                    'address',
+                                    <p className="text-base font-semibold text-gray-900">{member.address || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'name',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">City</label>
+                                  {renderEditableMemberField(
+                                    'city',
+                                    <p className="text-base font-semibold text-gray-900">{member.city || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'name',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">State</label>
+                                  {renderEditableMemberField(
+                                    'state',
+                                    <p className="text-base font-semibold text-gray-900">{member.state || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'name',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">ZIP Code</label>
+                                  {renderEditableMemberField(
+                                    'zip',
+                                    <p className="text-base font-semibold text-gray-900">{member.zip || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
+                                    'text',
+                                    undefined,
+                                    member._id
+                                  )}
+                                </div>
+                                {/* Keep spouseName for backward compatibility */}
+                                {member.spouseName && !member.spouseFirstName && (
+                                  <div>
+                                    <label className="text-xs font-bold text-gray-700 mb-1 block uppercase tracking-wide">Spouse Name (Legacy)</label>
+                                  {renderEditableMemberField(
+                                    'spouseName',
+                                    <p className="text-base font-semibold text-gray-900">{member.spouseName}</p>,
+                                    'name',
+                                    undefined,
+                                    member._id
+                                  )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex gap-2 pt-4 border-t border-gray-200">
+                            <button
+                              onClick={() => {
+                                setEditingMember(member)
+                                setMemberForm({
+                                  firstName: member.firstName,
+                                  hebrewFirstName: member.hebrewFirstName || '',
+                                  lastName: member.lastName,
+                                  hebrewLastName: member.hebrewLastName || '',
+                                  birthDate: member.birthDate ? new Date(member.birthDate).toISOString().split('T')[0] : '',
+                                  hebrewBirthDate: member.hebrewBirthDate || '',
+                                  gender: member.gender || '',
+                                  weddingDate: member.weddingDate ? new Date(member.weddingDate).toISOString().split('T')[0] : '',
+                                  spouseName: member.spouseName || '',
+                                  spouseFirstName: member.spouseFirstName || '',
+                                  spouseHebrewName: member.spouseHebrewName || '',
+                                  spouseFatherHebrewName: member.spouseFatherHebrewName || '',
+                                  spouseCellPhone: member.spouseCellPhone || '',
+                                  phone: member.phone || '',
+                                  email: member.email || '',
+                                  address: member.address || '',
+                                  city: member.city || '',
+                                  state: member.state || '',
+                                  zip: member.zip || ''
+                                })
+                                setShowMemberModal(true)
+                              }}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              Open Full Edit Modal
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMember(member)}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                            >
+                              Delete Member
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()
+                ) : (
+                  // Members List View
+                  <>
+                    <div className="flex justify-between mb-6">
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-1">Family Members (Children)</h3>
+                        <p className="text-sm text-gray-600">Add children to track their ages for payment plan calculations</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const familyLastName = getFamilyLastName()
+                          setMemberForm({ 
+                            firstName: '', 
+                            hebrewFirstName: '',
+                            lastName: familyLastName, 
+                            hebrewLastName: '',
+                            birthDate: '', 
+                            hebrewBirthDate: '', 
+                            gender: '',
+                            weddingDate: '',
+                            spouseName: '',
+                            spouseFirstName: '',
+                            spouseHebrewName: '',
+                            spouseFatherHebrewName: '',
+                            spouseCellPhone: '',
+                            phone: '',
+                            email: '',
+                            address: '',
+                            city: '',
+                            state: '',
+                            zip: ''
+                          })
+                          setEditingMember(null)
+                          setShowMemberModal(true)
+                        }}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                      >
+                        <PlusIcon className="h-5 w-5" />
+                        Add Child
+                      </button>
+                    </div>
+                    {data.members.length === 0 ? (
                   <div className="text-center py-12 glass rounded-xl border border-white/20">
                     <div className="text-4xl mb-4">👶</div>
                     <p className="text-gray-600 mb-4">No children added yet</p>
@@ -1121,7 +2380,17 @@ export default function FamilyDetailPage() {
                           hebrewBirthDate: '', 
                           gender: '',
                           weddingDate: '',
-                          spouseName: ''
+                          spouseName: '',
+                          spouseFirstName: '',
+                          spouseHebrewName: '',
+                          spouseFatherHebrewName: '',
+                          spouseCellPhone: '',
+                          phone: '',
+                          email: '',
+                          address: '',
+                          city: '',
+                          state: '',
+                          zip: ''
                         })
                         setEditingMember(null)
                         setShowMemberModal(true)
@@ -1146,7 +2415,7 @@ export default function FamilyDetailPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white/10 divide-y divide-white/20">
-                        {data.members.map((member) => {
+                        {data.members.slice((membersPage - 1) * itemsPerPage, membersPage * itemsPerPage).map((member) => {
                           // Calculate Hebrew date if missing (for display)
                           let displayHebrewDate = member.hebrewBirthDate
                           if (!displayHebrewDate && member.birthDate) {
@@ -1240,7 +2509,16 @@ export default function FamilyDetailPage() {
                           
                           return (
                             <tr key={member._id} className="hover:bg-white/20 transition-colors">
-                              <td className="p-4 font-medium text-gray-800">{member.firstName} {member.lastName}</td>
+                              <td className="p-4">
+                                <button
+                                  onClick={() => {
+                                    setViewingMemberId(viewingMemberId === member._id ? null : member._id)
+                                  }}
+                                  className="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer text-left"
+                                >
+                                  {member.firstName} {member.lastName}
+                                </button>
+                              </td>
                               <td className="p-4 text-gray-600">{new Date(member.birthDate).toLocaleDateString()}</td>
                               <td className="p-4 text-gray-600">
                                 {displayHebrewDate ? (
@@ -1290,7 +2568,18 @@ export default function FamilyDetailPage() {
                         })}
                       </tbody>
                     </table>
+                    {data.members.length > 0 && (
+                      <Pagination
+                        currentPage={membersPage}
+                        totalPages={Math.ceil(data.members.length / itemsPerPage)}
+                        totalItems={data.members.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setMembersPage}
+                      />
+                    )}
                   </div>
+                )}
+                  </>
                 )}
               </div>
             )}
@@ -1319,7 +2608,7 @@ export default function FamilyDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.payments.map((payment: any) => {
+                    {data.payments.slice((paymentsPage - 1) * itemsPerPage, paymentsPage * itemsPerPage).map((payment: any) => {
                       const formatPaymentMethod = () => {
                         if (!payment.paymentMethod) return 'Cash'
                         const methodLabels: { [key: string]: string } = {
@@ -1351,54 +2640,18 @@ export default function FamilyDetailPage() {
                     })}
                   </tbody>
                 </table>
+                {data.payments.length > 0 && (
+                  <Pagination
+                    currentPage={paymentsPage}
+                    totalPages={Math.ceil(data.payments.length / itemsPerPage)}
+                    totalItems={data.payments.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setPaymentsPage}
+                  />
+                )}
               </div>
             )}
 
-            {activeTab === 'contacts' && (
-              <div>
-                <div className="flex justify-between mb-6">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-1">Contact Information</h3>
-                    <p className="text-sm text-gray-600">Manage family contact details</p>
-                  </div>
-                  <button
-                    onClick={() => setShowContactModal(true)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-                  >
-                    <PencilIcon className="h-5 w-5" />
-                    Edit Contacts
-                  </button>
-                </div>
-                <div className="glass-strong rounded-xl p-6 border border-white/30">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600 mb-1 block">Email</label>
-                      <p className="text-gray-800">{data.family.email || <span className="text-gray-400">Not provided</span>}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600 mb-1 block">Phone</label>
-                      <p className="text-gray-800">{data.family.phone || <span className="text-gray-400">Not provided</span>}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-medium text-gray-600 mb-1 block">Address</label>
-                      <p className="text-gray-800">{data.family.address || <span className="text-gray-400">Not provided</span>}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600 mb-1 block">City</label>
-                      <p className="text-gray-800">{data.family.city || <span className="text-gray-400">Not provided</span>}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600 mb-1 block">State</label>
-                      <p className="text-gray-800">{data.family.state || <span className="text-gray-400">Not provided</span>}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600 mb-1 block">ZIP Code</label>
-                      <p className="text-gray-800">{data.family.zip || <span className="text-gray-400">Not provided</span>}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {activeTab === 'events' && (
               <div>
@@ -1423,7 +2676,7 @@ export default function FamilyDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.lifecycleEvents.map((event) => (
+                    {data.lifecycleEvents.slice((eventsPage - 1) * itemsPerPage, eventsPage * itemsPerPage).map((event) => (
                       <tr key={event._id} className="border-b">
                         <td className="p-2">{new Date(event.eventDate).toLocaleDateString()}</td>
                         <td className="p-2 capitalize">{event.eventType.replace('_', ' ')}</td>
@@ -1434,6 +2687,15 @@ export default function FamilyDetailPage() {
                     ))}
                   </tbody>
                 </table>
+                {data.lifecycleEvents.length > 0 && (
+                  <Pagination
+                    currentPage={eventsPage}
+                    totalPages={Math.ceil(data.lifecycleEvents.length / itemsPerPage)}
+                    totalItems={data.lifecycleEvents.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setEventsPage}
+                  />
+                )}
               </div>
             )}
 
@@ -1543,6 +2805,11 @@ export default function FamilyDetailPage() {
                     required
                     value={memberForm.firstName}
                     onChange={(e) => setMemberForm({ ...memberForm, firstName: e.target.value })}
+                    onBlur={(e) => {
+                      if (e.target.value) {
+                        setMemberForm({ ...memberForm, firstName: capitalizeName(e.target.value) })
+                      }
+                    }}
                     className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                     placeholder="Enter first name"
                   />
@@ -1571,6 +2838,11 @@ export default function FamilyDetailPage() {
                       required
                       value={memberForm.lastName}
                       onChange={(e) => setMemberForm({ ...memberForm, lastName: e.target.value })}
+                      onBlur={(e) => {
+                        if (e.target.value) {
+                          setMemberForm({ ...memberForm, lastName: capitalizeName(e.target.value) })
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                       placeholder="Enter last name"
                     />
@@ -1666,6 +2938,11 @@ export default function FamilyDetailPage() {
                           type="text"
                           value={memberForm.spouseName}
                           onChange={(e) => setMemberForm({ ...memberForm, spouseName: e.target.value })}
+                          onBlur={(e) => {
+                            if (e.target.value) {
+                              setMemberForm({ ...memberForm, spouseName: capitalizeName(e.target.value) })
+                            }
+                          }}
                           className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="Enter spouse's full name"
                         />
@@ -1682,12 +2959,24 @@ export default function FamilyDetailPage() {
                       setEditingMember(null)
                       setMemberForm({
                         firstName: '',
+                        hebrewFirstName: '',
                         lastName: '',
+                        hebrewLastName: '',
                         birthDate: '',
                         hebrewBirthDate: '',
                         gender: '',
                         weddingDate: '',
-                        spouseName: ''
+                        spouseName: '',
+                        spouseFirstName: '',
+                        spouseHebrewName: '',
+                        spouseFatherHebrewName: '',
+                        spouseCellPhone: '',
+                        phone: '',
+                        email: '',
+                        address: '',
+                        city: '',
+                        state: '',
+                        zip: ''
                       })
                     }}
                     className="px-6 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
@@ -1706,92 +2995,271 @@ export default function FamilyDetailPage() {
           </div>
         )}
 
-        {showContactModal && (
+        {showInfoModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="glass-strong rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/30">
-              <h2 className="text-2xl font-bold mb-4 text-gray-800">Edit Contact Information</h2>
+            <div className="glass-strong rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/30">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">Edit Family Information</h2>
               <form onSubmit={async (e) => {
                 e.preventDefault()
                 try {
                   const res = await fetch(`/api/kasa/families/${params.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(contactForm)
+                    body: JSON.stringify({
+                      ...infoForm,
+                      weddingDate: infoForm.weddingDate ? new Date(infoForm.weddingDate).toISOString() : undefined,
+                      paymentPlanId: infoForm.paymentPlanId || undefined
+                    })
                   })
                   if (res.ok) {
-                    setShowContactModal(false)
+                    setShowInfoModal(false)
                     fetchFamilyDetails()
                   }
                 } catch (error) {
-                  console.error('Error updating contacts:', error)
+                  console.error('Error updating family info:', error)
                 }
-              }} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2 text-gray-700">Email</label>
-                    <input
-                      type="email"
-                      value={contactForm.email}
-                      onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="family@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700">Phone</label>
-                    <input
-                      type="tel"
-                      value={contactForm.phone}
-                      onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700">ZIP Code</label>
-                    <input
-                      type="text"
-                      value={contactForm.zip}
-                      onChange={(e) => setContactForm({ ...contactForm, zip: e.target.value })}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="12345"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2 text-gray-700">Street Address</label>
-                    <input
-                      type="text"
-                      value={contactForm.address}
-                      onChange={(e) => setContactForm({ ...contactForm, address: e.target.value })}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="123 Main Street"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700">City</label>
-                    <input
-                      type="text"
-                      value={contactForm.city}
-                      onChange={(e) => setContactForm({ ...contactForm, city: e.target.value })}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="New York"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700">State</label>
-                    <input
-                      type="text"
-                      value={contactForm.state}
-                      onChange={(e) => setContactForm({ ...contactForm, state: e.target.value })}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="NY"
-                    />
+              }} className="space-y-6">
+                {/* Basic Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Basic Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Family Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={infoForm.name}
+                        onChange={(e) => setInfoForm({ ...infoForm, name: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Family Name (Hebrew)</label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        lang="he"
+                        value={infoForm.hebrewName}
+                        onChange={(e) => setInfoForm({ ...infoForm, hebrewName: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-right"
+                        style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Wedding Date *</label>
+                      <input
+                        type="date"
+                        required
+                        value={infoForm.weddingDate}
+                        onChange={(e) => setInfoForm({ ...infoForm, weddingDate: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Payment Plan</label>
+                      <select
+                        value={infoForm.paymentPlanId}
+                        onChange={(e) => setInfoForm({ ...infoForm, paymentPlanId: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      >
+                        <option value="">Select a plan</option>
+                        {paymentPlans.map(plan => (
+                          <option key={plan._id} value={plan._id}>{plan.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Opening Balance</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={infoForm.openBalance}
+                        onChange={(e) => setInfoForm({ ...infoForm, openBalance: parseFloat(e.target.value) || 0 })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Current Payment</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={infoForm.currentPayment}
+                        onChange={(e) => setInfoForm({ ...infoForm, currentPayment: parseFloat(e.target.value) || 0 })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Husband Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Husband Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">First Name</label>
+                      <input
+                        type="text"
+                        value={infoForm.husbandFirstName}
+                        onChange={(e) => setInfoForm({ ...infoForm, husbandFirstName: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Hebrew Name</label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        lang="he"
+                        value={infoForm.husbandHebrewName}
+                        onChange={(e) => setInfoForm({ ...infoForm, husbandHebrewName: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-right"
+                        style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Father's Hebrew Name</label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        lang="he"
+                        value={infoForm.husbandFatherHebrewName}
+                        onChange={(e) => setInfoForm({ ...infoForm, husbandFatherHebrewName: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-right"
+                        style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Cell Phone</label>
+                      <input
+                        type="tel"
+                        value={infoForm.husbandCellPhone}
+                        onChange={(e) => setInfoForm({ ...infoForm, husbandCellPhone: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Wife Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Wife Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">First Name</label>
+                      <input
+                        type="text"
+                        value={infoForm.wifeFirstName}
+                        onChange={(e) => setInfoForm({ ...infoForm, wifeFirstName: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Hebrew Name</label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        lang="he"
+                        value={infoForm.wifeHebrewName}
+                        onChange={(e) => setInfoForm({ ...infoForm, wifeHebrewName: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-right"
+                        style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Father's Hebrew Name</label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        lang="he"
+                        value={infoForm.wifeFatherHebrewName}
+                        onChange={(e) => setInfoForm({ ...infoForm, wifeFatherHebrewName: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-right"
+                        style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Cell Phone</label>
+                      <input
+                        type="tel"
+                        value={infoForm.wifeCellPhone}
+                        onChange={(e) => setInfoForm({ ...infoForm, wifeCellPhone: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Contact Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Email</label>
+                      <input
+                        type="email"
+                        value={infoForm.email}
+                        onChange={(e) => setInfoForm({ ...infoForm, email: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        placeholder="family@example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Phone</label>
+                      <input
+                        type="tel"
+                        value={infoForm.phone}
+                        onChange={(e) => setInfoForm({ ...infoForm, phone: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">ZIP Code</label>
+                      <input
+                        type="text"
+                        value={infoForm.zip}
+                        onChange={(e) => setInfoForm({ ...infoForm, zip: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        placeholder="12345"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium mb-2 text-gray-700">Street Address</label>
+                      <input
+                        type="text"
+                        value={infoForm.street || infoForm.address}
+                        onChange={(e) => setInfoForm({ ...infoForm, street: e.target.value, address: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        placeholder="123 Main Street"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">City</label>
+                      <input
+                        type="text"
+                        value={infoForm.city}
+                        onChange={(e) => setInfoForm({ ...infoForm, city: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        placeholder="New York"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-700">State</label>
+                      <input
+                        type="text"
+                        value={infoForm.state}
+                        onChange={(e) => setInfoForm({ ...infoForm, state: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        placeholder="NY"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex gap-4 justify-end pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowContactModal(false)}
+                    onClick={() => setShowInfoModal(false)}
                     className="px-6 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
                   >
                     Cancel
@@ -1800,7 +3268,7 @@ export default function FamilyDetailPage() {
                     type="submit"
                     className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                   >
-                    Save Contacts
+                    Save Info
                   </button>
                 </div>
               </form>
@@ -1860,13 +3328,25 @@ export default function FamilyDetailPage() {
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium mb-1">Payment Frequency *</label>
+                <select
+                  value={paymentForm.paymentFrequency}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, paymentFrequency: e.target.value as 'one-time' | 'monthly' })}
+                  className="w-full border rounded px-3 py-2"
+                  required
+                >
+                  <option value="one-time">One-Time Payment</option>
+                  <option value="monthly">Monthly Payment</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-1">Payment Method *</label>
                 <select
                   value={paymentForm.paymentMethod || 'cash'}
                   onChange={(e) => {
                     const selectedMethod = e.target.value as 'cash' | 'credit_card' | 'check' | 'quick_pay'
                     console.log('Payment method changed to:', selectedMethod)
-                    setPaymentForm({ ...paymentForm, paymentMethod: selectedMethod })
+                    setPaymentForm({ ...paymentForm, paymentMethod: selectedMethod, useSavedCard: false })
                   }}
                   className="w-full border rounded px-3 py-2"
                   required
@@ -1883,17 +3363,77 @@ export default function FamilyDetailPage() {
                 <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-700">Credit Card Information</h4>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={useStripe}
-                        onChange={(e) => setUseStripe(e.target.checked)}
-                        className="rounded"
-                      />
-                      <span>Use Stripe (Secure Payment)</span>
-                    </label>
+                    {paymentForm.amount > 0 && (
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={useStripe}
+                          onChange={(e) => {
+                            setUseStripe(e.target.checked)
+                            if (e.target.checked) {
+                              setPaymentForm({ ...paymentForm, useSavedCard: false })
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <span>Use Stripe (Secure Payment)</span>
+                      </label>
+                    )}
                   </div>
+
+                  {/* Saved Cards */}
+                  {savedPaymentMethods.length > 0 && !useStripe && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium mb-2">Saved Cards on File</label>
+                      <div className="space-y-2">
+                        {savedPaymentMethods.map((card) => (
+                          <label
+                            key={card._id}
+                            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-blue-100 ${
+                              paymentForm.useSavedCard && paymentForm.selectedSavedCardId === card._id
+                                ? 'bg-blue-200 border-blue-500'
+                                : 'bg-white'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="savedCard"
+                              checked={paymentForm.useSavedCard && paymentForm.selectedSavedCardId === card._id}
+                              onChange={() => setPaymentForm({
+                                ...paymentForm,
+                                useSavedCard: true,
+                                selectedSavedCardId: card._id
+                              })}
+                              className="rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{card.cardType.toUpperCase()}</span>
+                                <span>•••• {card.last4}</span>
+                                {card.isDefault && (
+                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Default</span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Expires {card.expiryMonth}/{card.expiryYear}
+                                {card.nameOnCard && ` • ${card.nameOnCard}`}
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentForm({ ...paymentForm, useSavedCard: false, selectedSavedCardId: '' })}
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          Use new card instead
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   
+                  {!paymentForm.useSavedCard && (
+                    <>
                   {useStripe ? (
                     <StripePaymentForm
                       amount={paymentForm.amount}
@@ -1902,6 +3442,8 @@ export default function FamilyDetailPage() {
                       year={paymentForm.year}
                       type={paymentForm.type}
                       notes={paymentForm.notes}
+                      saveCard={paymentForm.saveCard}
+                      paymentFrequency={paymentForm.paymentFrequency}
                       onSuccess={async (paymentIntentId) => {
                         setShowPaymentModal(false)
                         setUseStripe(false)
@@ -1911,6 +3453,10 @@ export default function FamilyDetailPage() {
                           year: new Date().getFullYear(),
                           type: 'membership',
                           paymentMethod: 'cash',
+                          paymentFrequency: 'one-time',
+                          saveCard: false,
+                          useSavedCard: false,
+                          selectedSavedCardId: '',
                           ccLast4: '',
                           ccCardType: '',
                           ccExpiryMonth: '',
@@ -1922,6 +3468,7 @@ export default function FamilyDetailPage() {
                           notes: ''
                         })
                         fetchFamilyDetails()
+                        fetchSavedPaymentMethods()
                       }}
                       onError={(error) => {
                         alert(`Payment error: ${error}`)
@@ -1990,7 +3537,32 @@ export default function FamilyDetailPage() {
                       placeholder="John Doe"
                     />
                   </div>
-                  </>
+                      {paymentForm.amount > 0 && (
+                        <label className="flex items-center gap-2 text-sm mt-3">
+                          <input
+                            type="checkbox"
+                            checked={paymentForm.saveCard}
+                            onChange={(e) => setPaymentForm({ ...paymentForm, saveCard: e.target.checked })}
+                            className="rounded"
+                          />
+                          <span>Save card for future use</span>
+                        </label>
+                      )}
+                    </>
+                  )}
+                    </>
+                  )}
+                  {paymentForm.useSavedCard && paymentForm.selectedSavedCardId && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg mt-3">
+                      <p className="text-sm text-green-800 mb-2">
+                        Ready to charge saved card. Click "Add Payment" below to process.
+                      </p>
+                      {paymentForm.paymentFrequency === 'monthly' && (
+                        <p className="text-xs text-green-700">
+                          This will be set up as a monthly recurring payment.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

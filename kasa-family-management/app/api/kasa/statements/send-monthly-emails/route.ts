@@ -79,15 +79,15 @@ export async function POST(request: NextRequest) {
         }).sort({ withdrawalDate: 1 })
         const totalWithdrawals = withdrawals.reduce((sum, w) => sum + w.amount, 0)
 
-        // Get lifecycle events in date range
+        // Get lifecycle events in date range (for display only, not included in balance)
         const lifecycleEvents = await LifecycleEventPayment.find({
           familyId: family._id,
           eventDate: { $gte: from, $lte: to }
         }).sort({ eventDate: 1 })
         const totalExpenses = lifecycleEvents.reduce((sum, e) => sum + e.amount, 0)
 
-        // Calculate closing balance
-        const closingBalance = openingBalance + totalIncome - totalWithdrawals - totalExpenses
+        // Calculate closing balance (lifecycle events are NOT subtracted from balance)
+        const closingBalance = openingBalance + totalIncome - totalWithdrawals
 
         // Generate statement number
         const statementCount = await Statement.countDocuments({ familyId: family._id })

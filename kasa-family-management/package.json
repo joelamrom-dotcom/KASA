@@ -10,7 +10,8 @@
     "lint": "next lint",
     "generate-statements": "node scripts/generate-monthly-statements.js",
     "convert-weddings": "node scripts/convert-wedding-dates.js",
-    "send-monthly-statements": "node scripts/send-monthly-statements.js"
+    "send-monthly-statements": "node scripts/send-monthly-statements.js",
+    "process-monthly-payments": "node scripts/process-monthly-payments.js"
   },
   "dependencies": {
     "@hebcal/core": "^6.0.5",

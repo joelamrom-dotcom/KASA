@@ -149,7 +149,14 @@ export default function PaymentPlansPage() {
                 return (
                   <React.Fragment key={plan._id}>
                     <tr className="hover:bg-white/20 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap font-medium">{plan.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleEdit(plan)}
+                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer text-left"
+                        >
+                          {plan.name}
+                        </button>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap font-semibold">
                         ${plan.yearlyPrice.toLocaleString()}
                       </td>

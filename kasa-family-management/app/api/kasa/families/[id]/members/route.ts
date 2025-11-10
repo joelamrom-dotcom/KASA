@@ -29,7 +29,11 @@ export async function POST(
   try {
     await connectDB()
     const body = await request.json()
-    const { firstName, hebrewFirstName, lastName, hebrewLastName, birthDate, hebrewBirthDate, gender } = body
+    const { 
+      firstName, hebrewFirstName, lastName, hebrewLastName, birthDate, hebrewBirthDate, gender,
+      weddingDate, spouseName, spouseFirstName, spouseHebrewName, spouseFatherHebrewName,
+      spouseCellPhone, phone, email, address, city, state, zip
+    } = body
 
     if (!firstName || !lastName || !birthDate) {
       return NextResponse.json(
@@ -61,6 +65,18 @@ export async function POST(
       birthDate: new Date(birthDate),
       hebrewBirthDate: finalHebrewBirthDate || undefined,
       gender: gender || undefined,
+      weddingDate: weddingDate ? new Date(weddingDate) : undefined,
+      spouseName: spouseName || undefined,
+      spouseFirstName: spouseFirstName || undefined,
+      spouseHebrewName: spouseHebrewName || undefined,
+      spouseFatherHebrewName: spouseFatherHebrewName || undefined,
+      spouseCellPhone: spouseCellPhone || undefined,
+      phone: phone || undefined,
+      email: email || undefined,
+      address: address || undefined,
+      city: city || undefined,
+      state: state || undefined,
+      zip: zip || undefined,
       barMitzvahDate: barMitzvahDate || undefined,
       barMitzvahEventAdded: false,
       paymentPlan: null,

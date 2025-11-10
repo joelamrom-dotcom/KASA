@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { PlusIcon, DocumentTextIcon, PrinterIcon, CalendarIcon, ChevronDownIcon, ChevronUpIcon, DocumentArrowDownIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
+import Pagination from '@/app/components/Pagination'
+import Link from 'next/link'
 
 interface Statement {
   _id: string
@@ -40,6 +42,8 @@ export default function StatementsPage() {
   const [emailResult, setEmailResult] = useState<{ sent: number; failed: number; errors: string[] } | null>(null)
   const [expandedStatement, setExpandedStatement] = useState<string | null>(null)
   const [statementDetails, setStatementDetails] = useState<{ [key: string]: Transaction[] }>({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   const [formData, setFormData] = useState({
     familyId: '',
     fromDate: '',
@@ -409,8 +413,9 @@ export default function StatementsPage() {
               No statements found for last month.
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
-              {statements.map((statement) => {
+            <>
+              <div className="divide-y divide-gray-200">
+                {statements.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((statement) => {
                 const family = families.find(f => f._id === statement.familyId)
                 const isExpanded = expandedStatement === statement._id
                 const transactions = statementDetails[statement._id] || []
@@ -425,7 +430,16 @@ export default function StatementsPage() {
                         </div>
                         <div>
                           <div className="text-sm text-gray-500">Family</div>
-                          <div className="font-medium">{family?.name || 'N/A'}</div>
+                          {family ? (
+                            <Link
+                              href={`/families/${family._id}`}
+                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
+                            >
+                              {family.name}
+                            </Link>
+                          ) : (
+                            <div className="font-medium">N/A</div>
+                          )}
                         </div>
                         <div>
                           <div className="text-sm text-gray-500">Period</div>
@@ -536,7 +550,17 @@ export default function StatementsPage() {
                   </div>
                 )
               })}
-            </div>
+              </div>
+              {statements.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(statements.length / itemsPerPage)}
+                  totalItems={statements.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </>
           )}
         </div>
 

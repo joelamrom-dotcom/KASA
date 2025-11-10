@@ -450,7 +450,7 @@ export async function calculateFamilyBalance(familyId: string, asOfDate: Date = 
   
   const totalWithdrawals = withdrawals.reduce((sum, w) => sum + w.amount, 0)
   
-  // Get all lifecycle event payments up to date
+  // Get all lifecycle event payments up to date (for display only, not included in balance)
   const lifecyclePayments = await LifecycleEventPayment.find({
     familyId,
     eventDate: { $lte: asOfDate }
@@ -458,16 +458,18 @@ export async function calculateFamilyBalance(familyId: string, asOfDate: Date = 
   
   const totalLifecyclePayments = lifecyclePayments.reduce((sum, p) => sum + p.amount, 0)
   
-  // Calculate balance: opening balance + payments - withdrawals - lifecycle payments - plan cost
+  // Calculate balance: payments - withdrawals - plan cost
+  // Opening balance is deprecated and no longer used
+  // Lifecycle events are NOT included in balance calculation (they are informational only)
   // Plan cost is deducted because families owe the annual plan amount
-  const balance = family.openBalance + totalPayments - totalWithdrawals - totalLifecyclePayments - planCost
+  const balance = totalPayments - totalWithdrawals - planCost
   
   return {
     openingBalance: family.openBalance, // Show actual opening balance as set
     planCost, // Plan cost deducted from balance
     totalPayments,
     totalWithdrawals,
-    totalLifecyclePayments,
+    totalLifecyclePayments, // Included for display purposes only
     balance
   }
 }

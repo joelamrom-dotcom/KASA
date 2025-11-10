@@ -65,31 +65,63 @@ export async function convertMembersOnWeddingDate() {
           ? `${member.firstName} ${member.lastName} & ${member.spouseName}`
           : `${member.firstName} ${member.lastName} Family`
 
-        // Create new family
+        // Determine spouse information - use new fields if available, otherwise fall back to spouseName
+        const spouseFirstName = member.spouseFirstName || (member.spouseName ? member.spouseName.trim().split(' ')[0] : '')
+        const spouseLastName = member.spouseName && !member.spouseFirstName 
+          ? (member.spouseName.trim().split(' ').length > 1 ? member.spouseName.trim().split(' ').slice(1).join(' ') : member.lastName)
+          : member.lastName
+
+        // Determine father's Hebrew name based on member gender
+        // If male: use current family's husbandHebrewName
+        // If female: use current family's wifeHebrewName
+        const fatherHebrewName = member.gender === 'male' 
+          ? originalFamily.husbandHebrewName || null
+          : originalFamily.wifeHebrewName || null
+
+        // Create new family - use address if provided, otherwise use original family address
         const newFamily = await Family.create({
           name: newFamilyName,
           weddingDate: weddingDate,
-          address: originalFamily.address,
-          phone: originalFamily.phone,
-          email: originalFamily.email,
-          city: originalFamily.city,
-          state: originalFamily.state,
-          zip: originalFamily.zip,
+          // Use address if provided, otherwise use original family address
+          address: member.address || originalFamily.address,
+          street: member.address || originalFamily.street || originalFamily.address,
+          phone: member.phone || originalFamily.phone,
+          email: member.email || originalFamily.email,
+          city: member.city || originalFamily.city,
+          state: member.state || originalFamily.state,
+          zip: member.zip || originalFamily.zip,
+          // Set husband/wife information based on member gender
+          ...(member.gender === 'male' ? {
+            husbandFirstName: member.firstName,
+            husbandHebrewName: member.hebrewFirstName || null,
+            husbandFatherHebrewName: fatherHebrewName,
+            husbandCellPhone: null,
+            wifeFirstName: spouseFirstName || null,
+            wifeHebrewName: member.spouseHebrewName || null,
+            wifeFatherHebrewName: member.spouseFatherHebrewName || null,
+            wifeCellPhone: member.spouseCellPhone || null
+          } : {
+            husbandFirstName: spouseFirstName || null,
+            husbandHebrewName: member.spouseHebrewName || null,
+            husbandFatherHebrewName: member.spouseFatherHebrewName || null,
+            husbandCellPhone: member.spouseCellPhone || null,
+            wifeFirstName: member.firstName,
+            wifeHebrewName: member.hebrewFirstName || null,
+            wifeFatherHebrewName: fatherHebrewName,
+            wifeCellPhone: null
+          }),
           currentPlan: paymentPlan,
           currentPayment: 0,
           openBalance: 0
         })
 
         // Create spouse as a member if name provided (but NOT the converted member - they ARE the family)
-        if (member.spouseName) {
-          const nameParts = member.spouseName.trim().split(' ')
-          const spouseFirstName = nameParts[0]
-          const spouseLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : member.lastName
-          
+        if (spouseFirstName || member.spouseName) {
           await FamilyMember.create({
             familyId: newFamily._id,
             firstName: spouseFirstName,
             lastName: spouseLastName,
+            hebrewFirstName: member.spouseHebrewName || null,
             birthDate: weddingDate, // Approximate, can be updated later
             gender: member.gender === 'male' ? 'female' : 'male'
           })
