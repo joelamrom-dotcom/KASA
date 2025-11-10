@@ -979,8 +979,8 @@ export default function FamilyDetailPage() {
     fieldName: string,
     displayValue: string | React.ReactNode,
     fieldType: 'text' | 'date' | 'select' | 'hebrew' | 'phone' | 'email' | 'name' = 'text',
-    options?: { value: string; label: string }[],
-    memberId: string
+    memberId: string,
+    options?: { value: string; label: string }[]
   ) => {
     const isEditing = editingMemberField === `${memberId}-${fieldName}`
     const member = data?.members?.find((m: any) => m._id === memberId)
@@ -2063,8 +2063,8 @@ export default function FamilyDetailPage() {
                                   'firstName',
                                   <p className="text-base font-semibold text-gray-900">{member.firstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'name',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2073,8 +2073,8 @@ export default function FamilyDetailPage() {
                                   'hebrewFirstName',
                                   <p className="text-base font-semibold text-gray-900" dir="rtl">{member.hebrewFirstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'hebrew',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2083,8 +2083,8 @@ export default function FamilyDetailPage() {
                                   'lastName',
                                   <p className="text-base font-semibold text-gray-900">{member.lastName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'name',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2093,8 +2093,8 @@ export default function FamilyDetailPage() {
                                   'hebrewLastName',
                                   <p className="text-base font-semibold text-gray-900" dir="rtl">{member.hebrewLastName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'hebrew',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2103,11 +2103,11 @@ export default function FamilyDetailPage() {
                                   'gender',
                                   <p className="text-base font-semibold text-gray-900 capitalize">{member.gender || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'select',
+                                  member._id,
                                   [
                                     { value: 'male', label: 'Male' },
                                     { value: 'female', label: 'Female' }
-                                  ],
-                                  member._id
+                                  ]
                                 )}
                               </div>
                             </div>
@@ -2123,8 +2123,8 @@ export default function FamilyDetailPage() {
                                   'birthDate',
                                   <p className="text-base font-semibold text-gray-900">{member.birthDate ? new Date(member.birthDate).toLocaleDateString() : <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'date',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2211,8 +2211,8 @@ export default function FamilyDetailPage() {
                                   'phone',
                                   <p className="text-base font-semibold text-gray-900">{member.phone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'phone',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                                 </div>
                                 <div>
@@ -2221,8 +2221,8 @@ export default function FamilyDetailPage() {
                                   'email',
                                   <p className="text-base font-semibold text-gray-900">{member.email || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'email',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                                 </div>
                                 <div className="md:col-span-2">
