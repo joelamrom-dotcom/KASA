@@ -20,7 +20,10 @@ export async function POST(request: NextRequest) {
       transactions || []
     )
 
-    return new NextResponse(pdfBuffer, {
+    // Convert Buffer to Uint8Array for NextResponse
+    const pdfArray = new Uint8Array(pdfBuffer)
+
+    return new NextResponse(pdfArray, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="Statement_${statement.statementNumber}.pdf"`
