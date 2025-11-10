@@ -45,11 +45,18 @@ export default function HebrewDatePicker({ value, onChange, required = false }: 
     }
   }, [isOpen])
 
-  const handleDateSelect = (day: BasicJewishDay) => {
-    if (day && day.day && day.monthName && day.year) {
-      const hebrewDate = `${day.day} ${day.monthName} ${day.year}`
-      onChange(hebrewDate)
-      setIsOpen(false)
+  const handleDateSelect = (day: BasicJewishDay | null) => {
+    if (day) {
+      // Access properties safely - BasicJewishDay may have different property names
+      const dayValue = (day as any).day || (day as any).date || (day as any).dayOfMonth
+      const monthName = (day as any).monthName || (day as any).month
+      const year = (day as any).year
+      
+      if (dayValue && monthName && year) {
+        const hebrewDate = `${dayValue} ${monthName} ${year}`
+        onChange(hebrewDate)
+        setIsOpen(false)
+      }
     }
   }
 
@@ -124,10 +131,8 @@ export default function HebrewDatePicker({ value, onChange, required = false }: 
             }}
           >
             <ReactJewishDatePicker
-              onClick={(day: BasicJewishDay) => {
-                if (day) {
-                  handleDateSelect(day)
-                }
+              onClick={(day: BasicJewishDay | null) => {
+                handleDateSelect(day)
               }}
               isHebrew={true}
               isRange={false}
