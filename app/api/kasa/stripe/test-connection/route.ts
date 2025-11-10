@@ -29,13 +29,13 @@ export async function GET(request: NextRequest) {
     // Try a simple API call to verify the connection
     try {
       // This is a lightweight call that just verifies the key is valid
-      const account = await stripe.account.retrieve()
+      const balance = await stripe.balance.retrieve()
       
       return NextResponse.json({
         success: true,
         configured: true,
-        accountId: account.id,
-        message: 'Stripe connection successful'
+        message: 'Stripe connection successful',
+        currency: balance.available[0]?.currency || 'usd'
       })
     } catch (stripeError: any) {
       return NextResponse.json({
