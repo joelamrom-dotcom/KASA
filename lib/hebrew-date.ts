@@ -1,4 +1,4 @@
-import { HebrewDate, HDate } from '@hebcal/core'
+import { HDate } from '@hebcal/core'
 
 /**
  * Convert Gregorian date to Hebrew date string
