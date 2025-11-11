@@ -1687,6 +1687,8 @@ export default function FamilyDetailPage() {
           type: 'membership',
           paymentMethod: 'cash',
           paymentFrequency: 'one-time',
+          paymentFor: 'family',
+          memberId: '',
           saveCard: false,
           useSavedCard: false,
           selectedSavedCardId: '',
