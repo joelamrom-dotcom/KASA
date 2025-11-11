@@ -1,11 +1,10 @@
 {
   "version": 2,
-  "buildCommand": "cd kasa-family-management && npm run build",
-  "devCommand": "cd kasa-family-management && npm run dev",
-  "installCommand": "cd kasa-family-management && npm install",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "rootDirectory": "kasa-family-management",
   "env": {
     "NODE_ENV": "production"
   }
