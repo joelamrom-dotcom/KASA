@@ -2271,8 +2271,8 @@ export default function FamilyDetailPage() {
                                     'spouseName',
                                     <p className="text-base font-semibold text-gray-900">{member.spouseName}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                   </div>
                                 )}
