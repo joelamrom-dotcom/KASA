@@ -224,7 +224,7 @@ export default function DashboardPage() {
           />
         </div>
 
-          <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
           <h2 className="text-2xl font-semibold mb-6 text-gray-800">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <ActionButton href="/families" label="Manage Families" />
