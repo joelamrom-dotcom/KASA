@@ -233,6 +233,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* TEST: This should be visible */}
+        <div style={{ backgroundColor: 'red', color: 'white', padding: '20px', marginBottom: '20px', fontSize: '24px', fontWeight: 'bold' }}>
+          TEST: Tasks Section Should Be Below This
+        </div>
+
         {/* Tasks Section */}
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
           <div className="flex justify-between items-center mb-6">
