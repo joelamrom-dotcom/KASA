@@ -128,10 +128,14 @@ export default function DashboardPage() {
       const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
-        setTasks(data)
+        setTasks(data || [])
+      } else {
+        console.error('Failed to fetch tasks:', res.status, res.statusText)
+        setTasks([]) // Set empty array on error
       }
     } catch (error) {
       console.error('Error fetching tasks:', error)
+      setTasks([]) // Set empty array on error
     } finally {
       setLoadingTasks(false)
     }
