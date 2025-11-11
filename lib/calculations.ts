@@ -113,7 +113,7 @@ export async function countMembersByAgeGroup(year: number) {
   await connectDB()
   
   const families = await Family.find({})
-  const allMembers: FamilyMember[] = []
+  const allMembers: any[] = []
   
   for (const family of families) {
     const members = await FamilyMember.find({ familyId: family._id })
