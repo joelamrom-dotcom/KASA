@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Payment, LifecycleEventPayment, Family, PaymentPlan } from '@/lib/models'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Get P&L report data
 export async function GET(request: NextRequest) {
   try {
