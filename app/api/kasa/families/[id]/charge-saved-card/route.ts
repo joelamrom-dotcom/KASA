@@ -27,10 +27,15 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let amount: number = 0
+  let memberId: string | undefined = undefined
+  
   try {
     await connectDB()
     const body = await request.json()
-    const { savedPaymentMethodId, amount, paymentDate, year, type, notes, saveForFuture, memberId } = body
+    const { savedPaymentMethodId, amount: bodyAmount, paymentDate, year, type, notes, saveForFuture, memberId: bodyMemberId } = body
+    amount = bodyAmount || 0
+    memberId = bodyMemberId
 
     if (!savedPaymentMethodId || !amount || amount <= 0) {
       return NextResponse.json(
