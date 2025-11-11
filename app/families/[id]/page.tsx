@@ -2169,8 +2169,8 @@ export default function FamilyDetailPage() {
                                     'spouseFirstName',
                                     <p className="text-base font-semibold text-gray-900">{member.spouseFirstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2179,8 +2179,8 @@ export default function FamilyDetailPage() {
                                     'spouseHebrewName',
                                     <p className="text-base font-semibold text-gray-900" dir="rtl">{member.spouseHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'hebrew',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2189,8 +2189,8 @@ export default function FamilyDetailPage() {
                                     'spouseFatherHebrewName',
                                     <p className="text-base font-semibold text-gray-900" dir="rtl">{member.spouseFatherHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'hebrew',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2199,8 +2199,8 @@ export default function FamilyDetailPage() {
                                     'spouseCellPhone',
                                     <p className="text-base font-semibold text-gray-900">{member.spouseCellPhone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'phone',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2229,8 +2229,8 @@ export default function FamilyDetailPage() {
                                     'address',
                                     <p className="text-base font-semibold text-gray-900">{member.address || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2239,8 +2239,8 @@ export default function FamilyDetailPage() {
                                     'city',
                                     <p className="text-base font-semibold text-gray-900">{member.city || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2249,8 +2249,8 @@ export default function FamilyDetailPage() {
                                     'state',
                                     <p className="text-base font-semibold text-gray-900">{member.state || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2259,8 +2259,8 @@ export default function FamilyDetailPage() {
                                     'zip',
                                     <p className="text-base font-semibold text-gray-900">{member.zip || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'text',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 {/* Keep spouseName for backward compatibility */}
