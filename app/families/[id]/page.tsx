@@ -3068,26 +3068,6 @@ export default function FamilyDetailPage() {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700">Opening Balance</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={infoForm.openBalance}
-                        onChange={(e) => setInfoForm({ ...infoForm, openBalance: parseFloat(e.target.value) || 0 })}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700">Current Payment</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={infoForm.currentPayment}
-                        onChange={(e) => setInfoForm({ ...infoForm, currentPayment: parseFloat(e.target.value) || 0 })}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      />
-                    </div>
                   </div>
                 </div>
 
