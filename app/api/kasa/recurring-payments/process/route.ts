@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { RecurringPayment, SavedPaymentMethod, Payment } from '@/lib/models'
+import { createPaymentDeclinedTask } from '@/lib/task-helpers'
 import Stripe from 'stripe'
 import https from 'https'
 
@@ -81,12 +82,22 @@ export async function POST(request: NextRequest) {
         })
 
         if (paymentIntent.status !== 'succeeded') {
+          const errorMsg = `Payment failed. Status: ${paymentIntent.status}`
           results.push({
             recurringPaymentId: recurringPayment._id.toString(),
             familyName: family?.name || 'Unknown',
             status: 'failed',
-            error: `Payment failed. Status: ${paymentIntent.status}`
+            error: errorMsg
           })
+          
+          // Create task for declined payment
+          await createPaymentDeclinedTask(
+            family?._id?.toString() || '',
+            null,
+            recurringPayment.amount,
+            errorMsg
+          )
+          
           failed++
           continue
         }
@@ -132,12 +143,23 @@ export async function POST(request: NextRequest) {
 
       } catch (error: any) {
         console.error(`Error processing recurring payment ${recurringPayment._id}:`, error)
+        const errorMsg = error.message || 'Unknown error'
         results.push({
           recurringPaymentId: recurringPayment._id.toString(),
           familyName: (recurringPayment.familyId as any)?.name || 'Unknown',
           status: 'failed',
-          error: error.message || 'Unknown error'
+          error: errorMsg
         })
+        
+        // Create task for declined payment
+        const family = recurringPayment.familyId as any
+        await createPaymentDeclinedTask(
+          family?._id?.toString() || '',
+          null,
+          recurringPayment.amount,
+          errorMsg
+        )
+        
         failed++
       }
     }

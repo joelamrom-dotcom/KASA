@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import connectDB from '@/lib/database'
+import { Payment, SavedPaymentMethod, RecurringPayment, Family } from '@/lib/models'
+import { createPaymentDeclinedTask } from '@/lib/task-helpers'
 import Stripe from 'stripe'
 import https from 'https'
-import connectDB from '@/lib/database'
-import { Payment, RecurringPayment, SavedPaymentMethod } from '@/lib/models'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.error('STRIPE_SECRET_KEY is not set in environment variables')
@@ -42,8 +43,19 @@ export async function POST(request: NextRequest) {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
 
     if (paymentIntent.status !== 'succeeded') {
+      const errorMsg = `Payment not succeeded. Status: ${paymentIntent.status}`
+      
+      // Create task for declined payment
+      await createPaymentDeclinedTask(
+        familyId,
+        null,
+        paymentIntent.amount / 100, // Convert from cents
+        errorMsg,
+        memberId
+      )
+      
       return NextResponse.json(
-        { error: `Payment not succeeded. Status: ${paymentIntent.status}` },
+        { error: errorMsg },
         { status: 400 }
       )
     }

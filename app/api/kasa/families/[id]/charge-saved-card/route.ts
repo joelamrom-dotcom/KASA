@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { SavedPaymentMethod, Payment, Family, RecurringPayment } from '@/lib/models'
+import { createPaymentDeclinedTask } from '@/lib/task-helpers'
 import Stripe from 'stripe'
 import https from 'https'
 
@@ -63,8 +64,19 @@ export async function POST(
     })
 
     if (paymentIntent.status !== 'succeeded') {
+      const errorMsg = `Payment failed. Status: ${paymentIntent.status}`
+      
+      // Create task for declined payment
+      await createPaymentDeclinedTask(
+        params.id,
+        null,
+        amount,
+        errorMsg,
+        memberId
+      )
+      
       return NextResponse.json(
-        { error: `Payment failed. Status: ${paymentIntent.status}` },
+        { error: errorMsg },
         { status: 400 }
       )
     }
@@ -146,6 +158,21 @@ export async function POST(
     })
   } catch (error: any) {
     console.error('Error charging saved card:', error)
+    
+    // Create task for declined payment if we have the necessary info
+    // Note: body is already parsed above, so we use the parsed body variable
+    try {
+      await createPaymentDeclinedTask(
+        params.id,
+        null,
+        amount || 0,
+        error.message || 'Unknown error',
+        memberId
+      )
+    } catch (taskError) {
+      console.error('Error creating task for declined payment:', taskError)
+    }
+    
     return NextResponse.json(
       { error: 'Failed to charge saved card', details: error.message },
       { status: 500 }

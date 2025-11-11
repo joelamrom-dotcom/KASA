@@ -217,6 +217,30 @@ const RecurringPaymentSchema = new Schema({
   notes: String,
 }, { timestamps: true })
 
+// Task Schema
+const TaskSchema = new Schema({
+  title: { type: String, required: true },
+  description: String,
+  dueDate: { type: Date, required: true },
+  email: { type: String, required: true }, // Email to notify on due date
+  status: { 
+    type: String, 
+    enum: ['pending', 'in_progress', 'completed', 'cancelled'], 
+    default: 'pending' 
+  },
+  priority: { 
+    type: String, 
+    enum: ['low', 'medium', 'high', 'urgent'], 
+    default: 'medium' 
+  },
+  relatedFamilyId: { type: Schema.Types.ObjectId, ref: 'Family' },
+  relatedMemberId: { type: Schema.Types.ObjectId, ref: 'FamilyMember' },
+  relatedPaymentId: { type: Schema.Types.ObjectId, ref: 'Payment' },
+  emailSent: { type: Boolean, default: false }, // Track if email was sent
+  completedAt: Date,
+  notes: String,
+}, { timestamps: true })
+
 // Export models
 export const PaymentPlan = mongoose.models.PaymentPlan || mongoose.model('PaymentPlan', PaymentPlanSchema)
 export const Family = mongoose.models.Family || mongoose.model('Family', FamilySchema)
@@ -231,3 +255,4 @@ export const EmailConfig = mongoose.models.EmailConfig || mongoose.model('EmailC
 export const CycleConfig = mongoose.models.CycleConfig || mongoose.model('CycleConfig', CycleConfigSchema)
 export const SavedPaymentMethod = mongoose.models.SavedPaymentMethod || mongoose.model('SavedPaymentMethod', SavedPaymentMethodSchema)
 export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.model('RecurringPayment', RecurringPaymentSchema)
+export const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema)
