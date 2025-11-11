@@ -2159,8 +2159,8 @@ export default function FamilyDetailPage() {
                                     'weddingDate',
                                     <p className="text-base font-semibold text-gray-900">{member.weddingDate ? new Date(member.weddingDate).toLocaleDateString() : <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'date',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
