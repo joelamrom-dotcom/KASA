@@ -474,3 +474,64 @@ export async function calculateFamilyBalance(familyId: string, asOfDate: Date = 
   }
 }
 
+/**
+ * Calculate balance for a specific member
+ */
+export async function calculateMemberBalance(memberId: string, asOfDate: Date = new Date()) {
+  await connectDB()
+  
+  const member = await FamilyMember.findById(memberId)
+  if (!member) throw new Error('Member not found')
+  
+  // Get member's payment plan cost
+  let planCost = 0
+  
+  if (member.paymentPlanId) {
+    try {
+      const paymentPlan = await PaymentPlan.findById(member.paymentPlanId)
+      if (paymentPlan) {
+        planCost = paymentPlan.yearlyPrice || 0
+      }
+    } catch (error) {
+      console.error(`Error fetching payment plan for member ${memberId}:`, error)
+    }
+  } else if (member.paymentPlan && member.paymentPlanAssigned) {
+    // Fallback to legacy payment plan number system
+    const fallbackPrices: { [key: number]: number } = {
+      1: 1200,
+      2: 1500,
+      3: 1800,
+      4: 2500
+    }
+    planCost = fallbackPrices[member.paymentPlan] || 0
+  }
+  
+  // Get all member-specific payments up to date
+  const payments = await Payment.find({
+    memberId,
+    paymentDate: { $lte: asOfDate }
+  })
+  
+  const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0)
+  
+  // Get all lifecycle event payments for this member up to date (for display only, not included in balance)
+  const lifecyclePayments = await LifecycleEventPayment.find({
+    memberId,
+    eventDate: { $lte: asOfDate }
+  })
+  
+  const totalLifecyclePayments = lifecyclePayments.reduce((sum, p) => sum + p.amount, 0)
+  
+  // Calculate balance: payments - plan cost
+  // Members don't have withdrawals (those are family-level)
+  // Lifecycle events are NOT included in balance calculation (they are informational only)
+  const balance = totalPayments - planCost
+  
+  return {
+    planCost,
+    totalPayments,
+    totalLifecyclePayments, // Included for display purposes only
+    balance
+  }
+}
+

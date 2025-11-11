@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     await connectDB()
     const body = await request.json()
-    const { paymentIntentId, familyId, paymentDate, year, type, notes, paymentFrequency, savedPaymentMethodId } = body
+    const { paymentIntentId, familyId, paymentDate, year, type, notes, paymentFrequency, savedPaymentMethodId, memberId } = body
 
     if (!paymentIntentId) {
       return NextResponse.json(
@@ -108,6 +108,11 @@ export async function POST(request: NextRequest) {
       stripePaymentIntentId: paymentIntent.id,
       paymentFrequency: paymentFrequency || 'one-time',
       savedPaymentMethodId: actualSavedPaymentMethodId || undefined,
+    }
+
+    // Add memberId if provided (for member-specific payments)
+    if (memberId) {
+      paymentData.memberId = memberId
     }
 
     const payment = await Payment.create(paymentData)

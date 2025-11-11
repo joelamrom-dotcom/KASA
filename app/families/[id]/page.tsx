@@ -154,6 +154,12 @@ export default function FamilyDetailPage() {
   const [showMemberModal, setShowMemberModal] = useState(false)
   const [editingMember, setEditingMember] = useState<any>(null)
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null)
+  const [memberActiveTab, setMemberActiveTab] = useState<'info' | 'balance' | 'payments' | 'statements'>('info')
+  const [memberBalance, setMemberBalance] = useState<any>(null)
+  const [memberPayments, setMemberPayments] = useState<any[]>([])
+  const [memberStatements, setMemberStatements] = useState<any[]>([])
+  const [loadingMemberFinancials, setLoadingMemberFinancials] = useState(false)
+  const [memberPaymentsPage, setMemberPaymentsPage] = useState(1)
   const [editingMemberField, setEditingMemberField] = useState<string | null>(null)
   const [editMemberValue, setEditMemberValue] = useState<string>('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -187,6 +193,8 @@ export default function FamilyDetailPage() {
     type: 'membership' as 'membership' | 'donation' | 'other',
     paymentMethod: 'cash' as 'cash' | 'credit_card' | 'check' | 'quick_pay',
     paymentFrequency: 'one-time' as 'one-time' | 'monthly',
+    paymentFor: 'family' as 'family' | 'member', // New field: payment for family or member
+    memberId: '', // New field: selected member ID if paymentFor is 'member'
     saveCard: false,
     useSavedCard: false,
     selectedSavedCardId: '',
@@ -242,6 +250,49 @@ export default function FamilyDetailPage() {
       fetchSavedPaymentMethods()
     }
   }, [showPaymentModal, paymentForm.paymentMethod, params.id])
+
+  // Fetch member financial data when viewing a member
+  useEffect(() => {
+    if (viewingMemberId) {
+      fetchMemberFinancials()
+    } else {
+      // Reset member financial data when not viewing a member
+      setMemberBalance(null)
+      setMemberPayments([])
+      setMemberStatements([])
+    }
+  }, [viewingMemberId, memberActiveTab])
+
+  const fetchMemberFinancials = async () => {
+    if (!viewingMemberId) return
+    
+    setLoadingMemberFinancials(true)
+    try {
+      if (memberActiveTab === 'balance') {
+        const res = await fetch(`/api/kasa/members/${viewingMemberId}/balance`)
+        if (res.ok) {
+          const balance = await res.json()
+          setMemberBalance(balance)
+        }
+      } else if (memberActiveTab === 'payments') {
+        const res = await fetch(`/api/kasa/members/${viewingMemberId}/payments`)
+        if (res.ok) {
+          const payments = await res.json()
+          setMemberPayments(payments)
+        }
+      } else if (memberActiveTab === 'statements') {
+        const res = await fetch(`/api/kasa/members/${viewingMemberId}/statements`)
+        if (res.ok) {
+          const statements = await res.json()
+          setMemberStatements(statements)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching member financials:', error)
+    } finally {
+      setLoadingMemberFinancials(false)
+    }
+  }
 
   const fetchSavedPaymentMethods = async () => {
     try {
@@ -1507,21 +1558,28 @@ export default function FamilyDetailPage() {
       return
     }
 
+    // Validate member selection if payment is for a member
+    if (paymentForm.paymentFor === 'member' && !paymentForm.memberId) {
+      alert('Please select a member for this payment')
+      return
+    }
+
     // Handle charging saved card
     if (paymentForm.paymentMethod === 'credit_card' && paymentForm.useSavedCard && paymentForm.selectedSavedCardId) {
       try {
         const res = await fetch(`/api/kasa/families/${params.id}/charge-saved-card`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            savedPaymentMethodId: paymentForm.selectedSavedCardId,
-            amount: paymentForm.amount,
-            paymentDate: paymentForm.paymentDate,
-            year: paymentForm.year,
-            type: paymentForm.type,
-            notes: paymentForm.notes,
-            paymentFrequency: paymentForm.paymentFrequency
-          })
+            body: JSON.stringify({
+              savedPaymentMethodId: paymentForm.selectedSavedCardId,
+              amount: paymentForm.amount,
+              paymentDate: paymentForm.paymentDate,
+              year: paymentForm.year,
+              type: paymentForm.type,
+              notes: paymentForm.notes,
+              paymentFrequency: paymentForm.paymentFrequency,
+              memberId: paymentForm.paymentFor === 'member' && paymentForm.memberId ? paymentForm.memberId : undefined
+            })
         })
 
         const data = await res.json()
@@ -1535,6 +1593,8 @@ export default function FamilyDetailPage() {
             type: 'membership',
             paymentMethod: 'cash',
             paymentFrequency: 'one-time',
+            paymentFor: 'family',
+            memberId: '',
             saveCard: false,
             useSavedCard: false,
             selectedSavedCardId: '',
@@ -1577,6 +1637,11 @@ export default function FamilyDetailPage() {
         paymentMethod: selectedPaymentMethod,
         paymentFrequency: paymentForm.paymentFrequency,
         notes: paymentForm.notes || undefined
+      }
+
+      // Add memberId if payment is for a member
+      if (paymentForm.paymentFor === 'member' && paymentForm.memberId) {
+        paymentData.memberId = paymentForm.memberId
       }
 
       // Add credit card info if payment method is credit_card
@@ -1637,6 +1702,10 @@ export default function FamilyDetailPage() {
         })
         fetchFamilyDetails()
         fetchSavedPaymentMethods()
+        // Refresh member financials if viewing a member
+        if (viewingMemberId && memberActiveTab === 'payments') {
+          fetchMemberFinancials()
+        }
       } else {
         const errorData = await res.json()
         alert(`Error adding payment: ${errorData.error || 'Unknown error'}`)
@@ -2040,7 +2109,10 @@ export default function FamilyDetailPage() {
                         <div className="flex justify-between items-center mb-6">
                           <div>
                             <button
-                              onClick={() => setViewingMemberId(null)}
+                              onClick={() => {
+                                setViewingMemberId(null)
+                                setMemberActiveTab('info')
+                              }}
                               className="text-blue-600 hover:text-blue-800 mb-2 flex items-center gap-2"
                             >
                               ← Back to Members List
@@ -2050,6 +2122,52 @@ export default function FamilyDetailPage() {
                             </h3>
                           </div>
                         </div>
+                        
+                        {/* Member Tabs */}
+                        <div className="flex gap-2 mb-6 border-b border-gray-200">
+                          <button
+                            onClick={() => setMemberActiveTab('info')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                              memberActiveTab === 'info'
+                                ? 'text-blue-600 border-b-2 border-blue-600'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            Info
+                          </button>
+                          <button
+                            onClick={() => setMemberActiveTab('balance')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                              memberActiveTab === 'balance'
+                                ? 'text-blue-600 border-b-2 border-blue-600'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            Balance
+                          </button>
+                          <button
+                            onClick={() => setMemberActiveTab('payments')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                              memberActiveTab === 'payments'
+                                ? 'text-blue-600 border-b-2 border-blue-600'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            Payments
+                          </button>
+                          <button
+                            onClick={() => setMemberActiveTab('statements')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                              memberActiveTab === 'statements'
+                                ? 'text-blue-600 border-b-2 border-blue-600'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            Statements
+                          </button>
+                        </div>
+
+                        {memberActiveTab === 'info' && (
                         <div className="space-y-4">
                           {/* Basic Information */}
                           <div className="glass-strong rounded-lg p-4 border border-white/30">
@@ -2320,6 +2438,190 @@ export default function FamilyDetailPage() {
                             </button>
                           </div>
                         </div>
+                        )}
+
+                        {memberActiveTab === 'balance' && (
+                          <div>
+                            {loadingMemberFinancials ? (
+                              <div className="text-center py-12">
+                                <p className="text-gray-500">Loading balance...</p>
+                              </div>
+                            ) : memberBalance ? (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <div className="glass-strong rounded-lg p-6 border border-white/30">
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Plan Cost (Annual)</p>
+                                    <p className="text-2xl font-bold text-gray-900">${memberBalance.planCost?.toLocaleString() || 0}</p>
+                                  </div>
+                                  <div className="glass-strong rounded-lg p-6 border border-white/30">
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Total Payments</p>
+                                    <p className="text-2xl font-bold text-green-600">${memberBalance.totalPayments?.toLocaleString() || 0}</p>
+                                  </div>
+                                  <div className={`glass-strong rounded-lg p-6 border border-white/30 ${memberBalance.balance >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Current Balance</p>
+                                    <p className={`text-2xl font-bold ${memberBalance.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ${memberBalance.balance?.toLocaleString() || 0}
+                                    </p>
+                                  </div>
+                                </div>
+                                {memberBalance.totalLifecyclePayments > 0 && (
+                                  <div className="glass-strong rounded-lg p-4 border border-white/30">
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Lifecycle Events (Informational)</p>
+                                    <p className="text-lg font-semibold text-gray-900">${memberBalance.totalLifecyclePayments?.toLocaleString() || 0}</p>
+                                    <p className="text-xs text-gray-500 mt-1">Note: Lifecycle events are not included in balance calculation</p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-12 glass rounded-xl border border-white/20">
+                                <p className="text-gray-500">No balance data available</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {memberActiveTab === 'payments' && (
+                          <div>
+                            <div className="flex justify-between mb-4">
+                              <h3 className="text-lg font-semibold">Payments</h3>
+                              <button
+                                onClick={() => {
+                                  setPaymentForm({
+                                    ...paymentForm,
+                                    paymentFor: 'member',
+                                    memberId: member._id
+                                  })
+                                  setShowPaymentModal(true)
+                                }}
+                                className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
+                              >
+                                <PlusIcon className="h-4 w-4" />
+                                Add Payment
+                              </button>
+                            </div>
+                            {loadingMemberFinancials ? (
+                              <div className="text-center py-12">
+                                <p className="text-gray-500">Loading payments...</p>
+                              </div>
+                            ) : memberPayments.length === 0 ? (
+                              <div className="text-center py-12 glass rounded-xl border border-white/20">
+                                <div className="text-4xl mb-4">💳</div>
+                                <p className="text-gray-500">No payments found for this member.</p>
+                              </div>
+                            ) : (
+                              <div className="glass-strong rounded-xl overflow-hidden border border-white/30">
+                                <table className="min-w-full">
+                                  <thead className="bg-white/20 backdrop-blur-sm">
+                                    <tr>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Date</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Amount</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Type</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Payment Method</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Year</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Notes</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white/10 divide-y divide-white/20">
+                                    {memberPayments.slice((memberPaymentsPage - 1) * itemsPerPage, memberPaymentsPage * itemsPerPage).map((payment: any) => {
+                                      const formatPaymentMethod = () => {
+                                        if (!payment.paymentMethod) return 'Cash'
+                                        const methodLabels: { [key: string]: string } = {
+                                          cash: 'Cash',
+                                          credit_card: payment.ccInfo?.last4 ? `Credit Card •••• ${payment.ccInfo.last4}` : 'Credit Card',
+                                          check: payment.checkInfo?.checkNumber ? `Check #${payment.checkInfo.checkNumber}` : 'Check',
+                                          quick_pay: 'Quick Pay'
+                                        }
+                                        return methodLabels[payment.paymentMethod] || payment.paymentMethod
+                                      }
+                                      return (
+                                        <tr key={payment._id} className="hover:bg-white/20 transition-colors">
+                                          <td className="p-4">{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                                          <td className="p-4 font-medium">${payment.amount.toLocaleString()}</td>
+                                          <td className="p-4 capitalize">{payment.type}</td>
+                                          <td className="p-4">
+                                            <div className="text-sm">{formatPaymentMethod()}</div>
+                                            {payment.paymentMethod === 'credit_card' && payment.ccInfo?.cardType && (
+                                              <div className="text-xs text-gray-500">{payment.ccInfo.cardType}</div>
+                                            )}
+                                            {payment.paymentMethod === 'check' && payment.checkInfo?.bankName && (
+                                              <div className="text-xs text-gray-500">{payment.checkInfo.bankName}</div>
+                                            )}
+                                          </td>
+                                          <td className="p-4">{payment.year}</td>
+                                          <td className="p-4 text-gray-600">{payment.notes || '-'}</td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                                {memberPayments.length > 0 && (
+                                  <Pagination
+                                    currentPage={memberPaymentsPage}
+                                    totalPages={Math.ceil(memberPayments.length / itemsPerPage)}
+                                    totalItems={memberPayments.length}
+                                    itemsPerPage={itemsPerPage}
+                                    onPageChange={setMemberPaymentsPage}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {memberActiveTab === 'statements' && (
+                          <div>
+                            {loadingMemberFinancials ? (
+                              <div className="text-center py-12">
+                                <p className="text-gray-500">Loading statements...</p>
+                              </div>
+                            ) : memberStatements.length === 0 ? (
+                              <div className="text-center py-12 glass rounded-xl border border-white/20">
+                                <div className="text-4xl mb-4">📄</div>
+                                <p className="text-gray-500">No statements found for this member.</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {memberStatements.map((statement) => (
+                                  <div key={statement._id} className="glass rounded-xl p-6 border border-white/20">
+                                    <div className="flex justify-between items-start mb-4">
+                                      <div>
+                                        <h4 className="font-semibold text-lg">{statement.statementNumber}</h4>
+                                        <p className="text-sm text-gray-500">
+                                          {new Date(statement.fromDate).toLocaleDateString()} - {new Date(statement.toDate).toLocaleDateString()}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                          Generated: {new Date(statement.date).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="text-sm text-gray-500">Closing Balance</div>
+                                        <div className="text-xl font-bold">${statement.closingBalance.toLocaleString()}</div>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-4 mt-4 pt-4 border-t border-white/20">
+                                      <div>
+                                        <p className="text-xs text-gray-500">Opening Balance</p>
+                                        <p className="text-sm font-semibold">${statement.openingBalance.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Income</p>
+                                        <p className="text-sm font-semibold text-green-600">${statement.income.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Expenses</p>
+                                        <p className="text-sm font-semibold text-red-600">${statement.expenses.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Closing Balance</p>
+                                        <p className="text-sm font-semibold">${statement.closingBalance.toLocaleString()}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })()
@@ -2589,7 +2891,14 @@ export default function FamilyDetailPage() {
                 <div className="flex justify-between mb-4">
                   <h3 className="text-lg font-semibold">Payments</h3>
                   <button
-                    onClick={() => setShowPaymentModal(true)}
+                    onClick={() => {
+                      setPaymentForm({
+                        ...paymentForm,
+                        paymentFor: 'family',
+                        memberId: ''
+                      })
+                      setShowPaymentModal(true)
+                    }}
                     className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
                   >
                     <PlusIcon className="h-4 w-4" />
@@ -2602,6 +2911,7 @@ export default function FamilyDetailPage() {
                       <th className="text-left p-2">Date</th>
                       <th className="text-left p-2">Amount</th>
                       <th className="text-left p-2">Type</th>
+                      <th className="text-left p-2">For</th>
                       <th className="text-left p-2">Payment Method</th>
                       <th className="text-left p-2">Year</th>
                       <th className="text-left p-2">Notes</th>
@@ -2619,11 +2929,27 @@ export default function FamilyDetailPage() {
                         }
                         return methodLabels[payment.paymentMethod] || payment.paymentMethod
                       }
+                      // Find member name if payment is for a member
+                      const memberName = payment.memberId 
+                        ? data?.members?.find((m: any) => m._id === payment.memberId) 
+                          ? `${data.members.find((m: any) => m._id === payment.memberId).firstName} ${data.members.find((m: any) => m._id === payment.memberId).lastName}`
+                          : 'Member'
+                        : 'Family'
+                      
                       return (
                         <tr key={payment._id} className="border-b">
                           <td className="p-2">{new Date(payment.paymentDate).toLocaleDateString()}</td>
                           <td className="p-2 font-medium">${payment.amount.toLocaleString()}</td>
                           <td className="p-2 capitalize">{payment.type}</td>
+                          <td className="p-2">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              payment.memberId 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {payment.memberId ? memberName : 'Family'}
+                            </span>
+                          </td>
                           <td className="p-2">
                             <div className="text-sm">{formatPaymentMethod()}</div>
                             {payment.paymentMethod === 'credit_card' && payment.ccInfo?.cardType && (
@@ -3259,6 +3585,44 @@ export default function FamilyDetailPage() {
         {showPaymentModal && (
           <Modal title="Add Payment" onClose={() => setShowPaymentModal(false)}>
             <form onSubmit={handleAddPayment} className="space-y-4">
+              {/* Payment For Selection */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Payment For *</label>
+                <select
+                  value={paymentForm.paymentFor}
+                  onChange={(e) => setPaymentForm({ 
+                    ...paymentForm, 
+                    paymentFor: e.target.value as 'family' | 'member',
+                    memberId: e.target.value === 'family' ? '' : paymentForm.memberId
+                  })}
+                  className="w-full border rounded px-3 py-2"
+                  required
+                >
+                  <option value="family">Family</option>
+                  <option value="member">Member (Child)</option>
+                </select>
+              </div>
+
+              {/* Member Selection - Show only if paymentFor is 'member' */}
+              {paymentForm.paymentFor === 'member' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Select Member *</label>
+                  <select
+                    value={paymentForm.memberId}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, memberId: e.target.value })}
+                    className="w-full border rounded px-3 py-2"
+                    required={paymentForm.paymentFor === 'member'}
+                  >
+                    <option value="">Select a member...</option>
+                    {data?.members?.map((member: any) => (
+                      <option key={member._id} value={member._id}>
+                        {member.firstName} {member.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium mb-1">Amount *</label>
                 <input
@@ -3424,6 +3788,7 @@ export default function FamilyDetailPage() {
                       notes={paymentForm.notes}
                       saveCard={paymentForm.saveCard}
                       paymentFrequency={paymentForm.paymentFrequency}
+                      memberId={paymentForm.paymentFor === 'member' && paymentForm.memberId ? paymentForm.memberId : undefined}
                       onSuccess={async (paymentIntentId) => {
                         setShowPaymentModal(false)
                         setUseStripe(false)
@@ -3434,6 +3799,8 @@ export default function FamilyDetailPage() {
                           type: 'membership',
                           paymentMethod: 'cash',
                           paymentFrequency: 'one-time',
+                          paymentFor: 'family',
+                          memberId: '',
                           saveCard: false,
                           useSavedCard: false,
                           selectedSavedCardId: '',

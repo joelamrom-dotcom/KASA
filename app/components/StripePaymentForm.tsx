@@ -20,6 +20,7 @@ interface StripePaymentFormProps {
   notes?: string
   saveCard?: boolean
   paymentFrequency?: 'one-time' | 'monthly'
+  memberId?: string // Optional: for member-specific payments
   onSuccess: (paymentIntentId: string, paymentMethodId?: string) => void
   onError: (error: string) => void
 }
@@ -33,6 +34,7 @@ function PaymentForm({
   notes,
   saveCard = false,
   paymentFrequency = 'one-time',
+  memberId,
   onSuccess,
   onError
 }: StripePaymentFormProps) {
@@ -153,7 +155,8 @@ function PaymentForm({
             type,
             notes,
             paymentFrequency,
-            savedPaymentMethodId: savedPaymentMethodId || (saveCard && paymentIntent.payment_method ? 'will_be_saved' : undefined)
+            savedPaymentMethodId: savedPaymentMethodId || (saveCard && paymentIntent.payment_method ? 'will_be_saved' : undefined),
+            memberId: memberId || undefined
           })
         })
 

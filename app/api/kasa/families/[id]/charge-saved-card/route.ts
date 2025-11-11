@@ -29,7 +29,7 @@ export async function POST(
   try {
     await connectDB()
     const body = await request.json()
-    const { savedPaymentMethodId, amount, paymentDate, year, type, notes, saveForFuture } = body
+    const { savedPaymentMethodId, amount, paymentDate, year, type, notes, saveForFuture, memberId } = body
 
     if (!savedPaymentMethodId || !amount || amount <= 0) {
       return NextResponse.json(
@@ -88,6 +88,11 @@ export async function POST(
       savedPaymentMethodId: savedPaymentMethodId,
       paymentFrequency: 'one-time',
       notes: notes || undefined
+    }
+
+    // Add memberId if provided (for member-specific payments)
+    if (memberId) {
+      paymentData.memberId = memberId
     }
 
     const payment = await Payment.create(paymentData)

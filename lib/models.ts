@@ -68,6 +68,7 @@ const FamilyMemberSchema = new Schema({
 // Payment Schema
 const PaymentSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  memberId: { type: Schema.Types.ObjectId, ref: 'FamilyMember' }, // Optional: for member-specific payments
   amount: { type: Number, required: true },
   paymentDate: { type: Date, required: true },
   year: Number, // Year for calculation purposes
@@ -163,6 +164,7 @@ const YearlyCalculationSchema = new Schema({
 // Statement Schema
 const StatementSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  memberId: { type: Schema.Types.ObjectId, ref: 'FamilyMember' }, // Optional: for member-specific statements
   statementNumber: { type: String, required: true },
   date: { type: Date, required: true },
   fromDate: { type: Date, required: true },
