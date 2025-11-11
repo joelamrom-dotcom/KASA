@@ -9,10 +9,17 @@ const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.NODE_ENV === 'production',
 })
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-10-29.clover',
-  httpAgent: httpsAgent,
-})
+// Initialize Stripe only when API key is available (lazy initialization)
+function getStripe() {
+  const apiKey = process.env.STRIPE_SECRET_KEY
+  if (!apiKey) {
+    throw new Error('STRIPE_SECRET_KEY is not configured')
+  }
+  return new Stripe(apiKey, {
+    apiVersion: '2025-10-29.clover',
+    httpAgent: httpsAgent,
+  })
+}
 
 // GET - Get all saved payment methods for a family
 export async function GET(
@@ -55,6 +62,7 @@ export async function POST(
     }
 
     // Retrieve payment method from Stripe
+    const stripe = getStripe()
     const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId)
 
     if (!paymentMethod.card) {

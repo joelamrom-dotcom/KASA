@@ -9,10 +9,17 @@ const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.NODE_ENV === 'production',
 })
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-10-29.clover',
-  httpAgent: httpsAgent,
-})
+// Initialize Stripe only when API key is available (lazy initialization)
+function getStripe() {
+  const apiKey = process.env.STRIPE_SECRET_KEY
+  if (!apiKey) {
+    throw new Error('STRIPE_SECRET_KEY is not configured')
+  }
+  return new Stripe(apiKey, {
+    apiVersion: '2025-10-29.clover',
+    httpAgent: httpsAgent,
+  })
+}
 
 // POST - Charge a saved payment method
 export async function POST(
@@ -42,6 +49,7 @@ export async function POST(
     }
 
     // Create payment intent with saved payment method
+    const stripe = getStripe()
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: 'usd',
