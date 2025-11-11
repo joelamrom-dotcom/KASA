@@ -1567,9 +1567,7 @@ export default function FamilyDetailPage() {
     try {
       // Build payment data based on payment method
       // Ensure paymentMethod is explicitly set and never falls back to cash unless truly missing
-      const selectedPaymentMethod = paymentForm.paymentMethod && paymentForm.paymentMethod !== '' 
-        ? paymentForm.paymentMethod 
-        : 'cash'
+      const selectedPaymentMethod = paymentForm.paymentMethod || 'cash'
       
       const paymentData: any = {
         amount: paymentForm.amount,
