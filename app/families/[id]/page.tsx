@@ -2373,7 +2373,9 @@ export default function FamilyDetailPage() {
                         const familyLastName = getFamilyLastName()
                         setMemberForm({ 
                           firstName: '', 
+                          hebrewFirstName: '',
                           lastName: familyLastName, 
+                          hebrewLastName: '',
                           birthDate: '', 
                           hebrewBirthDate: '', 
                           gender: '',
