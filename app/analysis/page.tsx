@@ -6,6 +6,8 @@ import { ChartBarIcon, CalendarIcon, UserGroupIcon } from '@heroicons/react/24/o
 interface AnalysisResult {
   analysis_date: string
   years_ahead: number
+  ml_used?: boolean
+  analysis_system?: string
   children_analysis: {
     historical: { [year: number]: number }
     historical_births: { [year: number]: number }
@@ -124,7 +126,22 @@ export default function AnalysisPage() {
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Future Trends Analysis</h1>
+          <div>
+            <h1 className="text-4xl font-bold">Future Trends Analysis</h1>
+            {analysis.analysis_system && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-sm text-gray-500">Analysis System:</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  analysis.ml_used 
+                    ? 'bg-green-100 text-green-800 border border-green-300' 
+                    : 'bg-blue-100 text-blue-800 border border-blue-300'
+                }`}>
+                  {analysis.ml_used ? '🤖 ' : '📊 '}
+                  {analysis.analysis_system}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium">Years Ahead:</label>
             <select

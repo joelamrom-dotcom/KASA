@@ -96,6 +96,11 @@ export async function GET(request: NextRequest) {
         throw new Error(result.error)
       }
       
+      // Add system info if not present
+      if (!result.analysis_system) {
+        result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
+      }
+      
       return NextResponse.json(result)
     } catch (pythonError: any) {
       // If Python is not available, fall back to TypeScript analysis
@@ -221,6 +226,8 @@ async function performTypeScriptAnalysis(data: any, yearsAhead: number) {
   return {
     analysis_date: new Date().toISOString(),
     years_ahead: yearsAhead,
+    ml_used: false,
+    analysis_system: 'TypeScript (Statistical)',
     children_analysis: {
       historical: historicalChildren,
       historical_births: historicalBirths,
