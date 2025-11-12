@@ -227,9 +227,13 @@ export async function calculateYearlyIncome(year: number, extraDonation: number 
     incomeByPlan.incomePlan2 +
     incomeByPlan.incomePlan3 +
     incomeByPlan.incomePlan4
-  
-  const totalIncome = planIncome + totalPayments
-  const calculatedIncome = totalIncome + extraDonation
+
+  // Plan income represents expected income from payment plans
+  // Payments are fulfillment of those plan commitments, not additional income
+  // So calculated income = plan income + extra donations only
+  const calculatedIncome = planIncome + extraDonation
+  // totalIncome is kept for backward compatibility but equals planIncome
+  const totalIncome = planIncome
   
   return {
     // Plan-based data with names
