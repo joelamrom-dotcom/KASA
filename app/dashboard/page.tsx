@@ -117,6 +117,20 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* SIMPLE INLINE TEST */}
+        <div style={{ 
+          background: '#00ff00', 
+          color: '#000000', 
+          padding: '20px', 
+          marginBottom: '20px', 
+          fontSize: '24px', 
+          fontWeight: 'bold', 
+          textAlign: 'center',
+          border: '5px solid blue'
+        }}>
+          🟢 GREEN TEST BOX - BEFORE TASKS SECTION
+        </div>
+
         <TasksSection />
 
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
