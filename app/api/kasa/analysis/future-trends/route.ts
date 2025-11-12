@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import { join } from 'path'
-import { writeFileSync, unlinkSync, readFileSync } from 'fs'
-import { tmpdir } from 'os'
 import connectDB from '@/lib/database'
 import { Family, FamilyMember, LifecycleEventPayment } from '@/lib/models'
 
