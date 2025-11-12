@@ -200,6 +200,8 @@ export default function DashboardPage() {
     )
   }
 
+  console.log('DashboardPage rendering, loading:', loading, 'tasks:', tasks.length)
+  
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
@@ -246,10 +248,16 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* TEST: Simple div to verify rendering */}
-        <div style={{ background: 'red', color: 'white', padding: '20px', marginBottom: '20px', fontSize: '24px', fontWeight: 'bold', zIndex: 9999 }}>
-          TEST: If you see this red box, rendering works. Tasks section should be below.
+        {/* TEST: Simple div to verify rendering - MUST BE VISIBLE */}
+        <div style={{ background: 'red', color: 'white', padding: '20px', marginBottom: '20px', fontSize: '24px', fontWeight: 'bold', zIndex: 9999, position: 'relative' }}>
+          🔴 TEST BOX: If you see this, rendering works. Tasks section should be below.
         </div>
+        
+        {/* Force render test */}
+        {(() => {
+          console.log('Tasks section is being rendered!')
+          return null
+        })()}
 
         {/* Tasks Section - ALWAYS VISIBLE TEST */}
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px', position: 'relative', zIndex: 1 }}>
