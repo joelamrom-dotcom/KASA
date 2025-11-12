@@ -229,13 +229,9 @@ export default function CalculationsPage() {
                       <span>Plan Income:</span>
                       <span className="font-medium">${(calc.planIncome || (calc.incomePlan1 || calc.incomeAgeGroup0to4 || 0) + (calc.incomePlan2 || calc.incomeAgeGroup5to8 || 0) + (calc.incomePlan3 || calc.incomeAgeGroup9to16 || 0) + (calc.incomePlan4 || calc.incomeAgeGroup17plus || 0)).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Payments ({calc.totalPayments ? 'from year' : 'N/A'}):</span>
+                    <div className="flex justify-between text-gray-500 text-sm">
+                      <span>Payments (from year) - informational only:</span>
                       <span className="font-medium">${(calc.totalPayments || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2 mt-2">
-                      <span>Total Income:</span>
-                      <span className="font-bold">${calc.totalIncome.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Extra Donation:</span>
@@ -244,6 +240,9 @@ export default function CalculationsPage() {
                     <div className="flex justify-between border-t pt-2 mt-2">
                       <span className="font-bold">Calculated Income:</span>
                       <span className="font-bold text-green-600">${calc.calculatedIncome.toLocaleString()}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 italic">
+                      Note: Payments fulfill plan commitments and are not additional income. Income = Plan Income + Extra Donation.
                     </div>
                   </div>
                 </div>
