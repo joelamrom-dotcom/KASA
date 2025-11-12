@@ -6,8 +6,7 @@ import {
   UserGroupIcon,
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
-import TasksSection from '@/app/components/TasksSection'
-import TestComponent from '@/app/components/TestComponent'
+// Temporarily removing component imports to test inline rendering
 
 interface DashboardStats {
   totalFamilies: number
@@ -118,8 +117,30 @@ export default function DashboardPage() {
           />
         </div>
 
-        <TestComponent />
-        <TasksSection />
+        {/* INLINE TEST - No component import */}
+        <div style={{ 
+          background: '#ff0000', 
+          color: '#ffffff', 
+          padding: '50px', 
+          marginBottom: '20px', 
+          fontSize: '48px', 
+          fontWeight: 'bold', 
+          textAlign: 'center',
+          border: '10px solid blue',
+          zIndex: 9999,
+          position: 'relative'
+        }}>
+          🔴 INLINE TEST - IF YOU SEE THIS, INLINE RENDERING WORKS
+        </div>
+
+        {/* INLINE TASKS SECTION */}
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px' }}>
+          <div className="bg-red-500 text-white p-2 mb-4 text-center font-bold">
+            TASKS SECTION - INLINE VERSION
+          </div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">📋 Tasks</h2>
+          <p className="text-gray-600">Tasks functionality will be added here.</p>
+        </div>
 
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
           <h2 className="text-2xl font-semibold mb-6 text-gray-800">Quick Actions</h2>
