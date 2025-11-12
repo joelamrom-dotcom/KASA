@@ -13,7 +13,8 @@ import {
   CalendarIcon,
   CogIcon,
   PresentationChartBarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -25,7 +26,8 @@ import {
   CalendarIcon as CalendarIconSolid,
   CogIcon as CogIconSolid,
   PresentationChartBarIcon as PresentationChartBarIconSolid,
-  CurrencyDollarIcon as CurrencyDollarIconSolid
+  CurrencyDollarIcon as CurrencyDollarIconSolid,
+  ClipboardDocumentListIcon as ClipboardDocumentListIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -35,6 +37,7 @@ export default function Sidebar() {
     { href: '/', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
     { href: '/families', label: 'Families', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
     { href: '/payments', label: 'Payments', icon: CurrencyDollarIcon, iconSolid: CurrencyDollarIconSolid },
+    { href: '/tasks', label: 'Tasks', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
     { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
     { href: '/events', label: 'Events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
     { href: '/reports', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
