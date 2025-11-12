@@ -42,87 +42,116 @@ export async function GET(request: NextRequest) {
     }
     
     // Use Python analysis only
-    // Try python3 first, then python (for Windows compatibility)
-    const scriptPath = join(process.cwd(), 'scripts', 'analyze_future_trends.py')
-    
     // Check if we're on Vercel (serverless environment)
     const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV
     
     if (isVercel) {
-      // On Vercel, we need to use a different approach
-      // Option 1: Use Vercel's Python runtime via API route
-      // Option 2: Call external Python service
-      // For now, we'll try to use python3 if available, otherwise provide helpful error
-      console.warn('Running on Vercel - Python execution may be limited')
-    }
-    
-    // Try python3 first, then python
-    let pythonCommand = 'python3'
-    let pythonProcess: any
-    
-    try {
-      pythonProcess = spawn(pythonCommand, [scriptPath, yearsAhead.toString()], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        shell: process.platform === 'win32' // Use shell on Windows
-      })
-    } catch (err: any) {
-      // Try with 'python' instead
-      pythonCommand = 'python'
-      pythonProcess = spawn(pythonCommand, [scriptPath, yearsAhead.toString()], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        shell: process.platform === 'win32'
-      })
-    }
-    
-    // Write input to Python stdin
-    pythonProcess.stdin.write(JSON.stringify(analysisData))
-    pythonProcess.stdin.end()
-    
-    let stdout = ''
-    let stderr = ''
-    
-    pythonProcess.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString()
-    })
-    
-    pythonProcess.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString()
-    })
-    
-    await new Promise<void>((resolve, reject) => {
-      pythonProcess.on('close', (code: number | null) => {
-        if (code === 0) {
-          resolve()
-        } else {
-          const errorMsg = stderr || 'Unknown error'
-          reject(new Error(`Python script exited with code ${code}: ${errorMsg}. Command used: ${pythonCommand}`))
+      // On Vercel, call Python serverless function via HTTP
+      try {
+        const vercelUrl = process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : process.env.NEXT_PUBLIC_VERCEL_URL || 'http://localhost:3000'
+        
+        const pythonApiUrl = `${vercelUrl}/api/analyze?years=${yearsAhead}`
+        
+        const response = await fetch(pythonApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(analysisData),
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(errorData.error || `Python API returned status ${response.status}`)
         }
+        
+        const result = await response.json()
+        
+        if (result.error) {
+          throw new Error(result.error)
+        }
+        
+        // Add system info if not present
+        if (!result.analysis_system) {
+          result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
+        }
+        
+        return NextResponse.json(result)
+      } catch (httpError: any) {
+        console.error('Error calling Python API:', httpError)
+        throw new Error(`Failed to call Python analysis service: ${httpError.message}`)
+      }
+    } else {
+      // Local development: spawn Python process directly
+      const scriptPath = join(process.cwd(), 'scripts', 'analyze_future_trends.py')
+      
+      // Try python3 first, then python
+      let pythonCommand = 'python3'
+      let pythonProcess: any
+      
+      try {
+        pythonProcess = spawn(pythonCommand, [scriptPath, yearsAhead.toString()], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          shell: process.platform === 'win32'
+        })
+      } catch (err: any) {
+        // Try with 'python' instead
+        pythonCommand = 'python'
+        pythonProcess = spawn(pythonCommand, [scriptPath, yearsAhead.toString()], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          shell: process.platform === 'win32'
+        })
+      }
+      
+      // Write input to Python stdin
+      pythonProcess.stdin.write(JSON.stringify(analysisData))
+      pythonProcess.stdin.end()
+      
+      let stdout = ''
+      let stderr = ''
+      
+      pythonProcess.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString()
       })
-      pythonProcess.on('error', (err: any) => {
-        const errorMsg = err.message
-        const helpfulMsg = isVercel 
-          ? `Python is not available on Vercel serverless. Consider using Vercel's Python runtime or an external Python service. Original error: ${errorMsg}`
-          : `Failed to start Python process: ${errorMsg}. Make sure Python 3 is installed and accessible. Try: python3 --version or python --version`
-        reject(new Error(helpfulMsg))
+      
+      pythonProcess.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString()
       })
-    })
-    
-    if (!stdout || stdout.trim() === '') {
-      throw new Error('Python script produced no output. Check if the script is working correctly.')
+      
+      await new Promise<void>((resolve, reject) => {
+        pythonProcess.on('close', (code: number | null) => {
+          if (code === 0) {
+            resolve()
+          } else {
+            const errorMsg = stderr || 'Unknown error'
+            reject(new Error(`Python script exited with code ${code}: ${errorMsg}. Command used: ${pythonCommand}`))
+          }
+        })
+        pythonProcess.on('error', (err: any) => {
+          const errorMsg = err.message
+          reject(new Error(`Failed to start Python process: ${errorMsg}. Make sure Python 3 is installed. Try: python3 --version or python --version`))
+        })
+      })
+      
+      if (!stdout || stdout.trim() === '') {
+        throw new Error('Python script produced no output. Check if the script is working correctly.')
+      }
+      
+      const result = JSON.parse(stdout)
+      
+      if (result.error) {
+        throw new Error(result.error)
+      }
+      
+      // Add system info if not present
+      if (!result.analysis_system) {
+        result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
+      }
+      
+      return NextResponse.json(result)
     }
-    
-    const result = JSON.parse(stdout)
-    
-    if (result.error) {
-      throw new Error(result.error)
-    }
-    
-    // Add system info if not present
-    if (!result.analysis_system) {
-      result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
-    }
-    
-    return NextResponse.json(result)
   } catch (error: any) {
     console.error('Error in analysis API:', error)
     return NextResponse.json(

@@ -357,14 +357,16 @@ def analyze_family_stability(data: Dict[str, Any], years_ahead: int = 10) -> Dic
         'ml_used': HAS_ML
     }
 
-def main():
-    """Main analysis function"""
+def main(data=None, years_ahead=None):
+    """Main analysis function - can be called with data directly or read from stdin"""
     try:
-        # Read JSON data from stdin
-        input_data = sys.stdin.read()
-        data = json.loads(input_data)
+        # If data is provided directly, use it; otherwise read from stdin
+        if data is None:
+            input_data = sys.stdin.read()
+            data = json.loads(input_data)
         
-        years_ahead = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+        if years_ahead is None:
+            years_ahead = int(sys.argv[1]) if len(sys.argv) > 1 else 10
         
         # Run analyses
         children_analysis = analyze_children_by_year(data, years_ahead)
@@ -381,16 +383,18 @@ def main():
         }
         
         # Output JSON
-        print(json.dumps(result, indent=2))
+        return result
         
     except Exception as e:
         error_result = {
             'error': str(e),
             'type': type(e).__name__
         }
-        print(json.dumps(error_result, indent=2))
-        sys.exit(1)
+        return error_result
 
 if __name__ == '__main__':
-    main()
+    result = main()
+    print(json.dumps(result, indent=2))
+    if 'error' in result:
+        sys.exit(1)
 
