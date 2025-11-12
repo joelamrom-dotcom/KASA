@@ -123,14 +123,15 @@ export default function TasksPage() {
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Tasks</h1>
+          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Tasks
+          </h1>
           <p className="text-gray-600">Manage your tasks and reminders</p>
         </div>
 
-        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30" style={{ minHeight: '200px' }}>
-          
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">📋 Tasks</h2>
+            <h2 className="text-2xl font-semibold mb-6 text-gray-800">Task Management</h2>
             <button
               onClick={() => {
                 setTaskForm({
