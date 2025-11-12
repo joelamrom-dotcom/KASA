@@ -238,9 +238,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Tasks Section */}
-        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-2 border-blue-500" style={{ minHeight: '200px' }}>
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">Tasks</h2>
+            <h2 className="text-2xl font-semibold text-gray-800">📋 Tasks Section</h2>
             <button
               onClick={() => {
                 setTaskForm({
