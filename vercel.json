@@ -12,11 +12,6 @@
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1"
     }
-  },
-  "functions": {
-    "api/analyze.py": {
-      "runtime": "python3.9"
-    }
   }
 }
 
