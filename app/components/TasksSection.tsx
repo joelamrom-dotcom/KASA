@@ -44,6 +44,7 @@ export default function TasksSection() {
   useEffect(() => {
     fetchTasks()
     fetchFamilies()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskFilter])
 
   useEffect(() => {

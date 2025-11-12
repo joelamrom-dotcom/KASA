@@ -131,7 +131,25 @@ export default function DashboardPage() {
           🟢 GREEN TEST BOX - BEFORE TASKS SECTION
         </div>
 
-        <TasksSection />
+        {/* Try-catch wrapper for TasksSection */}
+        {(() => {
+          try {
+            return <TasksSection />
+          } catch (error) {
+            console.error('TasksSection error:', error)
+            return (
+              <div style={{ 
+                background: '#ff0000', 
+                color: '#ffffff', 
+                padding: '20px', 
+                marginBottom: '20px',
+                fontSize: '18px'
+              }}>
+                ERROR: TasksSection failed to render: {String(error)}
+              </div>
+            )
+          }
+        })()}
 
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
           <h2 className="text-2xl font-semibold mb-6 text-gray-800">Quick Actions</h2>
