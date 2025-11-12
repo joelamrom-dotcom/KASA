@@ -4,13 +4,7 @@ import { useState, useEffect } from 'react'
 import { 
   ChartBarIcon, 
   UserGroupIcon,
-  CurrencyDollarIcon,
-  CalendarIcon,
-  PlusIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon,
-  ExclamationTriangleIcon
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import TasksSection from '@/app/components/TasksSection'
 
@@ -20,24 +14,6 @@ interface DashboardStats {
   totalIncome: number
   totalExpenses: number
   balance: number
-}
-
-interface Task {
-  _id: string
-  title: string
-  description?: string
-  dueDate: string
-  email: string
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  relatedFamilyId?: { _id: string; name: string }
-  relatedMemberId?: { _id: string; firstName: string; lastName: string }
-  relatedPaymentId?: string
-  emailSent: boolean
-  completedAt?: string
-  notes?: string
-  createdAt: string
-  updatedAt: string
 }
 
 export default function DashboardPage() {
