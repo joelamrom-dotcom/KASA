@@ -7,6 +7,7 @@ import {
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import TasksSection from '@/app/components/TasksSection'
+import TestComponent from '@/app/components/TestComponent'
 
 interface DashboardStats {
   totalFamilies: number
@@ -117,6 +118,7 @@ export default function DashboardPage() {
           />
         </div>
 
+        <TestComponent />
         <TasksSection />
 
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
