@@ -358,8 +358,19 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        <div className="mt-6 text-sm text-gray-500 italic">
-          Analysis generated on {new Date(analysis.analysis_date).toLocaleString()}
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <div className="text-sm text-gray-600">
+            <div className="flex items-center justify-between">
+              <span>
+                Analysis generated on {new Date(analysis.analysis_date).toLocaleString()}
+              </span>
+              {analysis.analysis_system && (
+                <span className="text-xs text-gray-500">
+                  Using: <strong>{analysis.analysis_system}</strong>
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </main>
