@@ -43,70 +43,54 @@ export async function GET(request: NextRequest) {
       }))
     }
     
-    // Try Python analysis first, fallback to TypeScript
-    try {
-      const scriptPath = join(process.cwd(), 'scripts', 'analyze_future_trends.py')
-      const tempInputFile = join(tmpdir(), `analysis_input_${Date.now()}.json`)
-      const tempOutputFile = join(tmpdir(), `analysis_output_${Date.now()}.json`)
-      
-      // Write input data to temp file
-      writeFileSync(tempInputFile, JSON.stringify(analysisData))
-      
-      // Execute Python script
-      const pythonProcess = spawn('python3', [scriptPath, yearsAhead.toString()], {
-        stdio: ['pipe', 'pipe', 'pipe']
+    // Use Python analysis only
+    const scriptPath = join(process.cwd(), 'scripts', 'analyze_future_trends.py')
+    
+    // Execute Python script
+    const pythonProcess = spawn('python3', [scriptPath, yearsAhead.toString()], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    })
+    
+    // Write input to Python stdin
+    pythonProcess.stdin.write(JSON.stringify(analysisData))
+    pythonProcess.stdin.end()
+    
+    let stdout = ''
+    let stderr = ''
+    
+    pythonProcess.stdout.on('data', (data) => {
+      stdout += data.toString()
+    })
+    
+    pythonProcess.stderr.on('data', (data) => {
+      stderr += data.toString()
+    })
+    
+    await new Promise<void>((resolve, reject) => {
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          resolve()
+        } else {
+          reject(new Error(`Python script exited with code ${code}: ${stderr || 'Unknown error'}`))
+        }
       })
-      
-      // Write input to Python stdin
-      pythonProcess.stdin.write(JSON.stringify(analysisData))
-      pythonProcess.stdin.end()
-      
-      let stdout = ''
-      let stderr = ''
-      
-      pythonProcess.stdout.on('data', (data) => {
-        stdout += data.toString()
+      pythonProcess.on('error', (err) => {
+        reject(new Error(`Failed to start Python process: ${err.message}. Make sure Python 3 is installed and accessible.`))
       })
-      
-      pythonProcess.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-      
-      await new Promise<void>((resolve, reject) => {
-        pythonProcess.on('close', (code) => {
-          if (code === 0) {
-            resolve()
-          } else {
-            reject(new Error(`Python script exited with code ${code}: ${stderr}`))
-          }
-        })
-        pythonProcess.on('error', (err) => {
-          reject(err)
-        })
-      })
-      
-      // Clean up temp file
-      try {
-        unlinkSync(tempInputFile)
-      } catch {}
-      
-      const result = JSON.parse(stdout)
-      
-      if (result.error) {
-        throw new Error(result.error)
-      }
-      
-      // Add system info if not present
-      if (!result.analysis_system) {
-        result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
-      }
-      
-      return NextResponse.json(result)
-    } catch (pythonError: any) {
-      // If Python is not available, fall back to TypeScript analysis
-      console.warn('Python analysis not available, using TypeScript fallback:', pythonError.message)
-      return NextResponse.json(await performTypeScriptAnalysis(analysisData, yearsAhead))
+    })
+    
+    const result = JSON.parse(stdout)
+    
+    if (result.error) {
+      throw new Error(result.error)
     }
+    
+    // Add system info if not present
+    if (!result.analysis_system) {
+      result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
+    }
+    
+    return NextResponse.json(result)
   } catch (error: any) {
     console.error('Error in analysis API:', error)
     return NextResponse.json(
@@ -116,7 +100,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// TypeScript fallback analysis (same logic as Python)
+// TypeScript fallback analysis (DEPRECATED - Python only now)
+// Kept for reference but not used
 async function performTypeScriptAnalysis(data: any, yearsAhead: number) {
   const currentYear = new Date().getFullYear()
   
