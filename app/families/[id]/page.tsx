@@ -2907,76 +2907,76 @@ export default function FamilyDetailPage() {
                     Add Payment
                   </button>
                 </div>
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Date</th>
-                      <th className="text-left p-2">Amount</th>
-                      <th className="text-left p-2">Type</th>
-                      <th className="text-left p-2">For</th>
-                      <th className="text-left p-2">Payment Method</th>
-                      <th className="text-left p-2">Year</th>
-                      <th className="text-left p-2">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.payments.slice((paymentsPage - 1) * itemsPerPage, paymentsPage * itemsPerPage).map((payment: any) => {
-                      const formatPaymentMethod = () => {
-                        if (!payment.paymentMethod) return 'Cash'
-                        const methodLabels: { [key: string]: string } = {
-                          cash: 'Cash',
-                          credit_card: payment.ccInfo?.last4 ? `Credit Card •••• ${payment.ccInfo.last4}` : 'Credit Card',
-                          check: payment.checkInfo?.checkNumber ? `Check #${payment.checkInfo.checkNumber}` : 'Check',
-                          quick_pay: 'Quick Pay'
-                        }
-                        return methodLabels[payment.paymentMethod] || payment.paymentMethod
-                      }
-                      // Find member name if payment is for a member
-                      const memberName = payment.memberId 
-                        ? data?.members?.find((m: any) => m._id === payment.memberId) 
-                          ? `${data.members.find((m: any) => m._id === payment.memberId).firstName} ${data.members.find((m: any) => m._id === payment.memberId).lastName}`
-                          : 'Member'
-                        : 'Family'
-                      
-                      return (
-                        <tr key={payment._id} className="border-b">
-                          <td className="p-2">{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                          <td className="p-2 font-medium">${payment.amount.toLocaleString()}</td>
-                          <td className="p-2 capitalize">{payment.type}</td>
-                          <td className="p-2">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              payment.memberId 
-                                ? 'bg-purple-100 text-purple-800' 
-                                : 'bg-blue-100 text-blue-800'
-                            }`}>
-                              {payment.memberId ? memberName : 'Family'}
-                            </span>
-                          </td>
-                          <td className="p-2">
-                            <div className="text-sm">{formatPaymentMethod()}</div>
-                            {payment.paymentMethod === 'credit_card' && payment.ccInfo?.cardType && (
-                              <div className="text-xs text-gray-500">{payment.ccInfo.cardType}</div>
-                            )}
-                            {payment.paymentMethod === 'check' && payment.checkInfo?.bankName && (
-                              <div className="text-xs text-gray-500">{payment.checkInfo.bankName}</div>
-                            )}
-                          </td>
-                          <td className="p-2">{payment.year}</td>
-                          <td className="p-2 text-gray-600">{payment.notes || '-'}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-                {data.payments.length > 0 && (
-                  <Pagination
-                    currentPage={paymentsPage}
-                    totalPages={Math.ceil(data.payments.length / itemsPerPage)}
-                    totalItems={data.payments.length}
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={setPaymentsPage}
-                  />
-                )}
+                {/* Filter to show only family-level payments (no memberId) */}
+                {(() => {
+                  const familyPayments = data.payments.filter((payment: any) => !payment.memberId)
+                  return (
+                    <>
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Date</th>
+                            <th className="text-left p-2">Amount</th>
+                            <th className="text-left p-2">Type</th>
+                            <th className="text-left p-2">Payment Method</th>
+                            <th className="text-left p-2">Year</th>
+                            <th className="text-left p-2">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {familyPayments.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-gray-500">
+                                No family payments found
+                              </td>
+                            </tr>
+                          ) : (
+                            familyPayments.slice((paymentsPage - 1) * itemsPerPage, paymentsPage * itemsPerPage).map((payment: any) => {
+                              const formatPaymentMethod = () => {
+                                if (!payment.paymentMethod) return 'Cash'
+                                const methodLabels: { [key: string]: string } = {
+                                  cash: 'Cash',
+                                  credit_card: payment.ccInfo?.last4 ? `Credit Card •••• ${payment.ccInfo.last4}` : 'Credit Card',
+                                  check: payment.checkInfo?.checkNumber ? `Check #${payment.checkInfo.checkNumber}` : 'Check',
+                                  quick_pay: 'Quick Pay'
+                                }
+                                return methodLabels[payment.paymentMethod] || payment.paymentMethod
+                              }
+                              
+                              return (
+                                <tr key={payment._id} className="border-b">
+                                  <td className="p-2">{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                                  <td className="p-2 font-medium">${payment.amount.toLocaleString()}</td>
+                                  <td className="p-2 capitalize">{payment.type}</td>
+                                  <td className="p-2">
+                                    <div className="text-sm">{formatPaymentMethod()}</div>
+                                    {payment.paymentMethod === 'credit_card' && payment.ccInfo?.cardType && (
+                                      <div className="text-xs text-gray-500">{payment.ccInfo.cardType}</div>
+                                    )}
+                                    {payment.paymentMethod === 'check' && payment.checkInfo?.bankName && (
+                                      <div className="text-xs text-gray-500">{payment.checkInfo.bankName}</div>
+                                    )}
+                                  </td>
+                                  <td className="p-2">{payment.year}</td>
+                                  <td className="p-2 text-gray-600">{payment.notes || '-'}</td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                      {familyPayments.length > 0 && (
+                        <Pagination
+                          currentPage={paymentsPage}
+                          totalPages={Math.ceil(familyPayments.length / itemsPerPage)}
+                          totalItems={familyPayments.length}
+                          itemsPerPage={itemsPerPage}
+                          onPageChange={setPaymentsPage}
+                        />
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             )}
 
