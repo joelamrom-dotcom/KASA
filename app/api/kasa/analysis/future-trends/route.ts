@@ -81,16 +81,16 @@ export async function GET(request: NextRequest) {
     let stdout = ''
     let stderr = ''
     
-    pythonProcess.stdout.on('data', (data) => {
+    pythonProcess.stdout.on('data', (data: Buffer) => {
       stdout += data.toString()
     })
     
-    pythonProcess.stderr.on('data', (data) => {
+    pythonProcess.stderr.on('data', (data: Buffer) => {
       stderr += data.toString()
     })
     
     await new Promise<void>((resolve, reject) => {
-      pythonProcess.on('close', (code) => {
+      pythonProcess.on('close', (code: number | null) => {
         if (code === 0) {
           resolve()
         } else {
