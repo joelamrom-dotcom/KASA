@@ -1,10 +1,16 @@
 # Python dependencies for Kasa Family Management Analysis
-# Note: This is optional - the analysis can also be done in TypeScript
-# If using Python analysis, install with: pip install -r requirements.txt
+# Install with: pip install -r requirements.txt
 
-# No external dependencies required - uses only Python standard library
-# Future enhancements could use:
-# pandas>=2.0.0
-# numpy>=1.24.0
-# scikit-learn>=1.3.0
+# Core data analysis libraries
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Machine Learning for forecasting
+scikit-learn>=1.3.0
+
+# Time series forecasting (optional but recommended)
+statsmodels>=0.14.0
+
+# For advanced forecasting (optional)
+# prophet>=1.1.0  # Facebook Prophet for time series (requires additional setup)
 

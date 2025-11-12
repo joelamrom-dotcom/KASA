@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 Future Trends Analysis for Kasa Family Management
-Analyzes historical data to predict:
-- Number of children per year
-- Weddings per year
+Uses AI/ML to analyze historical data and predict:
+- Number of children per year (with confidence intervals)
+- Weddings per year (with trend analysis)
 - Family stability and growth patterns
 """
 
@@ -12,7 +12,26 @@ import sys
 from datetime import datetime, timedelta
 from collections import defaultdict
 import statistics
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
+
+# Try importing AI/ML libraries
+try:
+    import pandas as pd
+    import numpy as np
+    from sklearn.linear_model import LinearRegression
+    from sklearn.preprocessing import PolynomialFeatures
+    from sklearn.pipeline import Pipeline
+    HAS_ML = True
+except ImportError:
+    HAS_ML = False
+    print("Warning: ML libraries not available. Using basic statistical analysis.", file=sys.stderr)
+
+try:
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+    from statsmodels.tsa.arima.model import ARIMA
+    HAS_STATS = True
+except ImportError:
+    HAS_STATS = False
 
 def calculate_age(birth_date_str: str, reference_date: datetime) -> int:
     """Calculate age from birth date string"""
@@ -25,8 +44,53 @@ def calculate_age(birth_date_str: str, reference_date: datetime) -> int:
     except:
         return 0
 
+def predict_with_ml(years: List[int], values: List[float], future_years: List[int]) -> Tuple[List[float], List[float], List[float]]:
+    """Use ML to predict future values with confidence intervals"""
+    if not HAS_ML or len(values) < 3:
+        # Fallback to simple average
+        avg = statistics.mean(values) if values else 0
+        predicted = [max(0, avg) for _ in future_years]
+        lower = [max(0, avg * 0.8) for _ in future_years]
+        upper = [avg * 1.2 for _ in future_years]
+        return predicted, lower, upper
+    
+    try:
+        # Prepare data
+        X = np.array(years).reshape(-1, 1)
+        y = np.array(values)
+        
+        # Use polynomial regression for trend analysis
+        poly_features = PolynomialFeatures(degree=min(2, len(values) - 1))
+        model = Pipeline([
+            ('poly', poly_features),
+            ('linear', LinearRegression())
+        ])
+        
+        model.fit(X, y)
+        
+        # Predict future years
+        X_future = np.array(future_years).reshape(-1, 1)
+        predicted = model.predict(X_future)
+        predicted = [max(0, float(p)) for p in predicted]
+        
+        # Calculate confidence intervals (simplified)
+        residuals = y - model.predict(X)
+        std_error = np.std(residuals) if len(residuals) > 0 else avg * 0.1
+        
+        lower = [max(0, p - 1.96 * std_error) for p in predicted]
+        upper = [p + 1.96 * std_error for p in predicted]
+        
+        return predicted, lower, upper
+    except Exception as e:
+        # Fallback to simple average
+        avg = statistics.mean(values) if values else 0
+        predicted = [max(0, avg) for _ in future_years]
+        lower = [max(0, avg * 0.8) for _ in future_years]
+        upper = [avg * 1.2 for _ in future_years]
+        return predicted, lower, upper
+
 def analyze_children_by_year(data: Dict[str, Any], years_ahead: int = 10) -> Dict[str, Any]:
-    """Analyze and predict number of children per year"""
+    """Analyze and predict number of children per year using AI/ML"""
     current_year = datetime.now().year
     historical_children = defaultdict(int)
     historical_births = defaultdict(int)
@@ -67,24 +131,55 @@ def analyze_children_by_year(data: Dict[str, Any], years_ahead: int = 10) -> Dic
                 except:
                     pass
     
+    # Prepare data for ML
+    historical_years = sorted([y for y in range(current_year - 10, current_year + 1) if y in historical_children])
+    historical_values = [historical_children[y] for y in historical_years]
+    
     # Calculate statistics
-    historical_values = [historical_children[y] for y in range(current_year - 10, current_year + 1) if y in historical_children]
     avg_children = statistics.mean(historical_values) if historical_values else 0
     median_children = statistics.median(historical_values) if historical_values else 0
     min_children = min(historical_values) if historical_values else 0
     max_children = max(historical_values) if historical_values else 0
     
-    # Predictions for future years
+    # Use AI/ML for predictions
+    future_years = list(range(current_year + 1, current_year + years_ahead + 1))
+    if len(historical_values) >= 2:
+        predicted, lower, upper = predict_with_ml(historical_years, historical_values, future_years)
+    else:
+        # Not enough data for ML, use simple average
+        predicted = [max(0, int(avg_children))] * len(future_years)
+        lower = [max(0, int(avg_children * 0.8))] * len(future_years)
+        upper = [int(avg_children * 1.2)] * len(future_years)
+    
+    # Determine trend
+    if len(historical_values) >= 3:
+        recent_avg = statistics.mean(historical_values[-3:])
+        early_avg = statistics.mean(historical_values[:3])
+        if recent_avg > early_avg * 1.1:
+            trend = 'growing'
+        elif recent_avg < early_avg * 0.9:
+            trend = 'declining'
+        else:
+            trend = 'stable'
+    else:
+        trend = 'stable'
+    
+    # Create predictions dictionary
     predictions = {}
-    for year in range(current_year + 1, current_year + years_ahead + 1):
-        # Simple linear projection based on average
-        # Could be improved with trend analysis
-        predicted = max(0, int(avg_children))
+    for i, year in enumerate(future_years):
+        # Calculate confidence based on data quality
+        if len(historical_values) >= 5:
+            confidence = 'high'
+        elif len(historical_values) >= 3:
+            confidence = 'medium'
+        else:
+            confidence = 'low'
+        
         predictions[year] = {
-            'predicted': predicted,
-            'range_min': max(0, int(predicted * 0.8)),
-            'range_max': int(predicted * 1.2),
-            'confidence': 'medium'
+            'predicted': int(round(predicted[i])),
+            'range_min': int(round(lower[i])),
+            'range_max': int(round(upper[i])),
+            'confidence': confidence
         }
     
     return {
@@ -95,13 +190,14 @@ def analyze_children_by_year(data: Dict[str, Any], years_ahead: int = 10) -> Dic
             'median': median_children,
             'min': min_children,
             'max': max_children,
-            'trend': 'stable' if len(set(historical_values[-3:])) <= 1 else 'growing' if historical_values[-1] > historical_values[0] else 'declining'
+            'trend': trend
         },
-        'predictions': predictions
+        'predictions': predictions,
+        'ml_used': HAS_ML
     }
 
 def analyze_weddings_by_year(data: Dict[str, Any], years_ahead: int = 10) -> Dict[str, Any]:
-    """Analyze and predict weddings per year"""
+    """Analyze and predict weddings per year using AI/ML"""
     current_year = datetime.now().year
     historical_weddings = defaultdict(int)
     
@@ -125,20 +221,40 @@ def analyze_weddings_by_year(data: Dict[str, Any], years_ahead: int = 10) -> Dic
             except:
                 pass
     
+    # Prepare data for ML
+    historical_years = sorted([y for y in range(current_year - 10, current_year + 1) if y in historical_weddings])
+    historical_values = [historical_weddings.get(y, 0) for y in historical_years]
+    
     # Calculate statistics
-    historical_values = [historical_weddings[y] for y in range(current_year - 10, current_year + 1) if y in historical_weddings]
     avg_weddings = statistics.mean(historical_values) if historical_values else 0
     median_weddings = statistics.median(historical_values) if historical_values else 0
     
-    # Predictions for future years
+    # Use AI/ML for predictions
+    future_years = list(range(current_year + 1, current_year + years_ahead + 1))
+    if len(historical_values) >= 2 and sum(historical_values) > 0:
+        predicted, lower, upper = predict_with_ml(historical_years, historical_values, future_years)
+    else:
+        # Not enough data for ML, use simple average
+        predicted = [max(0, int(avg_weddings))] * len(future_years)
+        lower = [max(0, int(avg_weddings * 0.5))] * len(future_years)
+        upper = [int(avg_weddings * 1.5)] * len(future_years)
+    
+    # Create predictions dictionary
     predictions = {}
-    for year in range(current_year + 1, current_year + years_ahead + 1):
-        predicted = max(0, int(avg_weddings))
+    for i, year in enumerate(future_years):
+        # Calculate confidence based on data quality
+        if len(historical_values) >= 5 and sum(historical_values) > 0:
+            confidence = 'high'
+        elif len(historical_values) >= 3:
+            confidence = 'medium'
+        else:
+            confidence = 'low'
+        
         predictions[year] = {
-            'predicted': predicted,
-            'range_min': max(0, int(predicted * 0.5)),
-            'range_max': int(predicted * 1.5),
-            'confidence': 'medium'
+            'predicted': int(round(predicted[i])),
+            'range_min': int(round(lower[i])),
+            'range_max': int(round(upper[i])),
+            'confidence': confidence
         }
     
     return {
@@ -148,7 +264,8 @@ def analyze_weddings_by_year(data: Dict[str, Any], years_ahead: int = 10) -> Dic
             'median': median_weddings,
             'total_historical': sum(historical_values)
         },
-        'predictions': predictions
+        'predictions': predictions,
+        'ml_used': HAS_ML
     }
 
 def analyze_family_stability(data: Dict[str, Any], years_ahead: int = 10) -> Dict[str, Any]:
