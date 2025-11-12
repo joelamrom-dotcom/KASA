@@ -42,12 +42,37 @@ export async function GET(request: NextRequest) {
     }
     
     // Use Python analysis only
+    // Try python3 first, then python (for Windows compatibility)
     const scriptPath = join(process.cwd(), 'scripts', 'analyze_future_trends.py')
     
-    // Execute Python script
-    const pythonProcess = spawn('python3', [scriptPath, yearsAhead.toString()], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
+    // Check if we're on Vercel (serverless environment)
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV
+    
+    if (isVercel) {
+      // On Vercel, we need to use a different approach
+      // Option 1: Use Vercel's Python runtime via API route
+      // Option 2: Call external Python service
+      // For now, we'll try to use python3 if available, otherwise provide helpful error
+      console.warn('Running on Vercel - Python execution may be limited')
+    }
+    
+    // Try python3 first, then python
+    let pythonCommand = 'python3'
+    let pythonProcess: any
+    
+    try {
+      pythonProcess = spawn(pythonCommand, [scriptPath, yearsAhead.toString()], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: process.platform === 'win32' // Use shell on Windows
+      })
+    } catch (err: any) {
+      // Try with 'python' instead
+      pythonCommand = 'python'
+      pythonProcess = spawn(pythonCommand, [scriptPath, yearsAhead.toString()], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: process.platform === 'win32'
+      })
+    }
     
     // Write input to Python stdin
     pythonProcess.stdin.write(JSON.stringify(analysisData))
@@ -69,13 +94,22 @@ export async function GET(request: NextRequest) {
         if (code === 0) {
           resolve()
         } else {
-          reject(new Error(`Python script exited with code ${code}: ${stderr || 'Unknown error'}`))
+          const errorMsg = stderr || 'Unknown error'
+          reject(new Error(`Python script exited with code ${code}: ${errorMsg}. Command used: ${pythonCommand}`))
         }
       })
-      pythonProcess.on('error', (err) => {
-        reject(new Error(`Failed to start Python process: ${err.message}. Make sure Python 3 is installed and accessible.`))
+      pythonProcess.on('error', (err: any) => {
+        const errorMsg = err.message
+        const helpfulMsg = isVercel 
+          ? `Python is not available on Vercel serverless. Consider using Vercel's Python runtime or an external Python service. Original error: ${errorMsg}`
+          : `Failed to start Python process: ${errorMsg}. Make sure Python 3 is installed and accessible. Try: python3 --version or python --version`
+        reject(new Error(helpfulMsg))
       })
     })
+    
+    if (!stdout || stdout.trim() === '') {
+      throw new Error('Python script produced no output. Check if the script is working correctly.')
+    }
     
     const result = JSON.parse(stdout)
     
