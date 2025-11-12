@@ -22,23 +22,23 @@ export async function GET(request: NextRequest) {
     
     // Prepare data for analysis
     const analysisData = {
-      families: families.map(f => ({
-        _id: f._id.toString(),
-        weddingDate: f.weddingDate ? f.weddingDate.toISOString() : null,
+      families: families.map((f: any) => ({
+        _id: (f._id as any)?.toString() || String(f._id),
+        weddingDate: f.weddingDate ? (f.weddingDate as Date).toISOString() : null,
         name: f.name,
-        createdAt: f.createdAt ? f.createdAt.toISOString() : null
+        createdAt: f.createdAt ? (f.createdAt as Date).toISOString() : null
       })),
-      members: members.map(m => ({
-        _id: m._id.toString(),
-        familyId: m.familyId.toString(),
-        birthDate: m.birthDate ? m.birthDate.toISOString() : null,
-        weddingDate: m.weddingDate ? m.weddingDate.toISOString() : null,
+      members: members.map((m: any) => ({
+        _id: (m._id as any)?.toString() || String(m._id),
+        familyId: (m.familyId as any)?.toString() || String(m.familyId),
+        birthDate: m.birthDate ? (m.birthDate as Date).toISOString() : null,
+        weddingDate: m.weddingDate ? (m.weddingDate as Date).toISOString() : null,
         gender: m.gender
       })),
-      lifecycleEvents: lifecycleEvents.map(e => ({
-        _id: e._id.toString(),
+      lifecycleEvents: lifecycleEvents.map((e: any) => ({
+        _id: (e._id as any)?.toString() || String(e._id),
         eventType: e.eventType,
-        eventDate: e.eventDate ? e.eventDate.toISOString() : null,
+        eventDate: e.eventDate ? (e.eventDate as Date).toISOString() : null,
         year: e.year
       }))
     }
