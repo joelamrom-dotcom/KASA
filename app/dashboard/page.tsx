@@ -67,9 +67,14 @@ export default function DashboardPage() {
   const [familyMembers, setFamilyMembers] = useState<{ [familyId: string]: any[] }>({})
 
   useEffect(() => {
-    fetchDashboardData()
-    fetchTasks()
-    fetchFamilies()
+    console.log('Dashboard useEffect running, taskFilter:', taskFilter)
+    try {
+      fetchDashboardData()
+      fetchTasks()
+      fetchFamilies()
+    } catch (error) {
+      console.error('Error in dashboard useEffect:', error)
+    }
   }, [taskFilter])
 
   useEffect(() => {
@@ -114,6 +119,7 @@ export default function DashboardPage() {
   }
 
   const fetchTasks = async () => {
+    console.log('fetchTasks called, taskFilter:', taskFilter)
     setLoadingTasks(true)
     try {
       let url = '/api/kasa/tasks'
@@ -125,9 +131,12 @@ export default function DashboardPage() {
         url += '?status=pending'
       }
       
+      console.log('Fetching tasks from:', url)
       const res = await fetch(url)
+      console.log('Tasks response status:', res.status)
       if (res.ok) {
         const data = await res.json()
+        console.log('Tasks data received:', data)
         setTasks(data || [])
       } else {
         console.error('Failed to fetch tasks:', res.status, res.statusText)
@@ -241,6 +250,9 @@ export default function DashboardPage() {
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px' }}>
           <div className="bg-red-500 text-white p-2 mb-4 text-center font-bold">
             TASKS SECTION - IF YOU SEE THIS, THE SECTION IS RENDERING
+          </div>
+          <div className="text-xs text-gray-600 mb-2">
+            Debug: loadingTasks={loadingTasks ? 'true' : 'false'}, tasks.length={tasks.length}, taskFilter={taskFilter}
           </div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-gray-800">📋 Tasks Section</h2>
