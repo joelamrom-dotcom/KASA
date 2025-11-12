@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import { join } from 'path'
 import connectDB from '@/lib/database'
 import { Family, FamilyMember, LifecycleEventPayment } from '@/lib/models'
+import { performAnalysis } from '@/lib/ml-analysis'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,87 +40,10 @@ export async function GET(request: NextRequest) {
       }))
     }
     
-    // Use Python analysis only
-    // Check if we're on Vercel (serverless environment)
-    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV
+    // Use TypeScript ML analysis
+    const result = performAnalysis(analysisData, yearsAhead)
     
-    // Note: Vercel serverless doesn't support spawning Python processes
-    // For now, we'll provide a helpful error message on Vercel
-    // In production, consider: 1) External Python service, 2) Port to TypeScript, or 3) Different hosting
-    if (isVercel) {
-      throw new Error(
-        'Python analysis requires Python runtime which is not available in Vercel serverless environment. ' +
-        'Please use the analysis feature in local development, or consider deploying to a platform that supports Python (Railway, Render, etc.).'
-      )
-    } else {
-      // Local development: spawn Python process directly
-      const scriptPath = join(process.cwd(), 'scripts', 'analyze_future_trends.py')
-      
-      // Try python3 first, then python
-      let pythonCommand = 'python3'
-      let pythonProcess: any
-      
-      try {
-        pythonProcess = spawn(pythonCommand, [scriptPath, yearsAhead.toString()], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          shell: process.platform === 'win32'
-        })
-      } catch (err: any) {
-        // Try with 'python' instead
-        pythonCommand = 'python'
-        pythonProcess = spawn(pythonCommand, [scriptPath, yearsAhead.toString()], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          shell: process.platform === 'win32'
-        })
-      }
-      
-      // Write input to Python stdin
-      pythonProcess.stdin.write(JSON.stringify(analysisData))
-      pythonProcess.stdin.end()
-      
-      let stdout = ''
-      let stderr = ''
-      
-      pythonProcess.stdout.on('data', (data: Buffer) => {
-        stdout += data.toString()
-      })
-      
-      pythonProcess.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString()
-      })
-      
-      await new Promise<void>((resolve, reject) => {
-        pythonProcess.on('close', (code: number | null) => {
-          if (code === 0) {
-            resolve()
-          } else {
-            const errorMsg = stderr || 'Unknown error'
-            reject(new Error(`Python script exited with code ${code}: ${errorMsg}. Command used: ${pythonCommand}`))
-          }
-        })
-        pythonProcess.on('error', (err: any) => {
-          const errorMsg = err.message
-          reject(new Error(`Failed to start Python process: ${errorMsg}. Make sure Python 3 is installed. Try: python3 --version or python --version`))
-        })
-      })
-      
-      if (!stdout || stdout.trim() === '') {
-        throw new Error('Python script produced no output. Check if the script is working correctly.')
-      }
-      
-      const result = JSON.parse(stdout)
-      
-      if (result.error) {
-        throw new Error(result.error)
-      }
-      
-      // Add system info if not present
-      if (!result.analysis_system) {
-        result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
-      }
-      
-      return NextResponse.json(result)
-    }
+    return NextResponse.json(result)
   } catch (error: any) {
     console.error('Error in analysis API:', error)
     return NextResponse.json(
