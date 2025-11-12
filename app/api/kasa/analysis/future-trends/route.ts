@@ -45,44 +45,14 @@ export async function GET(request: NextRequest) {
     // Check if we're on Vercel (serverless environment)
     const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV
     
+    // Note: Vercel serverless doesn't support spawning Python processes
+    // For now, we'll provide a helpful error message on Vercel
+    // In production, consider: 1) External Python service, 2) Port to TypeScript, or 3) Different hosting
     if (isVercel) {
-      // On Vercel, call Python serverless function via HTTP
-      try {
-        const vercelUrl = process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : process.env.NEXT_PUBLIC_VERCEL_URL || 'http://localhost:3000'
-        
-        const pythonApiUrl = `${vercelUrl}/api/analyze?years=${yearsAhead}`
-        
-        const response = await fetch(pythonApiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(analysisData),
-        })
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-          throw new Error(errorData.error || `Python API returned status ${response.status}`)
-        }
-        
-        const result = await response.json()
-        
-        if (result.error) {
-          throw new Error(result.error)
-        }
-        
-        // Add system info if not present
-        if (!result.analysis_system) {
-          result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
-        }
-        
-        return NextResponse.json(result)
-      } catch (httpError: any) {
-        console.error('Error calling Python API:', httpError)
-        throw new Error(`Failed to call Python analysis service: ${httpError.message}`)
-      }
+      throw new Error(
+        'Python analysis requires Python runtime which is not available in Vercel serverless environment. ' +
+        'Please use the analysis feature in local development, or consider deploying to a platform that supports Python (Railway, Render, etc.).'
+      )
     } else {
       // Local development: spawn Python process directly
       const scriptPath = join(process.cwd(), 'scripts', 'analyze_future_trends.py')
