@@ -239,27 +239,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <ActionButton href="/families" label="Manage Families" />
-            <ActionButton href="/calculations" label="View Calculations" />
-            <ActionButton href="/statements" label="Generate Statements" />
-          </div>
-        </div>
-
-        {/* TEST: Simple div to verify rendering - MUST BE VISIBLE */}
-        <div style={{ background: 'red', color: 'white', padding: '20px', marginBottom: '20px', fontSize: '24px', fontWeight: 'bold', zIndex: 9999, position: 'relative' }}>
-          🔴 TEST BOX: If you see this, rendering works. Tasks section should be below.
-        </div>
-        
-        {/* Force render test */}
-        {(() => {
-          console.log('Tasks section is being rendered!')
-          return null
-        })()}
-
-        {/* Tasks Section - ALWAYS VISIBLE TEST */}
+        {/* Tasks Section - MOVED TO TOP FOR TESTING */}
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px', position: 'relative', zIndex: 1 }}>
           <div className="bg-red-500 text-white p-2 mb-4 text-center font-bold">
             TASKS SECTION - IF YOU SEE THIS, THE SECTION IS RENDERING
