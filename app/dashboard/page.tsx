@@ -239,6 +239,11 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* MINIMAL TEST - Should always render */}
+        <div style={{ background: '#ff0000', color: '#ffffff', padding: '30px', marginBottom: '20px', fontSize: '32px', fontWeight: 'bold', textAlign: 'center' }}>
+          🔴 RED TEST BOX - IF YOU SEE THIS, NEW CODE IS DEPLOYED
+        </div>
+
         {/* Tasks Section - MOVED TO TOP FOR TESTING */}
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px', position: 'relative', zIndex: 1 }}>
           <div className="bg-red-500 text-white p-2 mb-4 text-center font-bold">
