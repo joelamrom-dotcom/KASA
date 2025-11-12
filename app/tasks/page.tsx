@@ -131,7 +131,7 @@ export default function TasksPage() {
 
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold mb-6 text-gray-800">Task Management</h2>
+            <h2 className="text-2xl font-semibold text-gray-800">Task Management</h2>
             <button
               onClick={() => {
                 setTaskForm({
