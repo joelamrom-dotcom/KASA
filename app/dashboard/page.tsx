@@ -247,12 +247,12 @@ export default function DashboardPage() {
         </div>
 
         {/* TEST: Simple div to verify rendering */}
-        <div style={{ background: 'red', color: 'white', padding: '20px', marginBottom: '20px', fontSize: '24px', fontWeight: 'bold' }}>
+        <div style={{ background: 'red', color: 'white', padding: '20px', marginBottom: '20px', fontSize: '24px', fontWeight: 'bold', zIndex: 9999 }}>
           TEST: If you see this red box, rendering works. Tasks section should be below.
         </div>
 
         {/* Tasks Section - ALWAYS VISIBLE TEST */}
-        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px' }}>
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px', position: 'relative', zIndex: 1 }}>
           <div className="bg-red-500 text-white p-2 mb-4 text-center font-bold">
             TASKS SECTION - IF YOU SEE THIS, THE SECTION IS RENDERING
           </div>
