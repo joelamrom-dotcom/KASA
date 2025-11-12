@@ -246,6 +246,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* TEST: Simple div to verify rendering */}
+        <div style={{ background: 'red', color: 'white', padding: '20px', marginBottom: '20px', fontSize: '24px', fontWeight: 'bold' }}>
+          TEST: If you see this red box, rendering works. Tasks section should be below.
+        </div>
+
         {/* Tasks Section - ALWAYS VISIBLE TEST */}
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px' }}>
           <div className="bg-red-500 text-white p-2 mb-4 text-center font-bold">
