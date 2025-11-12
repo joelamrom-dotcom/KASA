@@ -45,19 +45,44 @@ export async function GET(request: NextRequest) {
     // Check if we're on Vercel (serverless environment)
     const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV
     
-    // Always try local Python first, then fallback to HTTP if on Vercel
-    // Note: Vercel doesn't support spawning processes, so we'll need an alternative
-    // For now, we'll try the local approach and provide a helpful error if it fails
     if (isVercel) {
-      // On Vercel, Python processes aren't available
-      // We'll need to use an external Python service or port the logic to TypeScript
-      // For now, provide a clear error message
-      throw new Error(
-        'Python analysis is not available on Vercel serverless environment. ' +
-        'Options: 1) Use an external Python service (Railway, Render, etc.), ' +
-        '2) Port the analysis logic to TypeScript, or ' +
-        '3) Deploy to a platform that supports Python processes.'
-      )
+      // On Vercel, call Python serverless function via HTTP
+      try {
+        const vercelUrl = process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : process.env.NEXT_PUBLIC_VERCEL_URL || 'http://localhost:3000'
+        
+        const pythonApiUrl = `${vercelUrl}/api/analyze?years=${yearsAhead}`
+        
+        const response = await fetch(pythonApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(analysisData),
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(errorData.error || `Python API returned status ${response.status}`)
+        }
+        
+        const result = await response.json()
+        
+        if (result.error) {
+          throw new Error(result.error)
+        }
+        
+        // Add system info if not present
+        if (!result.analysis_system) {
+          result.analysis_system = result.ml_used ? 'Python (scikit-learn ML)' : 'Python (Statistical)'
+        }
+        
+        return NextResponse.json(result)
+      } catch (httpError: any) {
+        console.error('Error calling Python API:', httpError)
+        throw new Error(`Failed to call Python analysis service: ${httpError.message}`)
+      }
     } else {
       // Local development: spawn Python process directly
       const scriptPath = join(process.cwd(), 'scripts', 'analyze_future_trends.py')
