@@ -3587,26 +3587,36 @@ export default function FamilyDetailPage() {
         {showPaymentModal && (
           <Modal title="Add Payment" onClose={() => setShowPaymentModal(false)}>
             <form onSubmit={handleAddPayment} className="space-y-4">
-              {/* Payment For Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Payment For *</label>
-                <select
-                  value={paymentForm.paymentFor}
-                  onChange={(e) => setPaymentForm({ 
-                    ...paymentForm, 
-                    paymentFor: e.target.value as 'family' | 'member',
-                    memberId: e.target.value === 'family' ? '' : paymentForm.memberId
-                  })}
-                  className="w-full border rounded px-3 py-2"
-                  required
-                >
-                  <option value="family">Family</option>
-                  <option value="member">Member (Child)</option>
-                </select>
-              </div>
+              {/* Payment For Selection - Only show if opened from member view, otherwise default to family */}
+              {viewingMemberId && memberActiveTab === 'payments' ? (
+                <>
+                  {/* When viewing a member, allow selecting payment for member or family */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Payment For *</label>
+                    <select
+                      value={paymentForm.paymentFor}
+                      onChange={(e) => setPaymentForm({ 
+                        ...paymentForm, 
+                        paymentFor: e.target.value as 'family' | 'member',
+                        memberId: e.target.value === 'family' ? '' : viewingMemberId
+                      })}
+                      className="w-full border rounded px-3 py-2"
+                      required
+                    >
+                      <option value="member">Member (Current: {data?.members?.find((m: any) => m._id === viewingMemberId)?.firstName} {data?.members?.find((m: any) => m._id === viewingMemberId)?.lastName})</option>
+                      <option value="family">Family</option>
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* When on family Payments tab, payment is always for family - hide the selection */}
+                  <input type="hidden" value="family" />
+                </>
+              )}
 
-              {/* Member Selection - Show only if paymentFor is 'member' */}
-              {paymentForm.paymentFor === 'member' && (
+              {/* Member Selection - Show only if paymentFor is 'member' and not viewing a specific member */}
+              {paymentForm.paymentFor === 'member' && !viewingMemberId && (
                 <div>
                   <label className="block text-sm font-medium mb-1">Select Member *</label>
                   <select
