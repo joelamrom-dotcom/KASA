@@ -269,7 +269,7 @@ def analyze_weddings_by_year(data: Dict[str, Any], years_ahead: int = 10) -> Dic
     }
 
 def analyze_family_stability(data: Dict[str, Any], years_ahead: int = 10) -> Dict[str, Any]:
-    """Analyze family stability and growth patterns"""
+    """Analyze family stability and growth patterns using AI/ML"""
     current_year = datetime.now().year
     families = data.get('families', [])
     members = data.get('members', [])
@@ -300,22 +300,48 @@ def analyze_family_stability(data: Dict[str, Any], years_ahead: int = 10) -> Dic
     
     avg_children_per_family = statistics.mean(children_per_family) if children_per_family else 0
     
+    # Use ML to predict new families per year
+    historical_years = sorted([y for y in range(current_year - 10, current_year + 1)])
+    historical_family_counts = [families_by_year.get(y, 0) for y in historical_years]
+    
+    future_years = list(range(current_year + 1, current_year + years_ahead + 1))
+    if len(historical_family_counts) >= 2:
+        predicted_new_per_year, lower_new, upper_new = predict_with_ml(
+            historical_years, historical_family_counts, future_years
+        )
+    else:
+        avg_new_families = statistics.mean(historical_family_counts) if historical_family_counts else 0
+        predicted_new_per_year = [max(0, int(avg_new_families))] * len(future_years)
+        lower_new = [max(0, int(avg_new_families * 0.5))] * len(future_years)
+        upper_new = [int(avg_new_families * 1.5)] * len(future_years)
+    
     # Predictions
     predictions = {}
-    historical_family_counts = [families_by_year.get(y, 0) for y in range(current_year - 10, current_year + 1)]
-    avg_new_families = statistics.mean(historical_family_counts) if historical_family_counts else 0
-    
     total_families = len(families)
-    for year in range(current_year + 1, current_year + years_ahead + 1):
+    cumulative_new = 0
+    
+    for i, year in enumerate(future_years):
         years_from_now = year - current_year
-        predicted_new_families = int(avg_new_families * years_from_now)
-        predicted_total = total_families + predicted_new_families
+        # Use ML prediction for new families this year
+        new_this_year = int(round(predicted_new_per_year[i]))
+        cumulative_new += new_this_year
+        predicted_total = total_families + cumulative_new
+        
+        # Calculate stability score based on multiple factors
+        if avg_children_per_family >= 2 and new_this_year > 0:
+            stability_score = 'high'
+        elif avg_children_per_family >= 1:
+            stability_score = 'medium'
+        else:
+            stability_score = 'low'
         
         predictions[year] = {
             'total_families': predicted_total,
-            'new_families': predicted_new_families,
+            'new_families': new_this_year,
+            'cumulative_new': cumulative_new,
             'avg_children_per_family': round(avg_children_per_family, 1),
-            'stability_score': 'high' if avg_children_per_family >= 2 else 'medium' if avg_children_per_family >= 1 else 'low'
+            'stability_score': stability_score,
+            'growth_rate': round((new_this_year / total_families * 100) if total_families > 0 else 0, 1)
         }
     
     return {
@@ -326,7 +352,8 @@ def analyze_family_stability(data: Dict[str, Any], years_ahead: int = 10) -> Dic
             'families_with_children': len([f for f in families if any(m.get('familyId') == f.get('_id') for m in members)])
         },
         'historical_families': dict(families_by_year),
-        'predictions': predictions
+        'predictions': predictions,
+        'ml_used': HAS_ML
     }
 
 def main():
