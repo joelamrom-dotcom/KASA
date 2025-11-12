@@ -22,6 +22,19 @@ interface DashboardStats {
   balance: number
 }
 
+interface Task {
+  _id: string
+  title: string
+  description?: string
+  dueDate: string
+  email: string
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  relatedFamilyId?: { _id: string; name: string }
+  relatedMemberId?: { _id: string; firstName: string; lastName: string }
+  emailSent: boolean
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalFamilies: 0,
@@ -31,10 +44,47 @@ export default function DashboardPage() {
     balance: 0
   })
   const [loading, setLoading] = useState(true)
+  
+  // Tasks state - inline version
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(true)
+  const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'today' | 'overdue'>('all')
 
   useEffect(() => {
     fetchDashboardData()
+    fetchTasksInline()
   }, [])
+  
+  useEffect(() => {
+    fetchTasksInline()
+  }, [taskFilter])
+  
+  const fetchTasksInline = async () => {
+    setLoadingTasks(true)
+    try {
+      let url = '/api/kasa/tasks'
+      if (taskFilter === 'today') {
+        url += '?dueDate=today'
+      } else if (taskFilter === 'overdue') {
+        url += '?dueDate=overdue'
+      } else if (taskFilter === 'pending') {
+        url += '?status=pending'
+      }
+      
+      const res = await fetch(url)
+      if (res.ok) {
+        const data = await res.json()
+        setTasks(data || [])
+      } else {
+        setTasks([])
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error)
+      setTasks([])
+    } finally {
+      setLoadingTasks(false)
+    }
+  }
 
   const fetchDashboardData = async () => {
     try {
