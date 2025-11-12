@@ -237,8 +237,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Tasks Section */}
-        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-2 border-blue-500" style={{ minHeight: '200px' }}>
+        {/* Tasks Section - ALWAYS VISIBLE TEST */}
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px' }}>
+          <div className="bg-red-500 text-white p-2 mb-4 text-center font-bold">
+            TASKS SECTION - IF YOU SEE THIS, THE SECTION IS RENDERING
+          </div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-gray-800">📋 Tasks Section</h2>
             <button
