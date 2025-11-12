@@ -75,7 +75,8 @@ def predict_with_ml(years: List[int], values: List[float], future_years: List[in
         
         # Calculate confidence intervals (simplified)
         residuals = y - model.predict(X)
-        std_error = np.std(residuals) if len(residuals) > 0 else avg * 0.1
+        avg_value = statistics.mean(values) if values else 0
+        std_error = np.std(residuals) if len(residuals) > 0 else avg_value * 0.1
         
         lower = [max(0, p - 1.96 * std_error) for p in predicted]
         upper = [p + 1.96 * std_error for p in predicted]
