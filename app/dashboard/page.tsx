@@ -4,9 +4,15 @@ import { useState, useEffect } from 'react'
 import { 
   ChartBarIcon, 
   UserGroupIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  PlusIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import TasksSection from '@/app/components/TasksSection'
+import Modal from '@/app/components/Modal'
 
 interface DashboardStats {
   totalFamilies: number
@@ -131,25 +137,153 @@ export default function DashboardPage() {
           🟢 GREEN TEST BOX - BEFORE TASKS SECTION
         </div>
 
-        {/* Try-catch wrapper for TasksSection */}
-        {(() => {
-          try {
-            return <TasksSection />
-          } catch (error) {
-            console.error('TasksSection error:', error)
-            return (
-              <div style={{ 
-                background: '#ff0000', 
-                color: '#ffffff', 
-                padding: '20px', 
-                marginBottom: '20px',
-                fontSize: '18px'
-              }}>
-                ERROR: TasksSection failed to render: {String(error)}
-              </div>
-            )
-          }
-        })()}
+        {/* INLINE TASKS SECTION - Direct copy from working /tasks page */}
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-blue-500 bg-white" style={{ minHeight: '200px' }}>
+          <div className="bg-blue-500 text-white p-2 mb-4 text-center font-bold">
+            📋 TASKS SECTION - INLINE VERSION ON DASHBOARD
+          </div>
+          
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-gray-800">📋 Tasks</h2>
+            <a
+              href="/tasks"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:shadow-lg transition-all"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Task
+            </a>
+          </div>
+
+          {/* Task Filters */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setTaskFilter('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                taskFilter === 'all' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All Tasks
+            </button>
+            <button
+              onClick={() => setTaskFilter('pending')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                taskFilter === 'pending' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Pending
+            </button>
+            <button
+              onClick={() => setTaskFilter('today')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                taskFilter === 'today' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Due Today
+            </button>
+            <button
+              onClick={() => setTaskFilter('overdue')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                taskFilter === 'overdue' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Overdue
+            </button>
+          </div>
+
+          {/* Tasks List */}
+          {loadingTasks ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Loading tasks...</p>
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="text-center py-12 glass rounded-xl border border-white/20">
+              <div className="text-4xl mb-4">📋</div>
+              <p className="text-gray-500">No tasks found</p>
+              <a href="/tasks" className="text-blue-600 hover:underline mt-2 inline-block">Go to Tasks page to create one</a>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tasks.slice(0, 5).map((task) => {
+                const dueDate = new Date(task.dueDate)
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const isOverdue = dueDate < today && task.status !== 'completed'
+                const isDueToday = dueDate.toDateString() === today.toDateString()
+                
+                const priorityColors = {
+                  low: 'bg-gray-100 text-gray-800',
+                  medium: 'bg-blue-100 text-blue-800',
+                  high: 'bg-orange-100 text-orange-800',
+                  urgent: 'bg-red-100 text-red-800'
+                }
+
+                const statusColors = {
+                  pending: 'bg-yellow-100 text-yellow-800',
+                  in_progress: 'bg-blue-100 text-blue-800',
+                  completed: 'bg-green-100 text-green-800',
+                  cancelled: 'bg-gray-100 text-gray-800'
+                }
+
+                return (
+                  <div
+                    key={task._id}
+                    className={`glass rounded-xl p-4 border border-white/20 hover:border-white/40 transition-all ${
+                      isOverdue ? 'border-red-300 bg-red-50/50' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-gray-800">{task.title}</h3>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${priorityColors[task.priority]}`}>
+                            {task.priority}
+                          </span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[task.status]}`}>
+                            {task.status.replace('_', ' ')}
+                          </span>
+                          {isDueToday && task.status !== 'completed' && (
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800 flex items-center gap-1">
+                              <ClockIcon className="h-3 w-3" />
+                              Due Today
+                            </span>
+                          )}
+                          {isOverdue && (
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 flex items-center gap-1">
+                              <ExclamationTriangleIcon className="h-3 w-3" />
+                              Overdue
+                            </span>
+                          )}
+                        </div>
+                        {task.description && (
+                          <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>Due: {dueDate.toLocaleDateString()}</span>
+                          {task.relatedFamilyId && (
+                            <span>Family: {task.relatedFamilyId.name}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {tasks.length > 5 && (
+                <div className="text-center pt-4">
+                  <a href="/tasks" className="text-blue-600 hover:underline">View all {tasks.length} tasks →</a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
           <h2 className="text-2xl font-semibold mb-6 text-gray-800">Quick Actions</h2>
