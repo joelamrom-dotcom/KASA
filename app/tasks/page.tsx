@@ -127,26 +127,7 @@ export default function TasksPage() {
           <p className="text-gray-600">Manage your tasks and reminders</p>
         </div>
 
-        {/* TEST BOX */}
-        <div style={{ 
-          background: '#ff0000', 
-          color: '#ffffff', 
-          padding: '50px', 
-          marginBottom: '20px', 
-          fontSize: '48px', 
-          fontWeight: 'bold', 
-          textAlign: 'center',
-          border: '10px solid blue',
-          zIndex: 9999,
-          position: 'relative'
-        }}>
-          🔴 TASKS PAGE - IF YOU SEE THIS, ROUTING WORKS
-        </div>
-
-        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border-4 border-red-500 bg-yellow-100" style={{ minHeight: '200px' }}>
-          <div className="bg-red-500 text-white p-2 mb-4 text-center font-bold">
-            TASKS SECTION - STANDALONE PAGE
-          </div>
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30" style={{ minHeight: '200px' }}>
           
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-gray-800">📋 Tasks</h2>
