@@ -446,6 +446,15 @@ export default function DashboardPage() {
           )}
         </div>
 
+        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <ActionButton href="/families" label="Manage Families" />
+            <ActionButton href="/calculations" label="View Calculations" />
+            <ActionButton href="/statements" label="Generate Statements" />
+          </div>
+        </div>
+
         <div className="glass-strong rounded-2xl shadow-xl p-6 border border-white/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
           <h3 className="font-semibold mb-2 text-gray-800">Quick Setup</h3>
           <p className="text-sm text-gray-600 mb-4">
