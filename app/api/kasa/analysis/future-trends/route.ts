@@ -53,9 +53,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// TypeScript fallback analysis (DEPRECATED - Python only now)
-// Kept for reference but not used
-async function performTypeScriptAnalysis(data: any, yearsAhead: number) {
+// Old deprecated function removed - now using lib/ml-analysis.ts
   const currentYear = new Date().getFullYear()
   
   // Analyze children by year
