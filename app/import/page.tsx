@@ -114,8 +114,8 @@ export default function ImportPage() {
     const templates: { [key in ImportType]: string } = {
       'families': `name,hebrewName,weddingDate,husbandFirstName,husbandHebrewName,husbandFatherHebrewName,wifeFirstName,wifeHebrewName,wifeFatherHebrewName,email,phone,address,city,state,zip,husbandCellPhone,wifeCellPhone,paymentPlanNumber`,
       'members': `familyName,familyEmail,firstName,lastName,hebrewFirstName,hebrewLastName,birthDate,gender,barMitzvahDate,batMitzvahDate,weddingDate`,
-      'payments': `familyName,familyEmail,amount,paymentDate,year,type,paymentMethod,notes`,
-      'lifecycle-events': `familyName,familyEmail,eventType,eventDate,year,amount,notes`
+      'payments': `familyName,familyEmail,amount,paymentDate,type,paymentMethod,notes`,
+      'lifecycle-events': `familyName,familyEmail,eventType,eventDate,amount,notes`
     }
 
     const csv = templates[importType]
