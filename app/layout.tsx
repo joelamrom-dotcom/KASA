@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import './error-handler'
 import Sidebar from './components/Sidebar'
+import FloatingKasaButton from './components/FloatingKasaButton'
 
 export const metadata: Metadata = {
   title: 'Kasa Family Management',
@@ -20,6 +21,7 @@ export default function RootLayout({
         <main className="ml-64 min-h-screen">
           {children}
         </main>
+        <FloatingKasaButton />
       </body>
     </html>
   )

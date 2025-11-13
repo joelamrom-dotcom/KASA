@@ -440,7 +440,7 @@ export default function KasaProjectionPage() {
           setShowChat(true)
           setTimeout(() => chatInputRef.current?.focus(), 100)
         }}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-200 hover:scale-110 z-50 flex items-center justify-center"
+        className="fixed bottom-6 right-6 bg-purple-600 text-white p-4 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-200 hover:scale-110 z-50 flex items-center justify-center"
         aria-label="Open AI Chat"
       >
         <ChatBubbleLeftRightIcon className="h-6 w-6" />
