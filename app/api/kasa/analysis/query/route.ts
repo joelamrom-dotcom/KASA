@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Family, FamilyMember, LifecycleEventPayment, Payment, PaymentPlan } from '@/lib/models'
+import { 
+  Family, 
+  FamilyMember, 
+  LifecycleEventPayment, 
+  Payment, 
+  PaymentPlan,
+  Statement,
+  SavedPaymentMethod,
+  RecurringPayment,
+  EmailConfig
+} from '@/lib/models'
 import { performAnalysis } from '@/lib/ml-analysis'
 import { calculateYearlyIncome } from '@/lib/calculations'
 
@@ -20,13 +30,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If analysis data not provided, fetch it
+    // Fetch ALL data from database for comprehensive access
+    const families = await Family.find({}).lean()
+    const members = await FamilyMember.find({}).lean()
+    const lifecycleEvents = await LifecycleEventPayment.find({}).lean()
+    const payments = await Payment.find({}).lean()
+    const paymentPlans = await PaymentPlan.find({}).lean()
+    const statements = await Statement.find({}).lean()
+    const savedPaymentMethods = await SavedPaymentMethod.find({}).lean()
+    const recurringPayments = await RecurringPayment.find({}).lean()
+    const emailConfigs = await EmailConfig.find({}).lean()
+    
+    const currentYear = new Date().getFullYear()
+
+    // Prepare analysis data if not provided
     let data = analysisData
     if (!data) {
-      const families = await Family.find({}).lean()
-      const members = await FamilyMember.find({}).lean()
-      const lifecycleEvents = await LifecycleEventPayment.find({}).lean()
-
       data = {
         families: families.map((f: any) => ({
           _id: (f._id as any)?.toString() || String(f._id),
@@ -49,11 +68,6 @@ export async function POST(request: NextRequest) {
         }))
       }
     }
-
-    // Fetch additional data for comprehensive queries
-    const payments = await Payment.find({}).lean()
-    const paymentPlans = await PaymentPlan.find({}).lean()
-    const currentYear = new Date().getFullYear()
 
     // Calculate payment statistics
     const totalPayments = payments.reduce((sum, p: any) => sum + (p.amount || 0), 0)
@@ -88,9 +102,40 @@ export async function POST(request: NextRequest) {
     // Perform analysis
     const analysis = performAnalysis(data, 20)
 
-    // Build comprehensive context for AI
+    // Calculate additional statistics
+    const totalStatements = statements.length
+    const totalSavedPaymentMethods = savedPaymentMethods.length
+    const activeRecurringPayments = recurringPayments.filter((r: any) => {
+      const nextDate = r.nextPaymentDate ? new Date(r.nextPaymentDate) : null
+      return nextDate && nextDate >= new Date()
+    }).length
+
+    // Families with details
+    const familiesWithDetails = families.map((f: any) => ({
+      name: f.name,
+      hebrewName: f.hebrewName,
+      email: f.email,
+      phone: f.phone,
+      openBalance: f.openBalance || 0,
+      weddingDate: f.weddingDate ? new Date(f.weddingDate).toISOString() : null,
+      address: f.address || f.street || '',
+      city: f.city || '',
+      state: f.state || ''
+    }))
+
+    // Payments with family details
+    const paymentsWithDetails = payments.slice(0, 50).map((p: any) => ({
+      amount: p.amount,
+      paymentDate: p.paymentDate ? new Date(p.paymentDate).toISOString() : null,
+      year: p.year,
+      paymentMethod: p.paymentMethod,
+      type: p.type,
+      familyId: (p.familyId as any)?.toString() || String(p.familyId)
+    }))
+
+    // Build comprehensive context for AI with FULL database access
     const context = `
-COMPREHENSIVE DATA SUMMARY:
+COMPREHENSIVE DATABASE SUMMARY - FULL ACCESS:
 
 FAMILIES & MEMBERS:
 - Total Families: ${analysis.stability_analysis.current_stats.total_families}
@@ -101,6 +146,11 @@ FAMILIES & MEMBERS:
 - Average Weddings per Year: ${analysis.weddings_analysis.statistics.average.toFixed(1)}
 - Total Historical Weddings: ${analysis.weddings_analysis.statistics.total_historical}
 
+FAMILY DETAILS (Sample - ${Math.min(10, familiesWithDetails.length)} of ${families.length}):
+${familiesWithDetails.slice(0, 10).map((f: any) => 
+  `- ${f.name}${f.hebrewName ? ` (${f.hebrewName})` : ''}: Email: ${f.email || 'N/A'}, Phone: ${f.phone || 'N/A'}, Balance: $${f.openBalance.toLocaleString()}, Address: ${f.address || ''} ${f.city || ''} ${f.state || ''}`.trim()
+).join('\n')}
+
 PAYMENTS & FINANCIAL DATA:
 - Total Payments (All Time): $${totalPayments.toLocaleString()}
 - Payments This Year (${currentYear}): $${totalThisYear.toLocaleString()}
@@ -108,8 +158,38 @@ PAYMENTS & FINANCIAL DATA:
 - Total Number of Payments: ${payments.length}
 - Payment Methods Breakdown: ${Object.entries(paymentMethods).map(([method, amount]) => `${method}: $${amount.toLocaleString()}`).join(', ')}
 
+RECENT PAYMENTS (Sample - ${Math.min(20, paymentsWithDetails.length)} of ${payments.length}):
+${paymentsWithDetails.slice(0, 20).map((p: any) => 
+  `- $${p.amount.toLocaleString()} on ${p.paymentDate ? new Date(p.paymentDate).toLocaleDateString() : 'N/A'} (${p.paymentMethod || 'cash'}, ${p.type || 'membership'}, Year: ${p.year || 'N/A'})`
+).join('\n')}
+
 PAYMENT PLANS:
-${paymentPlans.map((plan: any) => `- ${plan.name} (Plan ${plan.planNumber}): $${plan.yearlyPrice.toLocaleString()}/year`).join('\n')}
+${paymentPlans.map((plan: any) => `- ${plan.name} (Plan ${plan.planNumber}): $${plan.yearlyPrice.toLocaleString()}/year${plan.description ? ` - ${plan.description}` : ''}`).join('\n')}
+
+STATEMENTS:
+- Total Statements: ${totalStatements}
+${statements.slice(0, 5).map((s: any) => 
+  `- Statement ${s.statementNumber || 'N/A'}: ${s.fromDate ? new Date(s.fromDate).toLocaleDateString() : ''} to ${s.toDate ? new Date(s.toDate).toLocaleDateString() : ''}, Status: ${s.status || 'N/A'}`
+).join('\n')}
+
+SAVED PAYMENT METHODS:
+- Total Saved Payment Methods: ${totalSavedPaymentMethods}
+${savedPaymentMethods.slice(0, 5).map((spm: any) => 
+  `- ${spm.cardType || 'Card'} ending in ${spm.last4 || 'N/A'}, Expires: ${spm.expiryMonth || ''}/${spm.expiryYear || ''}`
+).join('\n')}
+
+RECURRING PAYMENTS:
+- Total Recurring Payments: ${recurringPayments.length}
+- Active Recurring Payments: ${activeRecurringPayments}
+${recurringPayments.slice(0, 5).map((rp: any) => 
+  `- $${rp.amount?.toLocaleString() || '0'} ${rp.frequency || 'monthly'}, Next: ${rp.nextPaymentDate ? new Date(rp.nextPaymentDate).toLocaleDateString() : 'N/A'}`
+).join('\n')}
+
+LIFECYCLE EVENTS:
+- Total Lifecycle Events: ${lifecycleEvents.length}
+${lifecycleEvents.slice(0, 10).map((e: any) => 
+  `- ${e.eventType || 'Event'} on ${e.eventDate ? new Date(e.eventDate).toLocaleDateString() : 'N/A'}, Year: ${e.year || 'N/A'}`
+).join('\n')}
 
 YEARLY INCOME CALCULATION (${currentYear}):
 - Plan Income: $${(yearlyIncomeData.planIncome || 0).toLocaleString()}
@@ -117,8 +197,8 @@ YEARLY INCOME CALCULATION (${currentYear}):
 - Calculated Income: $${(yearlyIncomeData.calculatedIncome || 0).toLocaleString()}
 - Total Payments: $${(yearlyIncomeData.totalPayments || 0).toLocaleString()}
 
-RECENT PAYMENTS BY YEAR:
-${Object.entries(paymentsByYear).sort(([a], [b]) => parseInt(b) - parseInt(a)).slice(0, 5).map(([year, amount]) => `- ${year}: $${amount.toLocaleString()}`).join('\n')}
+PAYMENTS BY YEAR:
+${Object.entries(paymentsByYear).sort(([a], [b]) => parseInt(b) - parseInt(a)).slice(0, 10).map(([year, amount]) => `- ${year}: $${amount.toLocaleString()}`).join('\n')}
 
 FUTURE PREDICTIONS (next 5 years):
 ${Object.keys(analysis.children_analysis.predictions).slice(0, 5).map(year => {
@@ -131,12 +211,27 @@ ${Object.keys(analysis.weddings_analysis.predictions).slice(0, 5).map(year => {
   const pred = analysis.weddings_analysis.predictions[parseInt(year)]
   return `Year ${year}: ${pred.predicted} weddings (range: ${pred.range_min}-${pred.range_max}, confidence: ${pred.confidence})`
 }).join('\n')}
+
+DATABASE STATISTICS:
+- Total Records: ${families.length} families, ${members.length} members, ${payments.length} payments, ${statements.length} statements, ${lifecycleEvents.length} lifecycle events
+- Email Configurations: ${emailConfigs.length}
 `.trim()
 
     // Use the existing AI chat endpoint logic
     const conversationHistory = [{
       role: 'system',
-      content: `You are an expert data analyst specializing in family and demographic trends. You have access to detailed analysis data about families, children, weddings, and future projections. Answer questions clearly and helpfully based on the provided analysis data.`
+      content: `You are an expert data analyst with FULL ACCESS to the entire database. You have access to:
+- All families with complete details (names, addresses, emails, phones, balances)
+- All members with birth dates, wedding dates, gender
+- All payments with amounts, dates, methods, types
+- All payment plans with prices
+- All statements
+- All saved payment methods
+- All recurring payments
+- All lifecycle events
+- Financial calculations and projections
+
+Answer questions clearly and helpfully based on ALL available database data. You can answer questions about any family, member, payment, statement, or any other data in the system.`
     }]
 
     const fullPrompt = `${context}\n\nUser Question: ${question}\n\nPlease provide a clear, helpful answer based on the analysis data above.`
