@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, createContext, useContext } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { isAuthenticated, logout } from '@/lib/auth'
+import { isAuthenticated } from '@/lib/auth'
 
 // Public routes that don't require authentication
 const publicRoutes = [
@@ -12,17 +12,27 @@ const publicRoutes = [
   '/reset-password',
 ]
 
+interface AuthContextType {
+  isPublicRoute: boolean
+}
+
+const AuthContext = createContext<AuthContextType>({ isPublicRoute: false })
+
+export const useAuth = () => useContext(AuthContext)
+
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(true)
+  const [isPublicRoute, setIsPublicRoute] = useState(false)
 
   useEffect(() => {
     const checkAuth = () => {
-      const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route))
+      const publicRoute = publicRoutes.some(route => pathname?.startsWith(route))
+      setIsPublicRoute(publicRoute)
       
       // If it's a public route, allow access
-      if (isPublicRoute) {
+      if (publicRoute) {
         setIsChecking(false)
         return
       }
@@ -53,17 +63,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     )
   }
 
-  // If on public route, render children without sidebar and floating button
-  const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route))
-  if (isPublicRoute) {
-    return (
-      <div className="min-h-screen">
-        {children}
-      </div>
-    )
-  }
-
-  // For protected routes, render with layout (sidebar and floating button are in layout)
-  return <>{children}</>
+  return (
+    <AuthContext.Provider value={{ isPublicRoute }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
