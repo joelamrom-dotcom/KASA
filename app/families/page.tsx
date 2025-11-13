@@ -6,7 +6,10 @@ import {
   PencilIcon, 
   TrashIcon,
   UserGroupIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ArrowsUpDownIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import Pagination from '@/app/components/Pagination'
@@ -115,6 +118,8 @@ export default function FamiliesPage() {
   const [editingFamily, setEditingFamily] = useState<Family | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const itemsPerPage = 10
   const [formData, setFormData] = useState({
     name: '',
@@ -392,10 +397,65 @@ export default function FamiliesPage() {
     )
   })
 
-  // Reset to page 1 when search query changes
+  // Sort families based on selected column
+  const sortedFamilies = [...filteredFamilies].sort((a, b) => {
+    if (!sortColumn) return 0
+
+    let aValue: any
+    let bValue: any
+
+    switch (sortColumn) {
+      case 'name':
+        aValue = (a.name || '').toLowerCase()
+        bValue = (b.name || '').toLowerCase()
+        break
+      case 'weddingDate':
+        aValue = a.weddingDate ? new Date(a.weddingDate).getTime() : 0
+        bValue = b.weddingDate ? new Date(b.weddingDate).getTime() : 0
+        break
+      case 'members':
+        aValue = a.memberCount || 0
+        bValue = b.memberCount || 0
+        break
+      case 'plan':
+        aValue = getPlanNameById(a.paymentPlanId, a.currentPlan).toLowerCase()
+        bValue = getPlanNameById(b.paymentPlanId, b.currentPlan).toLowerCase()
+        break
+      case 'balance':
+        aValue = a.openBalance || 0
+        bValue = b.openBalance || 0
+        break
+      default:
+        return 0
+    }
+
+    // Handle null/undefined values
+    if (aValue === null || aValue === undefined) aValue = ''
+    if (bValue === null || bValue === undefined) bValue = ''
+
+    // Compare values
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  })
+
+  // Handle column header click for sorting
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle direction if clicking same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new column and default to ascending
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+    setCurrentPage(1) // Reset to first page when sorting
+  }
+
+  // Reset to page 1 when search query or sort changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery])
+  }, [searchQuery, sortColumn, sortDirection])
 
   if (loading) {
     return (
@@ -454,7 +514,7 @@ export default function FamiliesPage() {
           </div>
           {searchQuery && (
             <p className="mt-2 text-sm text-gray-500">
-              Found {filteredFamilies.length} {filteredFamilies.length === 1 ? 'family' : 'families'} matching "{searchQuery}"
+              Found {sortedFamilies.length} {sortedFamilies.length === 1 ? 'family' : 'families'} matching "{searchQuery}"
             </p>
           )}
         </div>
@@ -463,11 +523,91 @@ export default function FamiliesPage() {
           <table className="min-w-full divide-y divide-white/20">
             <thead className="bg-white/20 backdrop-blur-sm">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Wedding Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Members</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Name</span>
+                    {sortColumn === 'name' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('weddingDate')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Wedding Date</span>
+                    {sortColumn === 'weddingDate' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('members')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Members</span>
+                    {sortColumn === 'members' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('plan')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Plan</span>
+                    {sortColumn === 'plan' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('balance')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Balance</span>
+                    {sortColumn === 'balance' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
@@ -492,7 +632,7 @@ export default function FamiliesPage() {
                   </td>
                 </tr>
               ) : (
-                filteredFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
+                sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
                 <tr key={family._id} className="hover:bg-white/20 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
