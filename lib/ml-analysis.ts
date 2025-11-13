@@ -130,7 +130,7 @@ function predictWithML(
     const cappedStdError = Math.min(stdError, maxStdError)
     
     // 95% confidence interval (1.96 standard deviations) with reasonable bounds
-    const lower = predicted.map(p => Math.max(0, Math.max(0, p - 1.96 * cappedStdError)))
+    const lower = predicted.map(p => Math.max(0, p - 1.96 * cappedStdError))
     const upper = predicted.map(p => Math.min(p + 1.96 * cappedStdError, p * 2)) // Cap upper at 2x predicted
     
     return { predicted, lower, upper }
