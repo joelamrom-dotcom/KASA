@@ -183,16 +183,27 @@ function parseFieldFilters(query: string, queryLower: string): {
 
   for (const { pattern, operator } of amountPatterns) {
     const match = query.match(pattern)
-    if (match && (queryLower.includes('payment') || queryLower.includes('event') || queryLower.includes('greater') || queryLower.includes('more'))) {
+    if (match) {
       const amount = parseFloat(match[1])
-      // Only apply to payments if query mentions payments, or if it's a general amount filter
-      if (queryLower.includes('payment') || (!queryLower.includes('event') && (queryLower.includes('payment') || queryLower.includes('greater') || queryLower.includes('more')))) {
+      
+      // Apply to payments if query mentions payments OR if it's a general query (not specifically events)
+      const isPaymentQuery = queryLower.includes('payment') || (!queryLower.includes('event') && (queryLower.includes('greater') || queryLower.includes('more') || queryLower.includes('amount')))
+      const isEventQuery = queryLower.includes('event')
+      
+      if (isPaymentQuery) {
         // Merge with existing amount filter if present
         if (paymentFilters.amount) {
           // Combine operators (e.g., if we have > 50 and > 55, keep the more restrictive one)
           if (operator === '$gt' && paymentFilters.amount.$gt !== undefined) {
             paymentFilters.amount.$gt = Math.max(paymentFilters.amount.$gt, amount)
+          } else if (operator === '$gte' && paymentFilters.amount.$gte !== undefined) {
+            paymentFilters.amount.$gte = Math.max(paymentFilters.amount.$gte, amount)
+          } else if (operator === '$lt' && paymentFilters.amount.$lt !== undefined) {
+            paymentFilters.amount.$lt = Math.min(paymentFilters.amount.$lt, amount)
+          } else if (operator === '$lte' && paymentFilters.amount.$lte !== undefined) {
+            paymentFilters.amount.$lte = Math.min(paymentFilters.amount.$lte, amount)
           } else {
+            // Different operator, replace
             paymentFilters.amount = { [operator]: amount }
           }
         } else {
@@ -200,10 +211,17 @@ function parseFieldFilters(query: string, queryLower: string): {
         }
         filterDescriptions.push(`payment amount ${operator === '$gt' ? '>' : operator === '$gte' ? '>=' : operator === '$lt' ? '<' : operator === '$lte' ? '<=' : '='} ${amount}`)
       }
-      if (queryLower.includes('event')) {
+      
+      if (isEventQuery) {
         if (eventFilters.amount) {
           if (operator === '$gt' && eventFilters.amount.$gt !== undefined) {
             eventFilters.amount.$gt = Math.max(eventFilters.amount.$gt, amount)
+          } else if (operator === '$gte' && eventFilters.amount.$gte !== undefined) {
+            eventFilters.amount.$gte = Math.max(eventFilters.amount.$gte, amount)
+          } else if (operator === '$lt' && eventFilters.amount.$lt !== undefined) {
+            eventFilters.amount.$lt = Math.min(eventFilters.amount.$lt, amount)
+          } else if (operator === '$lte' && eventFilters.amount.$lte !== undefined) {
+            eventFilters.amount.$lte = Math.min(eventFilters.amount.$lte, amount)
           } else {
             eventFilters.amount = { [operator]: amount }
           }
@@ -212,7 +230,8 @@ function parseFieldFilters(query: string, queryLower: string): {
         }
         filterDescriptions.push(`event amount ${operator === '$gt' ? '>' : operator === '$gte' ? '>=' : operator === '$lt' ? '<' : operator === '$lte' ? '<=' : '='} ${amount}`)
       }
-      break // Only match first amount pattern
+      
+      if (match) break // Only match first amount pattern
     }
   }
 
@@ -557,12 +576,17 @@ export async function POST(request: NextRequest) {
 
     // PAYMENTS SECTION
     if (includePayments || includeAll) {
-      // Build query with year filter and field filters
+      // Build query by combining ALL filters (date, amount, type, method, etc.)
       const paymentQuery: any = { ...fieldFilters.paymentFilters }
+      
       // If paymentDate filter exists, don't apply year filter (date filter takes precedence)
+      // Otherwise, apply year filter if specified
       if (requestedYear && !paymentQuery.updatedAt && !paymentQuery.createdAt && !paymentQuery.paymentDate) {
         paymentQuery.year = requestedYear
       }
+      
+      // Log the combined query for debugging (all filters are combined with AND logic)
+      console.log('Combined payment query:', JSON.stringify(paymentQuery, null, 2))
       
       const payments = await Payment.find(paymentQuery)
         .populate('familyId', 'name')
@@ -573,11 +597,12 @@ export async function POST(request: NextRequest) {
 
       csvRows.push(['PAYMENTS'])
       const paymentFilterDesc: string[] = []
-      if (requestedYear && !paymentQuery.updatedAt && !paymentQuery.createdAt) {
+      if (requestedYear && !paymentQuery.updatedAt && !paymentQuery.createdAt && !paymentQuery.paymentDate) {
         paymentFilterDesc.push(`Year: ${requestedYear}`)
       }
+      // Add all payment-related filter descriptions
       fieldFilters.filterDescriptions.forEach(desc => {
-        if (desc.includes('payment') || desc.includes('amount') || desc.includes('updatedAt') || desc.includes('createdAt')) {
+        if (desc.includes('payment') || desc.includes('amount') || desc.includes('updatedAt') || desc.includes('createdAt') || desc.includes('date')) {
           paymentFilterDesc.push(desc)
         }
       })
