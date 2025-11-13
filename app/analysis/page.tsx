@@ -246,7 +246,7 @@ export default function AnalysisPage() {
                   value={chatQuery}
                   onChange={(e) => setChatQuery(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask questions like: 'How many children are projected?', 'What's the wedding trend?', 'How many families do we have?'"
+                  placeholder="Ask questions like: 'How much was paid this year?', 'What's the total income?', 'How many children are projected?', 'What's the wedding trend?'"
                   className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   disabled={chatLoading}
                 />
@@ -277,10 +277,13 @@ export default function AnalysisPage() {
               <div className="mt-4 text-xs text-gray-500">
                 <p className="font-medium mb-1">Example questions:</p>
                 <ul className="list-disc list-inside space-y-1">
+                  <li>"How much was paid this year?"</li>
+                  <li>"What's the total income?"</li>
+                  <li>"Show me payment methods breakdown"</li>
                   <li>"How many children are projected for next year?"</li>
                   <li>"What's the trend in weddings?"</li>
                   <li>"How many families do we have?"</li>
-                  <li>"What's the average children per family?"</li>
+                  <li>"What are the payments by year?"</li>
                   <li>"Show me future projections"</li>
                 </ul>
               </div>
