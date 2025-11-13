@@ -10,6 +10,7 @@ interface AIChatModalProps {
 
 export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   const [chatQuery, setChatQuery] = useState('')
+  const [lastQuery, setLastQuery] = useState('') // Store the last query for report generation
   const [chatAnswer, setChatAnswer] = useState<string | null>(null)
   const [chatLoading, setChatLoading] = useState(false)
   const [showReportDialog, setShowReportDialog] = useState(false)
@@ -69,6 +70,7 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
     if (!chatQuery.trim() || chatLoading) return
 
     const queryToProcess = chatQuery.trim() // Save the query before clearing
+    setLastQuery(queryToProcess) // Store for report generation
     setChatLoading(true)
     setChatAnswer(null)
     setChatQuery('') // Clear input immediately after starting
@@ -165,13 +167,13 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   }
 
   const handleGenerateReport = () => {
-    if (!chatQuery || !chatAnswer || !reportTitle.trim()) {
+    if (!lastQuery || !chatAnswer || !reportTitle.trim()) {
       alert('Please provide a report title')
       return
     }
 
     // Auto-download the report (no database saving)
-    downloadReport(reportTitle.trim(), chatQuery, chatAnswer)
+    downloadReport(reportTitle.trim(), lastQuery, chatAnswer)
     setShowReportDialog(false)
     setReportTitle('')
   }
@@ -204,14 +206,14 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
                 <button
                   onClick={async () => {
                     // Check if this should be a data report or conversation report
-                    if (checkIfReportRequest(chatQuery)) {
+                    if (checkIfReportRequest(lastQuery)) {
                       // Generate data-based report
-                      await generateDataReport(chatQuery)
+                      await generateDataReport(lastQuery)
                     } else {
                       // Generate conversation-based report
-                      const autoTitle = chatQuery.length > 50 
-                        ? chatQuery.substring(0, 50) + '...'
-                        : chatQuery
+                      const autoTitle = lastQuery.length > 50 
+                        ? lastQuery.substring(0, 50) + '...'
+                        : lastQuery
                       setReportTitle(autoTitle)
                       setShowReportDialog(true)
                     }
@@ -304,7 +306,7 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 text-sm">
                   <div className="text-gray-600 mb-1"><strong>Question:</strong></div>
-                  <div className="text-gray-700 mb-3">{chatQuery}</div>
+                  <div className="text-gray-700 mb-3">{lastQuery}</div>
                   <div className="text-gray-600 mb-1"><strong>Answer Preview:</strong></div>
                   <div className="text-gray-700 text-xs line-clamp-3">{chatAnswer?.substring(0, 150)}...</div>
                 </div>
