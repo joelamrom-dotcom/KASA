@@ -262,23 +262,22 @@ async function importMembers(
         continue
       }
 
-      // Find family
-      let familyId = getValue(row, 'familyId')
-      if (!familyId) {
-        const familyName = getValue(row, 'familyName')
-        const familyEmail = getValue(row, 'familyEmail')
-        if (familyName || familyEmail) {
-          const family = await findFamilyByNameOrEmail(familyName, familyEmail)
-          if (family) {
-            familyId = family._id.toString()
-          } else {
-            errors.push(`Row ${i + 2}: Family not found (name: ${familyName}, email: ${familyEmail})`)
-            continue
-          }
+      // Find family by name or email (familyId is not in template)
+      const familyName = getValue(row, 'familyName')
+      const familyEmail = getValue(row, 'familyEmail')
+      let familyId = getValue(row, 'familyId') // Optional if provided
+      
+      if (!familyId && (familyName || familyEmail)) {
+        const family = await findFamilyByNameOrEmail(familyName, familyEmail)
+        if (family) {
+          familyId = family._id.toString()
         } else {
-          errors.push(`Row ${i + 2}: Family ID, name, or email is required`)
+          errors.push(`Row ${i + 2}: Family not found (name: ${familyName}, email: ${familyEmail})`)
           continue
         }
+      } else if (!familyId) {
+        errors.push(`Row ${i + 2}: Family name or email is required`)
+        continue
       }
 
       const member = await FamilyMember.create({
@@ -330,23 +329,22 @@ async function importPayments(
         continue
       }
 
-      // Find family
-      let familyId = getValue(row, 'familyId')
-      if (!familyId) {
-        const familyName = getValue(row, 'familyName')
-        const familyEmail = getValue(row, 'familyEmail')
-        if (familyName || familyEmail) {
-          const family = await findFamilyByNameOrEmail(familyName, familyEmail)
-          if (family) {
-            familyId = family._id.toString()
-          } else {
-            errors.push(`Row ${i + 2}: Family not found`)
-            continue
-          }
+      // Find family by name or email (familyId is not in template)
+      const familyName = getValue(row, 'familyName')
+      const familyEmail = getValue(row, 'familyEmail')
+      let familyId = getValue(row, 'familyId') // Optional if provided
+      
+      if (!familyId && (familyName || familyEmail)) {
+        const family = await findFamilyByNameOrEmail(familyName, familyEmail)
+        if (family) {
+          familyId = family._id.toString()
         } else {
-          errors.push(`Row ${i + 2}: Family ID, name, or email is required`)
+          errors.push(`Row ${i + 2}: Family not found (name: ${familyName}, email: ${familyEmail})`)
           continue
         }
+      } else if (!familyId) {
+        errors.push(`Row ${i + 2}: Family name or email is required`)
+        continue
       }
 
       const year = getValue(row, 'year') ? parseInt(getValue(row, 'year')) : paymentDate.getFullYear()
@@ -399,23 +397,22 @@ async function importLifecycleEvents(
       const amountStr = getValue(row, 'amount')
       const amount = parseFloat(amountStr) || 0
 
-      // Find family
-      let familyId = getValue(row, 'familyId')
-      if (!familyId) {
-        const familyName = getValue(row, 'familyName')
-        const familyEmail = getValue(row, 'familyEmail')
-        if (familyName || familyEmail) {
-          const family = await findFamilyByNameOrEmail(familyName, familyEmail)
-          if (family) {
-            familyId = family._id.toString()
-          } else {
-            errors.push(`Row ${i + 2}: Family not found`)
-            continue
-          }
+      // Find family by name or email (familyId is not in template)
+      const familyName = getValue(row, 'familyName')
+      const familyEmail = getValue(row, 'familyEmail')
+      let familyId = getValue(row, 'familyId') // Optional if provided
+      
+      if (!familyId && (familyName || familyEmail)) {
+        const family = await findFamilyByNameOrEmail(familyName, familyEmail)
+        if (family) {
+          familyId = family._id.toString()
         } else {
-          errors.push(`Row ${i + 2}: Family ID, name, or email is required`)
+          errors.push(`Row ${i + 2}: Family not found (name: ${familyName}, email: ${familyEmail})`)
           continue
         }
+      } else if (!familyId) {
+        errors.push(`Row ${i + 2}: Family name or email is required`)
+        continue
       }
 
       const year = getValue(row, 'year') ? parseInt(getValue(row, 'year')) : eventDate.getFullYear()

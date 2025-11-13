@@ -112,18 +112,10 @@ export default function ImportPage() {
 
   const downloadTemplate = () => {
     const templates: { [key in ImportType]: string } = {
-      'families': `name,hebrewName,weddingDate,husbandFirstName,husbandHebrewName,husbandFatherHebrewName,wifeFirstName,wifeHebrewName,wifeFatherHebrewName,email,phone,address,city,state,zip,husbandCellPhone,wifeCellPhone,paymentPlanId
-"Smith Family","משפחת סמית","2020-01-15","John","יוחנן","אברהם","Jane","רחל","יצחק","smith@example.com","555-1234","123 Main St","New York","NY","10001","555-1111","555-2222",""
-"Jones Family","משפחת ג'ונס","2018-06-20","Bob","יעקב","דוד","Mary","מרים","שלמה","jones@example.com","555-5678","456 Oak Ave","Los Angeles","CA","90001","555-3333","555-4444",""`,
-      'members': `familyId,firstName,lastName,hebrewFirstName,hebrewLastName,birthDate,gender,barMitzvahDate,batMitzvahDate,weddingDate
-"","David","Smith","דוד","סמית","2010-05-10","male","2023-05-10","",""
-"","Sarah","Smith","שרה","סמית","2012-08-15","female","","2025-08-15",""`,
-      'payments': `familyId,amount,paymentDate,year,type,paymentMethod,notes
-"",500,"2025-01-15",2025,"membership","cash","Monthly payment"
-"",1000,"2025-02-01",2025,"donation","credit_card","Extra donation"`,
-      'lifecycle-events': `familyId,memberId,eventType,eventDate,year,amount,notes
-"","","chasena","2025-06-15",2025,5000,"Wedding celebration"
-"","","bar_mitzvah","2025-08-20",2025,2000,"Bar Mitzvah celebration"`
+      'families': `name,hebrewName,weddingDate,husbandFirstName,husbandHebrewName,husbandFatherHebrewName,wifeFirstName,wifeHebrewName,wifeFatherHebrewName,email,phone,address,city,state,zip,husbandCellPhone,wifeCellPhone,paymentPlanNumber`,
+      'members': `familyName,familyEmail,firstName,lastName,hebrewFirstName,hebrewLastName,birthDate,gender,barMitzvahDate,batMitzvahDate,weddingDate`,
+      'payments': `familyName,familyEmail,amount,paymentDate,year,type,paymentMethod,notes`,
+      'lifecycle-events': `familyName,familyEmail,eventType,eventDate,year,amount,notes`
     }
 
     const csv = templates[importType]
