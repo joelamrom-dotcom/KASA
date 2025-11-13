@@ -62,6 +62,40 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
     onClose()
   }
 
+  const downloadReport = (title: string, question: string, answer: string) => {
+    // Create report content
+    const reportContent = `
+REPORT: ${title}
+Generated: ${new Date().toLocaleString()}
+
+QUESTION:
+${question}
+
+ANSWER:
+${answer}
+
+---
+This report was generated from an AI conversation.
+`
+
+    // Create blob and download
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    
+    // Sanitize filename (remove special characters)
+    const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+    const filename = `Report_${sanitizedTitle}_${new Date().toISOString().split('T')[0]}.txt`
+    
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   const handleGenerateReport = async () => {
     if (!chatQuery || !chatAnswer || !reportTitle.trim()) {
       alert('Please provide a report title')
@@ -84,7 +118,8 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
 
       if (res.ok) {
         const data = await res.json()
-        alert('Report generated successfully!')
+        // Auto-download the report
+        downloadReport(reportTitle.trim(), chatQuery, chatAnswer)
         setShowReportDialog(false)
         setReportTitle('')
       } else {
