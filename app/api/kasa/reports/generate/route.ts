@@ -79,12 +79,19 @@ export async function POST(request: NextRequest) {
       console.log('AI unavailable, using keyword matching')
     }
 
-    // Detect what data to include in report (use AI suggestion if available, otherwise keyword matching)
-    const includeFamilies = aiSuggestion?.includeFamilies ?? (queryLower.includes('famil') || queryLower.includes('all'))
-    const includeMembers = aiSuggestion?.includeMembers ?? (queryLower.includes('member') || queryLower.includes('all'))
-    const includePayments = aiSuggestion?.includePayments ?? (queryLower.includes('payment') || queryLower.includes('all'))
-    const includeEvents = aiSuggestion?.includeEvents ?? (queryLower.includes('event') || queryLower.includes('lifecycle') || queryLower.includes('all'))
-    const includeAll = queryLower.includes('all') || (!includeFamilies && !includeMembers && !includePayments && !includeEvents)
+    // Detect what data to include in report (use AI suggestion if available, otherwise precise keyword matching)
+    // Only include what is explicitly requested - don't default to "all"
+    const includeFamilies = aiSuggestion?.includeFamilies ?? (queryLower.includes('famil') && !queryLower.includes('member'))
+    const includeMembers = aiSuggestion?.includeMembers ?? (queryLower.includes('member'))
+    const includePayments = aiSuggestion?.includePayments ?? (queryLower.includes('payment'))
+    const includeEvents = aiSuggestion?.includeEvents ?? (queryLower.includes('event') || queryLower.includes('lifecycle'))
+    
+    // Only include "all" if explicitly requested
+    const includeAll = queryLower.includes('all data') || queryLower.includes('everything') || queryLower.includes('complete')
+    
+    // If nothing specific is requested and not "all", default to families only (most common request)
+    const hasSpecificRequest = includeFamilies || includeMembers || includePayments || includeEvents || includeAll
+    const defaultToFamilies = !hasSpecificRequest && (queryLower.includes('report') || queryLower.includes('export') || queryLower.includes('download'))
 
     // Header
     csvRows.push(['DATA REPORT'])
@@ -93,7 +100,7 @@ export async function POST(request: NextRequest) {
     csvRows.push([])
 
     // FAMILIES SECTION
-    if (includeFamilies || includeAll) {
+    if (includeFamilies || includeAll || defaultToFamilies) {
       const families = await Family.find({}).sort({ name: 1 }).lean()
       recordCount.families = families.length
 
@@ -220,11 +227,13 @@ export async function POST(request: NextRequest) {
       filename = `Complete_Data_Report_${dateStr}.csv`
     } else {
       const parts: string[] = []
-      if (includeFamilies) parts.push('Families')
+      if (includeFamilies || defaultToFamilies) parts.push('Families')
       if (includeMembers) parts.push('Members')
       if (includePayments) parts.push('Payments')
       if (includeEvents) parts.push('Events')
-      filename = `${parts.join('_')}_Report_${dateStr}.csv`
+      filename = parts.length > 0 
+        ? `${parts.join('_')}_Report_${dateStr}.csv`
+        : `Data_Report_${dateStr}.csv`
     }
 
     const csvContent = toCSV(csvRows)
