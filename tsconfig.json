@@ -1,18 +1,10 @@
 {
   "compilerOptions": {
-<<<<<<< HEAD
-    "target": "es2018",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": false,
-=======
     "target": "ES2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
->>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -28,17 +20,8 @@
     ],
     "paths": {
       "@/*": ["./*"]
-<<<<<<< HEAD
-    },
-    "forceConsistentCasingInFileNames": true
-=======
     }
->>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713
