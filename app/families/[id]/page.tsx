@@ -145,7 +145,7 @@ export default function FamilyDetailPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const tab = urlParams.get('tab')
-    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements') {
+    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements' || tab === 'sub-families') {
       setActiveTab(tab as any)
       // Auto-open modal if coming from quick add
       if (tab === 'members' && urlParams.get('add') === 'true') {
