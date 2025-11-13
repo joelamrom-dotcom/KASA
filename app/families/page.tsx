@@ -5,7 +5,8 @@ import {
   PlusIcon, 
   PencilIcon, 
   TrashIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import Pagination from '@/app/components/Pagination'
@@ -113,6 +114,7 @@ export default function FamiliesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingFamily, setEditingFamily] = useState<Family | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState('')
   const itemsPerPage = 10
   const [formData, setFormData] = useState({
     name: '',
@@ -353,6 +355,48 @@ export default function FamiliesPage() {
     })
   }
 
+  // Filter families based on search query - searches across all fields
+  const filteredFamilies = families.filter((family) => {
+    if (!searchQuery.trim()) return true
+    
+    const query = searchQuery.toLowerCase().trim()
+    
+    // Search across all text fields
+    const searchableFields = [
+      family.name,
+      family.hebrewName,
+      family.husbandFirstName,
+      family.husbandHebrewName,
+      family.husbandFatherHebrewName,
+      family.wifeFirstName,
+      family.wifeHebrewName,
+      family.wifeFatherHebrewName,
+      family.email,
+      family.phone,
+      family.husbandCellPhone,
+      family.wifeCellPhone,
+      family.address,
+      family.street,
+      family.city,
+      family.state,
+      family.zip,
+      getPlanNameById(family.paymentPlanId, family.currentPlan),
+      family.memberCount?.toString(),
+      family.openBalance?.toString(),
+      family.weddingDate ? new Date(family.weddingDate).toLocaleDateString() : ''
+    ].filter(Boolean) // Remove null/undefined values
+    
+    // Check if any field contains the search query
+    return searchableFields.some(field => 
+      field && field.toString().toLowerCase().includes(query)
+    )
+  })
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
   if (loading) {
     return (
       <div className="min-h-screen p-8">
@@ -386,6 +430,35 @@ export default function FamiliesPage() {
           </button>
         </div>
 
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search families by name, email, phone, address, plan, or any field..."
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <span className="text-sm">Clear</span>
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="mt-2 text-sm text-gray-500">
+              Found {filteredFamilies.length} {filteredFamilies.length === 1 ? 'family' : 'families'} matching "{searchQuery}"
+            </p>
+          )}
+        </div>
+
         <div className="glass-strong rounded-2xl shadow-xl overflow-hidden border border-white/30">
           <table className="min-w-full divide-y divide-white/20">
             <thead className="bg-white/20 backdrop-blur-sm">
@@ -399,7 +472,27 @@ export default function FamiliesPage() {
               </tr>
             </thead>
             <tbody className="bg-white/10 divide-y divide-white/20">
-              {families.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
+              {filteredFamilies.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="text-gray-400 mb-2">
+                      <MagnifyingGlassIcon className="mx-auto h-12 w-12" />
+                    </div>
+                    <p className="text-gray-600 font-medium">
+                      {searchQuery ? `No families found matching "${searchQuery}"` : 'No families found'}
+                    </p>
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        Clear search
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                filteredFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
                 <tr key={family._id} className="hover:bg-white/20 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
@@ -446,16 +539,18 @@ export default function FamiliesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
-          <Pagination
-            currentPage={currentPage}
-            totalPages={Math.ceil(families.length / itemsPerPage)}
-            totalItems={families.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-          />
+          {filteredFamilies.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(filteredFamilies.length / itemsPerPage)}
+              totalItems={filteredFamilies.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
 
         {showModal && (
