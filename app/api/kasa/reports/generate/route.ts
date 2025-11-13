@@ -343,7 +343,9 @@ function parseFieldFilters(query: string, queryLower: string): {
   // Parse city/state filters for families
   const locationPatterns = [
     { pattern: /city\s*(?:is|:)?\s*["']?([^"'\s]+)["']?/i, field: 'city' },
-    { pattern: /state\s*(?:is|:)?\s*["']?([^"'\s]+)["']?/i, field: 'state' }
+    { pattern: /state\s*(?:is|:)?\s*["']?([^"'\s]+)["']?/i, field: 'state' },
+    { pattern: /zip\s*(?:is|:)?\s*["']?([^"'\s]+)["']?/i, field: 'zip' },
+    { pattern: /address\s*(?:contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'address' }
   ]
 
   for (const { pattern, field } of locationPatterns) {
@@ -355,6 +357,112 @@ function parseFieldFilters(query: string, queryLower: string): {
       break
     }
   }
+
+  // Parse phone filters for families
+  const phonePatterns = [
+    { pattern: /phone\s*(?:is|contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'phone' },
+    { pattern: /husband\s*phone\s*(?:is|contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'husbandCellPhone' },
+    { pattern: /wife\s*phone\s*(?:is|contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'wifeCellPhone' }
+  ]
+
+  for (const { pattern, field } of phonePatterns) {
+    const match = query.match(pattern)
+    if (match && queryLower.includes('famil')) {
+      const value = match[1]
+      familyFilters[field] = { $regex: value, $options: 'i' }
+      filterDescriptions.push(`${field}: ${value}`)
+      break
+    }
+  }
+
+  // Parse name filters for families and members
+  const namePatterns = [
+    { pattern: /name\s*(?:is|contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'name', collections: ['family'] },
+    { pattern: /hebrew\s*name\s*(?:is|contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'hebrewName', collections: ['family'] },
+    { pattern: /first\s*name\s*(?:is|contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'firstName', collections: ['member'] },
+    { pattern: /last\s*name\s*(?:is|contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'lastName', collections: ['member'] }
+  ]
+
+  for (const { pattern, field, collections } of namePatterns) {
+    const match = query.match(pattern)
+    if (match) {
+      const value = match[1]
+      if (collections.includes('family') && queryLower.includes('famil')) {
+        familyFilters[field] = { $regex: value, $options: 'i' }
+        filterDescriptions.push(`family ${field}: ${value}`)
+      }
+      if (collections.includes('member') && queryLower.includes('member')) {
+        memberFilters[field] = { $regex: value, $options: 'i' }
+        filterDescriptions.push(`member ${field}: ${value}`)
+      }
+      break
+    }
+  }
+
+  // Parse notes filters (for payments and events)
+  const notesPatterns = [
+    { pattern: /notes\s*(?:contains?|:)?\s*["']?([^"'\s]+)["']?/i, field: 'notes' }
+  ]
+
+  for (const { pattern, field } of notesPatterns) {
+    const match = query.match(pattern)
+    if (match) {
+      const value = match[1]
+      if (queryLower.includes('payment')) {
+        paymentFilters[field] = { $regex: value, $options: 'i' }
+        filterDescriptions.push(`payment ${field} contains: ${value}`)
+      }
+      if (queryLower.includes('event')) {
+        eventFilters[field] = { $regex: value, $options: 'i' }
+        filterDescriptions.push(`event ${field} contains: ${value}`)
+      }
+      break
+    }
+  }
+
+  // Parse payment plan filters for families
+  const planPatterns = [
+    { pattern: /plan\s*(?:is|number|:)?\s*(\d+)/i, field: 'currentPlan' },
+    { pattern: /payment\s*plan\s*(?:is|number|:)?\s*(\d+)/i, field: 'currentPlan' }
+  ]
+
+  for (const { pattern, field } of planPatterns) {
+    const match = query.match(pattern)
+    if (match && queryLower.includes('famil')) {
+      const planNumber = parseInt(match[1])
+      familyFilters[field] = planNumber
+      filterDescriptions.push(`payment plan: ${planNumber}`)
+      break
+    }
+  }
+
+  // Parse family ID filters (if someone wants to filter by specific family)
+  const familyIdPatterns = [
+    { pattern: /family\s*id\s*(?:is|:)?\s*([a-f0-9]{24})/i, field: '_id' }
+  ]
+
+  for (const { pattern, field } of familyIdPatterns) {
+    const match = query.match(pattern)
+    if (match) {
+      const value = match[1]
+      if (queryLower.includes('payment') || queryLower.includes('event')) {
+        // For payments/events, filter by familyId
+        if (queryLower.includes('payment')) {
+          paymentFilters.familyId = value
+          filterDescriptions.push(`family ID: ${value}`)
+        }
+        if (queryLower.includes('event')) {
+          eventFilters.familyId = value
+          filterDescriptions.push(`family ID: ${value}`)
+        }
+      }
+      break
+    }
+  }
+
+  // All filters are combined - MongoDB supports unlimited filters
+  // The system can handle 10+ filters efficiently as MongoDB queries are optimized
+  // Each filter adds a field to the query object, and MongoDB applies them all with AND logic
 
   return {
     familyFilters,
