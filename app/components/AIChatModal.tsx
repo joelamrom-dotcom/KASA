@@ -200,13 +200,19 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
               <div className="flex items-start justify-between mb-2">
                 <div className="text-sm text-blue-600 font-medium">Answer:</div>
                 <button
-                  onClick={() => {
-                    // Auto-generate title from question (first 50 chars)
-                    const autoTitle = chatQuery.length > 50 
-                      ? chatQuery.substring(0, 50) + '...'
-                      : chatQuery
-                    setReportTitle(autoTitle)
-                    setShowReportDialog(true)
+                  onClick={async () => {
+                    // Check if this should be a data report or conversation report
+                    if (checkIfReportRequest(chatQuery)) {
+                      // Generate data-based report
+                      await generateDataReport(chatQuery)
+                    } else {
+                      // Generate conversation-based report
+                      const autoTitle = chatQuery.length > 50 
+                        ? chatQuery.substring(0, 50) + '...'
+                        : chatQuery
+                      setReportTitle(autoTitle)
+                      setShowReportDialog(true)
+                    }
                   }}
                   className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   title="Generate Report"
