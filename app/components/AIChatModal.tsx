@@ -14,7 +14,6 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   const [chatLoading, setChatLoading] = useState(false)
   const [showReportDialog, setShowReportDialog] = useState(false)
   const [reportTitle, setReportTitle] = useState('')
-  const [savingReport, setSavingReport] = useState(false)
   const chatInputRef = useRef<HTMLInputElement>(null)
 
   const handleChatQuery = async () => {
@@ -96,41 +95,16 @@ This report was generated from an AI conversation.
     URL.revokeObjectURL(url)
   }
 
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = () => {
     if (!chatQuery || !chatAnswer || !reportTitle.trim()) {
       alert('Please provide a report title')
       return
     }
 
-    setSavingReport(true)
-    try {
-      const res = await fetch('/api/kasa/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: reportTitle.trim(),
-          question: chatQuery,
-          answer: chatAnswer,
-          reportType: 'chat',
-          tags: []
-        })
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        // Auto-download the report
-        downloadReport(reportTitle.trim(), chatQuery, chatAnswer)
-        setShowReportDialog(false)
-        setReportTitle('')
-      } else {
-        const errorData = await res.json()
-        alert(`Error: ${errorData.error || 'Failed to generate report'}`)
-      }
-    } catch (err: any) {
-      alert(`Error: ${err.message || 'Failed to generate report'}`)
-    } finally {
-      setSavingReport(false)
-    }
+    // Auto-download the report (no database saving)
+    downloadReport(reportTitle.trim(), chatQuery, chatAnswer)
+    setShowReportDialog(false)
+    setReportTitle('')
   }
 
   if (!isOpen) return null
@@ -267,20 +241,11 @@ This report was generated from an AI conversation.
                   </button>
                   <button
                     onClick={handleGenerateReport}
-                    disabled={savingReport || !reportTitle.trim()}
+                    disabled={!reportTitle.trim()}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {savingReport ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <DocumentArrowDownIcon className="h-5 w-5" />
-                        <span>Generate Report</span>
-                      </>
-                    )}
+                    <DocumentArrowDownIcon className="h-5 w-5" />
+                    <span>Download CSV Report</span>
                   </button>
                 </div>
               </div>
