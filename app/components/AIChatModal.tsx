@@ -62,30 +62,40 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   }
 
   const downloadReport = (title: string, question: string, answer: string) => {
-    // Create report content
-    const reportContent = `
-REPORT: ${title}
-Generated: ${new Date().toLocaleString()}
+    // Create CSV content
+    const csvRows = [
+      ['Report Title', title],
+      ['Generated Date', new Date().toLocaleString()],
+      [],
+      ['Question', question],
+      [],
+      ['Answer', answer],
+      [],
+      ['Note', 'This report was generated from an AI conversation.']
+    ]
 
-QUESTION:
-${question}
-
-ANSWER:
-${answer}
-
----
-This report was generated from an AI conversation.
-`
+    // Convert to CSV format (escape quotes and wrap in quotes if contains comma, quote, or newline)
+    const csvContent = csvRows.map(row => {
+      if (row.length === 0) return ''
+      return row.map(cell => {
+        const cellStr = String(cell || '')
+        // Escape quotes and wrap in quotes if contains comma, quote, or newline
+        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+          return `"${cellStr.replace(/"/g, '""')}"`
+        }
+        return cellStr
+      }).join(',')
+    }).join('\n')
 
     // Create blob and download
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' })
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
     
     // Sanitize filename (remove special characters)
     const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase()
-    const filename = `Report_${sanitizedTitle}_${new Date().toISOString().split('T')[0]}.txt`
+    const filename = `Report_${sanitizedTitle}_${new Date().toISOString().split('T')[0]}.csv`
     
     link.setAttribute('download', filename)
     link.style.visibility = 'hidden'
