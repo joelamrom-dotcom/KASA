@@ -26,10 +26,14 @@ yarn-error.log*
 
 # local env files
 .env*.local
+<<<<<<< HEAD
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+=======
+.env
+>>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713
 
 # vercel
 .vercel
@@ -38,7 +42,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+<<<<<<< HEAD
 # database files (if using JSON fallback)
 /data/*.json
 *.json.backup
 
+=======
+>>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713

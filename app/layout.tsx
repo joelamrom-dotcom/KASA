@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+<<<<<<< HEAD
 // import { Inter } from 'next/font/google'
 import './globals.css'
 import Sidebar from './components/Sidebar'
@@ -11,6 +12,16 @@ import CustomCursor from './components/CustomCursor'
 export const metadata: Metadata = {
   title: 'AI SaaS Platform',
   description: 'AI-powered SaaS staging platform',
+=======
+import './globals.css'
+import './error-handler'
+import Sidebar from './components/Sidebar'
+import FloatingKasaButton from './components/FloatingKasaButton'
+
+export const metadata: Metadata = {
+  title: 'Kasa Family Management',
+  description: 'Family financial management system with age-based payment plans',
+>>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713
 }
 
 export default function RootLayout({
@@ -19,6 +30,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
+<<<<<<< HEAD
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-200 relative overflow-x-hidden">
         <ThemeProvider>
@@ -37,7 +49,20 @@ export default function RootLayout({
             <ToastContainer />
           </div>
         </ThemeProvider>
+=======
+    <html lang="en">
+      <body className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
+        <Sidebar />
+        <main className="ml-64 min-h-screen">
+          {children}
+        </main>
+        <FloatingKasaButton />
+>>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713
       </body>
     </html>
   )
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713

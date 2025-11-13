@@ -1,0 +1,16 @@
+# Python dependencies for Kasa Family Management Analysis
+# Install with: pip install -r requirements.txt
+
+# Core data analysis libraries
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Machine Learning for forecasting
+scikit-learn>=1.3.0
+
+# Time series forecasting (optional but recommended)
+statsmodels>=0.14.0
+
+# For advanced forecasting (optional)
+# prophet>=1.1.0  # Facebook Prophet for time series (requires additional setup)
+

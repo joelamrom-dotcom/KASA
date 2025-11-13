@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { HfInference } from '@huggingface/inference'
 
 // Using free AI libraries and services for ChatGPT-like experience
-// This implementation uses multiple free sources for the best experience
+// This implementation uses @huggingface/inference SDK for better reliability and TypeScript support
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,77 +16,60 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build conversation context
-    const conversationContext = conversationHistory
-      .map((msg: any) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
-      .join('\n')
-
-    const fullPrompt = conversationContext 
-      ? `${conversationContext}\nUser: ${message}\nAssistant:`
-      : `User: ${message}\nAssistant:`
-
     // Use only free AI services (no API keys required)
     
-    // Option 1: Try Hugging Face Inference API (free, no API key needed)
-    // Using multiple models for best results
+    // Option 1: Try Hugging Face Inference API using official SDK (free, no API key needed)
+    // Using multiple models for best results with automatic retry and better error handling
+    const hf = new HfInference() // No API key needed for free tier
+    
     const hfModels = [
       'mistralai/Mistral-7B-Instruct-v0.2',
       'google/gemma-2b-it',
       'meta-llama/Meta-Llama-3.1-8B-Instruct',
     ]
 
+    // Build messages array for chat completion format
+    const messages = [
+      {
+        role: 'system' as const,
+        content: 'You are a helpful AI assistant.',
+      },
+      ...conversationHistory.map((msg: any) => ({
+        role: (msg.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: msg.content,
+      })),
+      {
+        role: 'user' as const,
+        content: message,
+      },
+    ]
+
     for (const model of hfModels) {
       try {
-        const hfResponse = await fetch(
-          `https://api-inference.huggingface.co/models/${model}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              inputs: `You are a helpful AI assistant.\n\n${fullPrompt}`,
-              parameters: {
-                max_new_tokens: 1000,
-                temperature: 0.7,
-                top_p: 0.9,
-                return_full_text: false,
-                do_sample: true,
-              },
-            }),
-          }
-        )
+        // Use chat completion API (more modern and better for conversations)
+        const chatCompletion = await hf.chatCompletion({
+          model,
+          messages,
+          max_tokens: 1000,
+          temperature: 0.7,
+          top_p: 0.9,
+        })
 
-        if (hfResponse.ok) {
-          const data = await hfResponse.json()
+        if (chatCompletion.choices?.[0]?.message?.content) {
+          const aiResponse = chatCompletion.choices[0].message.content.trim()
           
-          // Handle different response formats
-          let aiResponse = ''
-          if (Array.isArray(data) && data[0]?.generated_text) {
-            aiResponse = data[0].generated_text.trim()
-          } else if (data.generated_text) {
-            aiResponse = data.generated_text.trim()
-          } else if (typeof data === 'string') {
-            aiResponse = data.trim()
-          }
-
-          if (aiResponse) {
-            // Clean up the response (remove prompt if included)
-            aiResponse = aiResponse.replace(/User:[\s\S]*?Assistant:/, '').trim()
-            aiResponse = aiResponse.split('\nUser:')[0].trim()
-            
-            return NextResponse.json({
-              response: aiResponse,
-              provider: `huggingface-${model.split('/')[1]}`,
-            })
-          }
-        } else if (hfResponse.status === 503) {
-          // Model is loading, try next model
+          return NextResponse.json({
+            response: aiResponse,
+            provider: `huggingface-${model.split('/')[1]}`,
+          })
+        }
+      } catch (error: any) {
+        // SDK handles 503 errors automatically, but if model is unavailable, try next
+        if (error?.status === 503 || error?.message?.includes('loading')) {
           console.log(`Model ${model} is loading, trying next...`)
           continue
         }
-      } catch (error) {
-        console.log(`Model ${model} unavailable, trying next...`)
+        console.log(`Model ${model} unavailable: ${error?.message || 'Unknown error'}, trying next...`)
         continue
       }
     }
