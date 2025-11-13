@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Payment, Family } from '@/lib/models'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Get all payments across all families
 export async function GET(request: NextRequest) {
   try {

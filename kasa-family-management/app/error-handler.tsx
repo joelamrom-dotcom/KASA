@@ -31,8 +31,8 @@ if (typeof window !== 'undefined') {
       event.preventDefault()
       return
     }
-    if (originalUnhandledRejection) {
-      originalUnhandledRejection(event)
+    if (originalUnhandledRejection && typeof originalUnhandledRejection === 'function') {
+      originalUnhandledRejection.call(window, event)
     }
   }
 }

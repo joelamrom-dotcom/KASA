@@ -51,7 +51,11 @@ export async function POST(request: NextRequest) {
 
     // Find all families with email addresses
     const families = await Family.find({
-      email: { $exists: true, $ne: null, $ne: '' }
+      $and: [
+        { email: { $exists: true } },
+        { email: { $ne: null } },
+        { email: { $ne: '' } }
+      ]
     })
 
     if (families.length === 0) {

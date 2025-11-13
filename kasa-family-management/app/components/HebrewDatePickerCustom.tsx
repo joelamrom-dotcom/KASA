@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { HDate, HebrewDate } from '@hebcal/core'
+import { HDate } from '@hebcal/core'
 import { CalendarIcon } from '@heroicons/react/24/outline'
 
 interface HebrewDatePickerProps {

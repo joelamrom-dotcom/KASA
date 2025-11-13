@@ -113,7 +113,9 @@ export default function FamilyDetailPage() {
     password: '',
     fromName: 'Kasa Family Management'
   })
-  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements' | 'sub-families'>('info')
+  const [subFamilies, setSubFamilies] = useState<any[]>([])
+  const [loadingSubFamilies, setLoadingSubFamilies] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
@@ -143,7 +145,7 @@ export default function FamilyDetailPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const tab = urlParams.get('tab')
-    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements') {
+    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements' || tab === 'sub-families') {
       setActiveTab(tab as any)
       // Auto-open modal if coming from quick add
       if (tab === 'members' && urlParams.get('add') === 'true') {
@@ -154,6 +156,12 @@ export default function FamilyDetailPage() {
   const [showMemberModal, setShowMemberModal] = useState(false)
   const [editingMember, setEditingMember] = useState<any>(null)
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null)
+  const [memberActiveTab, setMemberActiveTab] = useState<'info' | 'balance' | 'payments' | 'statements'>('info')
+  const [memberBalance, setMemberBalance] = useState<any>(null)
+  const [memberPayments, setMemberPayments] = useState<any[]>([])
+  const [memberStatements, setMemberStatements] = useState<any[]>([])
+  const [loadingMemberFinancials, setLoadingMemberFinancials] = useState(false)
+  const [memberPaymentsPage, setMemberPaymentsPage] = useState(1)
   const [editingMemberField, setEditingMemberField] = useState<string | null>(null)
   const [editMemberValue, setEditMemberValue] = useState<string>('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -187,6 +195,8 @@ export default function FamilyDetailPage() {
     type: 'membership' as 'membership' | 'donation' | 'other',
     paymentMethod: 'cash' as 'cash' | 'credit_card' | 'check' | 'quick_pay',
     paymentFrequency: 'one-time' as 'one-time' | 'monthly',
+    paymentFor: 'family' as 'family' | 'member', // New field: payment for family or member
+    memberId: '', // New field: selected member ID if paymentFor is 'member'
     saveCard: false,
     useSavedCard: false,
     selectedSavedCardId: '',
@@ -230,11 +240,28 @@ export default function FamilyDetailPage() {
     if (params.id) {
       fetchFamilyDetails()
       fetchStatements()
+      fetchSubFamilies()
     }
     fetchPaymentPlans()
     fetchLifecycleEventTypes()
     fetchEmailConfig()
   }, [params.id])
+
+  const fetchSubFamilies = async () => {
+    if (!params.id) return
+    setLoadingSubFamilies(true)
+    try {
+      const res = await fetch(`/api/kasa/families/${params.id}/sub-families`)
+      if (res.ok) {
+        const data = await res.json()
+        setSubFamilies(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching sub-families:', error)
+    } finally {
+      setLoadingSubFamilies(false)
+    }
+  }
 
   // Fetch saved payment methods when payment modal opens or credit card is selected
   useEffect(() => {
@@ -242,6 +269,49 @@ export default function FamilyDetailPage() {
       fetchSavedPaymentMethods()
     }
   }, [showPaymentModal, paymentForm.paymentMethod, params.id])
+
+  // Fetch member financial data when viewing a member
+  useEffect(() => {
+    if (viewingMemberId) {
+      fetchMemberFinancials()
+    } else {
+      // Reset member financial data when not viewing a member
+      setMemberBalance(null)
+      setMemberPayments([])
+      setMemberStatements([])
+    }
+  }, [viewingMemberId, memberActiveTab])
+
+  const fetchMemberFinancials = async () => {
+    if (!viewingMemberId) return
+    
+    setLoadingMemberFinancials(true)
+    try {
+      if (memberActiveTab === 'balance') {
+        const res = await fetch(`/api/kasa/members/${viewingMemberId}/balance`)
+        if (res.ok) {
+          const balance = await res.json()
+          setMemberBalance(balance)
+        }
+      } else if (memberActiveTab === 'payments') {
+        const res = await fetch(`/api/kasa/members/${viewingMemberId}/payments`)
+        if (res.ok) {
+          const payments = await res.json()
+          setMemberPayments(payments)
+        }
+      } else if (memberActiveTab === 'statements') {
+        const res = await fetch(`/api/kasa/members/${viewingMemberId}/statements`)
+        if (res.ok) {
+          const statements = await res.json()
+          setMemberStatements(statements)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching member financials:', error)
+    } finally {
+      setLoadingMemberFinancials(false)
+    }
+  }
 
   const fetchSavedPaymentMethods = async () => {
     try {
@@ -979,8 +1049,8 @@ export default function FamilyDetailPage() {
     fieldName: string,
     displayValue: string | React.ReactNode,
     fieldType: 'text' | 'date' | 'select' | 'hebrew' | 'phone' | 'email' | 'name' = 'text',
-    options?: { value: string; label: string }[],
-    memberId: string
+    memberId: string,
+    options?: { value: string; label: string }[]
   ) => {
     const isEditing = editingMemberField === `${memberId}-${fieldName}`
     const member = data?.members?.find((m: any) => m._id === memberId)
@@ -1507,21 +1577,28 @@ export default function FamilyDetailPage() {
       return
     }
 
+    // Validate member selection if payment is for a member
+    if (paymentForm.paymentFor === 'member' && !paymentForm.memberId) {
+      alert('Please select a member for this payment')
+      return
+    }
+
     // Handle charging saved card
     if (paymentForm.paymentMethod === 'credit_card' && paymentForm.useSavedCard && paymentForm.selectedSavedCardId) {
       try {
         const res = await fetch(`/api/kasa/families/${params.id}/charge-saved-card`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            savedPaymentMethodId: paymentForm.selectedSavedCardId,
-            amount: paymentForm.amount,
-            paymentDate: paymentForm.paymentDate,
-            year: paymentForm.year,
-            type: paymentForm.type,
-            notes: paymentForm.notes,
-            paymentFrequency: paymentForm.paymentFrequency
-          })
+            body: JSON.stringify({
+              savedPaymentMethodId: paymentForm.selectedSavedCardId,
+              amount: paymentForm.amount,
+              paymentDate: paymentForm.paymentDate,
+              year: paymentForm.year,
+              type: paymentForm.type,
+              notes: paymentForm.notes,
+              paymentFrequency: paymentForm.paymentFrequency,
+              memberId: paymentForm.paymentFor === 'member' && paymentForm.memberId ? paymentForm.memberId : undefined
+            })
         })
 
         const data = await res.json()
@@ -1535,6 +1612,8 @@ export default function FamilyDetailPage() {
             type: 'membership',
             paymentMethod: 'cash',
             paymentFrequency: 'one-time',
+            paymentFor: 'family',
+            memberId: '',
             saveCard: false,
             useSavedCard: false,
             selectedSavedCardId: '',
@@ -1567,9 +1646,7 @@ export default function FamilyDetailPage() {
     try {
       // Build payment data based on payment method
       // Ensure paymentMethod is explicitly set and never falls back to cash unless truly missing
-      const selectedPaymentMethod = paymentForm.paymentMethod && paymentForm.paymentMethod !== '' 
-        ? paymentForm.paymentMethod 
-        : 'cash'
+      const selectedPaymentMethod = paymentForm.paymentMethod || 'cash'
       
       const paymentData: any = {
         amount: paymentForm.amount,
@@ -1579,6 +1656,11 @@ export default function FamilyDetailPage() {
         paymentMethod: selectedPaymentMethod,
         paymentFrequency: paymentForm.paymentFrequency,
         notes: paymentForm.notes || undefined
+      }
+
+      // Add memberId if payment is for a member
+      if (paymentForm.paymentFor === 'member' && paymentForm.memberId) {
+        paymentData.memberId = paymentForm.memberId
       }
 
       // Add credit card info if payment method is credit_card
@@ -1624,6 +1706,8 @@ export default function FamilyDetailPage() {
           type: 'membership',
           paymentMethod: 'cash',
           paymentFrequency: 'one-time',
+          paymentFor: 'family',
+          memberId: '',
           saveCard: false,
           useSavedCard: false,
           selectedSavedCardId: '',
@@ -1639,6 +1723,10 @@ export default function FamilyDetailPage() {
         })
         fetchFamilyDetails()
         fetchSavedPaymentMethods()
+        // Refresh member financials if viewing a member
+        if (viewingMemberId && memberActiveTab === 'payments') {
+          fetchMemberFinancials()
+        }
       } else {
         const errorData = await res.json()
         alert(`Error adding payment: ${errorData.error || 'Unknown error'}`)
@@ -1768,7 +1856,8 @@ export default function FamilyDetailPage() {
                 { id: 'members', label: 'Members' },
                 { id: 'payments', label: 'Payments' },
                 { id: 'events', label: 'Lifecycle Events' },
-                { id: 'statements', label: 'Statements' }
+                { id: 'statements', label: 'Statements' },
+                { id: 'sub-families', label: 'Sub-Families' }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -2042,7 +2131,10 @@ export default function FamilyDetailPage() {
                         <div className="flex justify-between items-center mb-6">
                           <div>
                             <button
-                              onClick={() => setViewingMemberId(null)}
+                              onClick={() => {
+                                setViewingMemberId(null)
+                                setMemberActiveTab('info')
+                              }}
                               className="text-blue-600 hover:text-blue-800 mb-2 flex items-center gap-2"
                             >
                               ← Back to Members List
@@ -2052,6 +2144,52 @@ export default function FamilyDetailPage() {
                             </h3>
                           </div>
                         </div>
+                        
+                        {/* Member Tabs */}
+                        <div className="flex gap-2 mb-6 border-b border-gray-200">
+                          <button
+                            onClick={() => setMemberActiveTab('info')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                              memberActiveTab === 'info'
+                                ? 'text-blue-600 border-b-2 border-blue-600'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            Info
+                          </button>
+                          <button
+                            onClick={() => setMemberActiveTab('balance')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                              memberActiveTab === 'balance'
+                                ? 'text-blue-600 border-b-2 border-blue-600'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            Balance
+                          </button>
+                          <button
+                            onClick={() => setMemberActiveTab('payments')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                              memberActiveTab === 'payments'
+                                ? 'text-blue-600 border-b-2 border-blue-600'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            Payments
+                          </button>
+                          <button
+                            onClick={() => setMemberActiveTab('statements')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                              memberActiveTab === 'statements'
+                                ? 'text-blue-600 border-b-2 border-blue-600'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            Statements
+                          </button>
+                        </div>
+
+                        {memberActiveTab === 'info' && (
                         <div className="space-y-4">
                           {/* Basic Information */}
                           <div className="glass-strong rounded-lg p-4 border border-white/30">
@@ -2063,8 +2201,8 @@ export default function FamilyDetailPage() {
                                   'firstName',
                                   <p className="text-base font-semibold text-gray-900">{member.firstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'name',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2073,8 +2211,8 @@ export default function FamilyDetailPage() {
                                   'hebrewFirstName',
                                   <p className="text-base font-semibold text-gray-900" dir="rtl">{member.hebrewFirstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'hebrew',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2083,8 +2221,8 @@ export default function FamilyDetailPage() {
                                   'lastName',
                                   <p className="text-base font-semibold text-gray-900">{member.lastName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'name',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2093,8 +2231,8 @@ export default function FamilyDetailPage() {
                                   'hebrewLastName',
                                   <p className="text-base font-semibold text-gray-900" dir="rtl">{member.hebrewLastName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'hebrew',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2103,11 +2241,11 @@ export default function FamilyDetailPage() {
                                   'gender',
                                   <p className="text-base font-semibold text-gray-900 capitalize">{member.gender || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'select',
+                                  member._id,
                                   [
                                     { value: 'male', label: 'Male' },
                                     { value: 'female', label: 'Female' }
-                                  ],
-                                  member._id
+                                  ]
                                 )}
                               </div>
                             </div>
@@ -2123,8 +2261,8 @@ export default function FamilyDetailPage() {
                                   'birthDate',
                                   <p className="text-base font-semibold text-gray-900">{member.birthDate ? new Date(member.birthDate).toLocaleDateString() : <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'date',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                               </div>
                               <div>
@@ -2161,8 +2299,8 @@ export default function FamilyDetailPage() {
                                     'weddingDate',
                                     <p className="text-base font-semibold text-gray-900">{member.weddingDate ? new Date(member.weddingDate).toLocaleDateString() : <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'date',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2171,8 +2309,8 @@ export default function FamilyDetailPage() {
                                     'spouseFirstName',
                                     <p className="text-base font-semibold text-gray-900">{member.spouseFirstName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2181,8 +2319,8 @@ export default function FamilyDetailPage() {
                                     'spouseHebrewName',
                                     <p className="text-base font-semibold text-gray-900" dir="rtl">{member.spouseHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'hebrew',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2191,8 +2329,8 @@ export default function FamilyDetailPage() {
                                     'spouseFatherHebrewName',
                                     <p className="text-base font-semibold text-gray-900" dir="rtl">{member.spouseFatherHebrewName || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'hebrew',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2201,8 +2339,8 @@ export default function FamilyDetailPage() {
                                     'spouseCellPhone',
                                     <p className="text-base font-semibold text-gray-900">{member.spouseCellPhone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'phone',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2211,8 +2349,8 @@ export default function FamilyDetailPage() {
                                   'phone',
                                   <p className="text-base font-semibold text-gray-900">{member.phone || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'phone',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                                 </div>
                                 <div>
@@ -2221,8 +2359,8 @@ export default function FamilyDetailPage() {
                                   'email',
                                   <p className="text-base font-semibold text-gray-900">{member.email || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                   'email',
-                                  undefined,
-                                  member._id
+                                  member._id,
+                                  undefined
                                 )}
                                 </div>
                                 <div className="md:col-span-2">
@@ -2231,8 +2369,8 @@ export default function FamilyDetailPage() {
                                     'address',
                                     <p className="text-base font-semibold text-gray-900">{member.address || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2241,8 +2379,8 @@ export default function FamilyDetailPage() {
                                     'city',
                                     <p className="text-base font-semibold text-gray-900">{member.city || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2251,8 +2389,8 @@ export default function FamilyDetailPage() {
                                     'state',
                                     <p className="text-base font-semibold text-gray-900">{member.state || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 <div>
@@ -2261,8 +2399,8 @@ export default function FamilyDetailPage() {
                                     'zip',
                                     <p className="text-base font-semibold text-gray-900">{member.zip || <span className="text-gray-400 font-normal">Not provided</span>}</p>,
                                     'text',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                 </div>
                                 {/* Keep spouseName for backward compatibility */}
@@ -2273,8 +2411,8 @@ export default function FamilyDetailPage() {
                                     'spouseName',
                                     <p className="text-base font-semibold text-gray-900">{member.spouseName}</p>,
                                     'name',
-                                    undefined,
-                                    member._id
+                                    member._id,
+                                    undefined
                                   )}
                                   </div>
                                 )}
@@ -2322,6 +2460,190 @@ export default function FamilyDetailPage() {
                             </button>
                           </div>
                         </div>
+                        )}
+
+                        {memberActiveTab === 'balance' && (
+                          <div>
+                            {loadingMemberFinancials ? (
+                              <div className="text-center py-12">
+                                <p className="text-gray-500">Loading balance...</p>
+                              </div>
+                            ) : memberBalance ? (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <div className="glass-strong rounded-lg p-6 border border-white/30">
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Plan Cost (Annual)</p>
+                                    <p className="text-2xl font-bold text-gray-900">${memberBalance.planCost?.toLocaleString() || 0}</p>
+                                  </div>
+                                  <div className="glass-strong rounded-lg p-6 border border-white/30">
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Total Payments</p>
+                                    <p className="text-2xl font-bold text-green-600">${memberBalance.totalPayments?.toLocaleString() || 0}</p>
+                                  </div>
+                                  <div className={`glass-strong rounded-lg p-6 border border-white/30 ${memberBalance.balance >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Current Balance</p>
+                                    <p className={`text-2xl font-bold ${memberBalance.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ${memberBalance.balance?.toLocaleString() || 0}
+                                    </p>
+                                  </div>
+                                </div>
+                                {memberBalance.totalLifecyclePayments > 0 && (
+                                  <div className="glass-strong rounded-lg p-4 border border-white/30">
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Lifecycle Events (Informational)</p>
+                                    <p className="text-lg font-semibold text-gray-900">${memberBalance.totalLifecyclePayments?.toLocaleString() || 0}</p>
+                                    <p className="text-xs text-gray-500 mt-1">Note: Lifecycle events are not included in balance calculation</p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-12 glass rounded-xl border border-white/20">
+                                <p className="text-gray-500">No balance data available</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {memberActiveTab === 'payments' && (
+                          <div>
+                            <div className="flex justify-between mb-4">
+                              <h3 className="text-lg font-semibold">Payments</h3>
+                              <button
+                                onClick={() => {
+                                  setPaymentForm({
+                                    ...paymentForm,
+                                    paymentFor: 'member',
+                                    memberId: member._id
+                                  })
+                                  setShowPaymentModal(true)
+                                }}
+                                className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
+                              >
+                                <PlusIcon className="h-4 w-4" />
+                                Add Payment
+                              </button>
+                            </div>
+                            {loadingMemberFinancials ? (
+                              <div className="text-center py-12">
+                                <p className="text-gray-500">Loading payments...</p>
+                              </div>
+                            ) : memberPayments.length === 0 ? (
+                              <div className="text-center py-12 glass rounded-xl border border-white/20">
+                                <div className="text-4xl mb-4">💳</div>
+                                <p className="text-gray-500">No payments found for this member.</p>
+                              </div>
+                            ) : (
+                              <div className="glass-strong rounded-xl overflow-hidden border border-white/30">
+                                <table className="min-w-full">
+                                  <thead className="bg-white/20 backdrop-blur-sm">
+                                    <tr>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Date</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Amount</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Type</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Payment Method</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Year</th>
+                                      <th className="text-left p-4 font-semibold text-gray-700">Notes</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white/10 divide-y divide-white/20">
+                                    {memberPayments.slice((memberPaymentsPage - 1) * itemsPerPage, memberPaymentsPage * itemsPerPage).map((payment: any) => {
+                                      const formatPaymentMethod = () => {
+                                        if (!payment.paymentMethod) return 'Cash'
+                                        const methodLabels: { [key: string]: string } = {
+                                          cash: 'Cash',
+                                          credit_card: payment.ccInfo?.last4 ? `Credit Card •••• ${payment.ccInfo.last4}` : 'Credit Card',
+                                          check: payment.checkInfo?.checkNumber ? `Check #${payment.checkInfo.checkNumber}` : 'Check',
+                                          quick_pay: 'Quick Pay'
+                                        }
+                                        return methodLabels[payment.paymentMethod] || payment.paymentMethod
+                                      }
+                                      return (
+                                        <tr key={payment._id} className="hover:bg-white/20 transition-colors">
+                                          <td className="p-4">{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                                          <td className="p-4 font-medium">${payment.amount.toLocaleString()}</td>
+                                          <td className="p-4 capitalize">{payment.type}</td>
+                                          <td className="p-4">
+                                            <div className="text-sm">{formatPaymentMethod()}</div>
+                                            {payment.paymentMethod === 'credit_card' && payment.ccInfo?.cardType && (
+                                              <div className="text-xs text-gray-500">{payment.ccInfo.cardType}</div>
+                                            )}
+                                            {payment.paymentMethod === 'check' && payment.checkInfo?.bankName && (
+                                              <div className="text-xs text-gray-500">{payment.checkInfo.bankName}</div>
+                                            )}
+                                          </td>
+                                          <td className="p-4">{payment.year}</td>
+                                          <td className="p-4 text-gray-600">{payment.notes || '-'}</td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                                {memberPayments.length > 0 && (
+                                  <Pagination
+                                    currentPage={memberPaymentsPage}
+                                    totalPages={Math.ceil(memberPayments.length / itemsPerPage)}
+                                    totalItems={memberPayments.length}
+                                    itemsPerPage={itemsPerPage}
+                                    onPageChange={setMemberPaymentsPage}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {memberActiveTab === 'statements' && (
+                          <div>
+                            {loadingMemberFinancials ? (
+                              <div className="text-center py-12">
+                                <p className="text-gray-500">Loading statements...</p>
+                              </div>
+                            ) : memberStatements.length === 0 ? (
+                              <div className="text-center py-12 glass rounded-xl border border-white/20">
+                                <div className="text-4xl mb-4">📄</div>
+                                <p className="text-gray-500">No statements found for this member.</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {memberStatements.map((statement) => (
+                                  <div key={statement._id} className="glass rounded-xl p-6 border border-white/20">
+                                    <div className="flex justify-between items-start mb-4">
+                                      <div>
+                                        <h4 className="font-semibold text-lg">{statement.statementNumber}</h4>
+                                        <p className="text-sm text-gray-500">
+                                          {new Date(statement.fromDate).toLocaleDateString()} - {new Date(statement.toDate).toLocaleDateString()}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                          Generated: {new Date(statement.date).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="text-sm text-gray-500">Closing Balance</div>
+                                        <div className="text-xl font-bold">${statement.closingBalance.toLocaleString()}</div>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-4 mt-4 pt-4 border-t border-white/20">
+                                      <div>
+                                        <p className="text-xs text-gray-500">Opening Balance</p>
+                                        <p className="text-sm font-semibold">${statement.openingBalance.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Income</p>
+                                        <p className="text-sm font-semibold text-green-600">${statement.income.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Expenses</p>
+                                        <p className="text-sm font-semibold text-red-600">${statement.expenses.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Closing Balance</p>
+                                        <p className="text-sm font-semibold">${statement.closingBalance.toLocaleString()}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })()
@@ -2375,7 +2697,9 @@ export default function FamilyDetailPage() {
                         const familyLastName = getFamilyLastName()
                         setMemberForm({ 
                           firstName: '', 
+                          hebrewFirstName: '',
                           lastName: familyLastName, 
+                          hebrewLastName: '',
                           birthDate: '', 
                           hebrewBirthDate: '', 
                           gender: '',
@@ -2589,66 +2913,90 @@ export default function FamilyDetailPage() {
                 <div className="flex justify-between mb-4">
                   <h3 className="text-lg font-semibold">Payments</h3>
                   <button
-                    onClick={() => setShowPaymentModal(true)}
+                    onClick={() => {
+                      setPaymentForm({
+                        ...paymentForm,
+                        paymentFor: 'family',
+                        memberId: ''
+                      })
+                      setShowPaymentModal(true)
+                    }}
                     className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
                   >
                     <PlusIcon className="h-4 w-4" />
                     Add Payment
                   </button>
                 </div>
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Date</th>
-                      <th className="text-left p-2">Amount</th>
-                      <th className="text-left p-2">Type</th>
-                      <th className="text-left p-2">Payment Method</th>
-                      <th className="text-left p-2">Year</th>
-                      <th className="text-left p-2">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.payments.slice((paymentsPage - 1) * itemsPerPage, paymentsPage * itemsPerPage).map((payment: any) => {
-                      const formatPaymentMethod = () => {
-                        if (!payment.paymentMethod) return 'Cash'
-                        const methodLabels: { [key: string]: string } = {
-                          cash: 'Cash',
-                          credit_card: payment.ccInfo?.last4 ? `Credit Card •••• ${payment.ccInfo.last4}` : 'Credit Card',
-                          check: payment.checkInfo?.checkNumber ? `Check #${payment.checkInfo.checkNumber}` : 'Check',
-                          quick_pay: 'Quick Pay'
-                        }
-                        return methodLabels[payment.paymentMethod] || payment.paymentMethod
-                      }
-                      return (
-                        <tr key={payment._id} className="border-b">
-                          <td className="p-2">{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                          <td className="p-2 font-medium">${payment.amount.toLocaleString()}</td>
-                          <td className="p-2 capitalize">{payment.type}</td>
-                          <td className="p-2">
-                            <div className="text-sm">{formatPaymentMethod()}</div>
-                            {payment.paymentMethod === 'credit_card' && payment.ccInfo?.cardType && (
-                              <div className="text-xs text-gray-500">{payment.ccInfo.cardType}</div>
-                            )}
-                            {payment.paymentMethod === 'check' && payment.checkInfo?.bankName && (
-                              <div className="text-xs text-gray-500">{payment.checkInfo.bankName}</div>
-                            )}
-                          </td>
-                          <td className="p-2">{payment.year}</td>
-                          <td className="p-2 text-gray-600">{payment.notes || '-'}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-                {data.payments.length > 0 && (
-                  <Pagination
-                    currentPage={paymentsPage}
-                    totalPages={Math.ceil(data.payments.length / itemsPerPage)}
-                    totalItems={data.payments.length}
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={setPaymentsPage}
-                  />
-                )}
+                {/* Filter to show only family-level payments (no memberId) */}
+                {(() => {
+                  const familyPayments = data.payments.filter((payment: any) => !payment.memberId)
+                  return (
+                    <>
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Date</th>
+                            <th className="text-left p-2">Amount</th>
+                            <th className="text-left p-2">Type</th>
+                            <th className="text-left p-2">Payment Method</th>
+                            <th className="text-left p-2">Year</th>
+                            <th className="text-left p-2">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {familyPayments.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-gray-500">
+                                No family payments found
+                              </td>
+                            </tr>
+                          ) : (
+                            familyPayments.slice((paymentsPage - 1) * itemsPerPage, paymentsPage * itemsPerPage).map((payment: any) => {
+                              const formatPaymentMethod = () => {
+                                if (!payment.paymentMethod) return 'Cash'
+                                const methodLabels: { [key: string]: string } = {
+                                  cash: 'Cash',
+                                  credit_card: payment.ccInfo?.last4 ? `Credit Card •••• ${payment.ccInfo.last4}` : 'Credit Card',
+                                  check: payment.checkInfo?.checkNumber ? `Check #${payment.checkInfo.checkNumber}` : 'Check',
+                                  quick_pay: 'Quick Pay'
+                                }
+                                return methodLabels[payment.paymentMethod] || payment.paymentMethod
+                              }
+                              
+                              return (
+                                <tr key={payment._id} className="border-b">
+                                  <td className="p-2">{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                                  <td className="p-2 font-medium">${payment.amount.toLocaleString()}</td>
+                                  <td className="p-2 capitalize">{payment.type}</td>
+                                  <td className="p-2">
+                                    <div className="text-sm">{formatPaymentMethod()}</div>
+                                    {payment.paymentMethod === 'credit_card' && payment.ccInfo?.cardType && (
+                                      <div className="text-xs text-gray-500">{payment.ccInfo.cardType}</div>
+                                    )}
+                                    {payment.paymentMethod === 'check' && payment.checkInfo?.bankName && (
+                                      <div className="text-xs text-gray-500">{payment.checkInfo.bankName}</div>
+                                    )}
+                                  </td>
+                                  <td className="p-2">{payment.year}</td>
+                                  <td className="p-2 text-gray-600">{payment.notes || '-'}</td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                      {familyPayments.length > 0 && (
+                        <Pagination
+                          currentPage={paymentsPage}
+                          totalPages={Math.ceil(familyPayments.length / itemsPerPage)}
+                          totalItems={familyPayments.length}
+                          itemsPerPage={itemsPerPage}
+                          onPageChange={setPaymentsPage}
+                        />
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             )}
 
@@ -2780,6 +3128,95 @@ export default function FamilyDetailPage() {
                               {sendingEmail === statement._id ? 'Sending...' : 'Send Email'}
                             </button>
                           )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'sub-families' && (
+              <div>
+                <div className="flex justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Sub-Families</h3>
+                  <p className="text-sm text-gray-500">
+                    Families created from members of this family
+                  </p>
+                </div>
+                {loadingSubFamilies ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <p className="text-gray-500 mt-4">Loading sub-families...</p>
+                  </div>
+                ) : subFamilies.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <div className="text-4xl mb-4">👨‍👩‍👧‍👦</div>
+                    <p className="text-gray-600 font-medium mb-2">No sub-families found</p>
+                    <p className="text-sm text-gray-500">
+                      When members of this family get married and are converted to their own families, they will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {subFamilies.map((subFamily: any) => (
+                      <div
+                        key={subFamily._id}
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="text-lg font-semibold text-gray-900">{subFamily.name}</h4>
+                              {subFamily.hebrewName && (
+                                <span className="text-sm text-gray-500" dir="rtl" style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}>
+                                  {subFamily.hebrewName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                              <div>
+                                <div className="text-xs text-gray-500">Wedding Date</div>
+                                <div className="font-medium">
+                                  {subFamily.weddingDate ? new Date(subFamily.weddingDate).toLocaleDateString() : 'N/A'}
+                                </div>
+                              </div>
+                              {subFamily.husbandFirstName && (
+                                <div>
+                                  <div className="text-xs text-gray-500">Husband</div>
+                                  <div className="font-medium">{subFamily.husbandFirstName}</div>
+                                </div>
+                              )}
+                              {subFamily.wifeFirstName && (
+                                <div>
+                                  <div className="text-xs text-gray-500">Wife</div>
+                                  <div className="font-medium">{subFamily.wifeFirstName}</div>
+                                </div>
+                              )}
+                              {subFamily.email && (
+                                <div>
+                                  <div className="text-xs text-gray-500">Email</div>
+                                  <div className="font-medium text-sm">{subFamily.email}</div>
+                                </div>
+                              )}
+                            </div>
+                            {subFamily.address && (
+                              <div className="mt-3 text-sm text-gray-600">
+                                <span className="text-gray-500">Address: </span>
+                                {subFamily.address}
+                                {subFamily.city && `, ${subFamily.city}`}
+                                {subFamily.state && `, ${subFamily.state}`}
+                                {subFamily.zip && ` ${subFamily.zip}`}
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <a
+                              href={`/families/${subFamily._id}`}
+                              className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm"
+                            >
+                              View Details
+                            </a>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -3068,26 +3505,6 @@ export default function FamilyDetailPage() {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700">Opening Balance</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={infoForm.openBalance}
-                        onChange={(e) => setInfoForm({ ...infoForm, openBalance: parseFloat(e.target.value) || 0 })}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-700">Current Payment</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={infoForm.currentPayment}
-                        onChange={(e) => setInfoForm({ ...infoForm, currentPayment: parseFloat(e.target.value) || 0 })}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -3279,6 +3696,54 @@ export default function FamilyDetailPage() {
         {showPaymentModal && (
           <Modal title="Add Payment" onClose={() => setShowPaymentModal(false)}>
             <form onSubmit={handleAddPayment} className="space-y-4">
+              {/* Payment For Selection - Only show if opened from member view, otherwise default to family */}
+              {viewingMemberId && memberActiveTab === 'payments' ? (
+                <>
+                  {/* When viewing a member, allow selecting payment for member or family */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Payment For *</label>
+                    <select
+                      value={paymentForm.paymentFor}
+                      onChange={(e) => setPaymentForm({ 
+                        ...paymentForm, 
+                        paymentFor: e.target.value as 'family' | 'member',
+                        memberId: e.target.value === 'family' ? '' : viewingMemberId
+                      })}
+                      className="w-full border rounded px-3 py-2"
+                      required
+                    >
+                      <option value="member">Member (Current: {data?.members?.find((m: any) => m._id === viewingMemberId)?.firstName} {data?.members?.find((m: any) => m._id === viewingMemberId)?.lastName})</option>
+                      <option value="family">Family</option>
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* When on family Payments tab, payment is always for family - hide the selection */}
+                  <input type="hidden" value="family" />
+                </>
+              )}
+
+              {/* Member Selection - Show only if paymentFor is 'member' and not viewing a specific member */}
+              {paymentForm.paymentFor === 'member' && !viewingMemberId && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Select Member *</label>
+                  <select
+                    value={paymentForm.memberId}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, memberId: e.target.value })}
+                    className="w-full border rounded px-3 py-2"
+                    required={paymentForm.paymentFor === 'member'}
+                  >
+                    <option value="">Select a member...</option>
+                    {data?.members?.map((member: any) => (
+                      <option key={member._id} value={member._id}>
+                        {member.firstName} {member.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium mb-1">Amount *</label>
                 <input
@@ -3444,6 +3909,7 @@ export default function FamilyDetailPage() {
                       notes={paymentForm.notes}
                       saveCard={paymentForm.saveCard}
                       paymentFrequency={paymentForm.paymentFrequency}
+                      memberId={paymentForm.paymentFor === 'member' && paymentForm.memberId ? paymentForm.memberId : undefined}
                       onSuccess={async (paymentIntentId) => {
                         setShowPaymentModal(false)
                         setUseStripe(false)
@@ -3454,6 +3920,8 @@ export default function FamilyDetailPage() {
                           type: 'membership',
                           paymentMethod: 'cash',
                           paymentFrequency: 'one-time',
+                          paymentFor: 'family',
+                          memberId: '',
                           saveCard: false,
                           useSavedCard: false,
                           selectedSavedCardId: '',

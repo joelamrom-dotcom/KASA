@@ -5,7 +5,11 @@ import {
   PlusIcon, 
   PencilIcon, 
   TrashIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  MagnifyingGlassIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ArrowsUpDownIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import Pagination from '@/app/components/Pagination'
@@ -113,6 +117,9 @@ export default function FamiliesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingFamily, setEditingFamily] = useState<Family | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const itemsPerPage = 10
   const [formData, setFormData] = useState({
     name: '',
@@ -353,6 +360,103 @@ export default function FamiliesPage() {
     })
   }
 
+  // Filter families based on search query - searches across all fields
+  const filteredFamilies = families.filter((family) => {
+    if (!searchQuery.trim()) return true
+    
+    const query = searchQuery.toLowerCase().trim()
+    
+    // Search across all text fields
+    const searchableFields = [
+      family.name,
+      family.hebrewName,
+      family.husbandFirstName,
+      family.husbandHebrewName,
+      family.husbandFatherHebrewName,
+      family.wifeFirstName,
+      family.wifeHebrewName,
+      family.wifeFatherHebrewName,
+      family.email,
+      family.phone,
+      family.husbandCellPhone,
+      family.wifeCellPhone,
+      family.address,
+      family.street,
+      family.city,
+      family.state,
+      family.zip,
+      getPlanNameById(family.paymentPlanId, family.currentPlan),
+      family.memberCount?.toString(),
+      family.openBalance?.toString(),
+      family.weddingDate ? new Date(family.weddingDate).toLocaleDateString() : ''
+    ].filter(Boolean) // Remove null/undefined values
+    
+    // Check if any field contains the search query
+    return searchableFields.some(field => 
+      field && field.toString().toLowerCase().includes(query)
+    )
+  })
+
+  // Sort families based on selected column
+  const sortedFamilies = [...filteredFamilies].sort((a, b) => {
+    if (!sortColumn) return 0
+
+    let aValue: any
+    let bValue: any
+
+    switch (sortColumn) {
+      case 'name':
+        aValue = (a.name || '').toLowerCase()
+        bValue = (b.name || '').toLowerCase()
+        break
+      case 'weddingDate':
+        aValue = a.weddingDate ? new Date(a.weddingDate).getTime() : 0
+        bValue = b.weddingDate ? new Date(b.weddingDate).getTime() : 0
+        break
+      case 'members':
+        aValue = a.memberCount || 0
+        bValue = b.memberCount || 0
+        break
+      case 'plan':
+        aValue = getPlanNameById(a.paymentPlanId, a.currentPlan).toLowerCase()
+        bValue = getPlanNameById(b.paymentPlanId, b.currentPlan).toLowerCase()
+        break
+      case 'balance':
+        aValue = a.openBalance || 0
+        bValue = b.openBalance || 0
+        break
+      default:
+        return 0
+    }
+
+    // Handle null/undefined values
+    if (aValue === null || aValue === undefined) aValue = ''
+    if (bValue === null || bValue === undefined) bValue = ''
+
+    // Compare values
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  })
+
+  // Handle column header click for sorting
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle direction if clicking same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new column and default to ascending
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+    setCurrentPage(1) // Reset to first page when sorting
+  }
+
+  // Reset to page 1 when search query or sort changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, sortColumn, sortDirection])
+
   if (loading) {
     return (
       <div className="min-h-screen p-8">
@@ -386,20 +490,149 @@ export default function FamiliesPage() {
           </button>
         </div>
 
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search families by name, email, phone, address, plan, or any field..."
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <span className="text-sm">Clear</span>
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="mt-2 text-sm text-gray-500">
+              Found {sortedFamilies.length} {sortedFamilies.length === 1 ? 'family' : 'families'} matching "{searchQuery}"
+            </p>
+          )}
+        </div>
+
         <div className="glass-strong rounded-2xl shadow-xl overflow-hidden border border-white/30">
           <table className="min-w-full divide-y divide-white/20">
             <thead className="bg-white/20 backdrop-blur-sm">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Wedding Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Members</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Name</span>
+                    {sortColumn === 'name' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('weddingDate')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Wedding Date</span>
+                    {sortColumn === 'weddingDate' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('members')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Members</span>
+                    {sortColumn === 'members' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('plan')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Plan</span>
+                    {sortColumn === 'plan' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
+                  onClick={() => handleSort('balance')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Balance</span>
+                    {sortColumn === 'balance' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                      )
+                    ) : (
+                      <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 opacity-50" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white/10 divide-y divide-white/20">
-              {families.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
+              {filteredFamilies.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="text-gray-400 mb-2">
+                      <MagnifyingGlassIcon className="mx-auto h-12 w-12" />
+                    </div>
+                    <p className="text-gray-600 font-medium">
+                      {searchQuery ? `No families found matching "${searchQuery}"` : 'No families found'}
+                    </p>
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        Clear search
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
                 <tr key={family._id} className="hover:bg-white/20 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
@@ -446,16 +679,18 @@ export default function FamiliesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
-          <Pagination
-            currentPage={currentPage}
-            totalPages={Math.ceil(families.length / itemsPerPage)}
-            totalItems={families.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-          />
+          {filteredFamilies.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(filteredFamilies.length / itemsPerPage)}
+              totalItems={filteredFamilies.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
 
         {showModal && (

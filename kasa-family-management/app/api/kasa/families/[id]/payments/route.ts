@@ -42,7 +42,7 @@ export async function POST(
   try {
     await connectDB()
     const body = await request.json()
-    const { amount, paymentDate, year, type, paymentMethod, ccInfo, checkInfo, notes } = body
+    const { amount, paymentDate, year, type, paymentMethod, ccInfo, checkInfo, notes, memberId } = body
 
     console.log('Received payment data:', { amount, paymentDate, year, type, paymentMethod, ccInfo, checkInfo })
 
@@ -77,6 +77,11 @@ export async function POST(
       type: type || 'membership',
       paymentMethod: finalPaymentMethod,
       notes: notes || undefined
+    }
+
+    // Add memberId if provided (for member-specific payments)
+    if (memberId) {
+      paymentData.memberId = memberId
     }
     
     console.log('Payment data before adding ccInfo/checkInfo:', JSON.stringify(paymentData, null, 2))

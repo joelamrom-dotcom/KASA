@@ -13,7 +13,10 @@ import {
   CalendarIcon,
   CogIcon,
   PresentationChartBarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  ClipboardDocumentListIcon,
+  ChartPieIcon,
+  ArrowUpTrayIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -25,22 +28,27 @@ import {
   CalendarIcon as CalendarIconSolid,
   CogIcon as CogIconSolid,
   PresentationChartBarIcon as PresentationChartBarIconSolid,
-  CurrencyDollarIcon as CurrencyDollarIconSolid
+  CurrencyDollarIcon as CurrencyDollarIconSolid,
+  ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
+  ChartPieIcon as ChartPieIconSolid,
+  ArrowUpTrayIcon as ArrowUpTrayIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
   const pathname = usePathname()
 
-  const navItems = [
-    { href: '/', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
-    { href: '/families', label: 'Families', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
-    { href: '/payments', label: 'Payments', icon: CurrencyDollarIcon, iconSolid: CurrencyDollarIconSolid },
-    { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
-    { href: '/events', label: 'Events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
-    { href: '/reports', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
-    { href: '/statements', label: 'Statements', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
-    { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
-  ]
+    const navItems = [
+      { href: '/', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
+      { href: '/families', label: 'Families', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
+      { href: '/payments', label: 'Payments', icon: CurrencyDollarIcon, iconSolid: CurrencyDollarIconSolid },
+      { href: '/tasks', label: 'Tasks', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
+      { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
+      { href: '/events', label: 'Events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
+      { href: '/reports', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
+      { href: '/statements', label: 'Statements', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
+      { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
+      { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
+    ]
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-white/10 backdrop-blur-xl border-r border-white/20 shadow-2xl z-50">

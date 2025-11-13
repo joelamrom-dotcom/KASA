@@ -1,0 +1,117 @@
+import { NextRequest, NextResponse } from 'next/server'
+import connectDB from '@/lib/database'
+import { Task, Family, FamilyMember } from '@/lib/models'
+
+export const dynamic = 'force-dynamic'
+
+// GET - Get all tasks with optional filters
+export async function GET(request: NextRequest) {
+  try {
+    await connectDB()
+    
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const priority = searchParams.get('priority')
+    const dueDate = searchParams.get('dueDate') // Filter by due date (e.g., 'today', 'overdue', 'upcoming')
+    
+    const query: any = {}
+    
+    if (status) {
+      query.status = status
+    }
+    
+    if (priority) {
+      query.priority = priority
+    }
+    
+    if (dueDate === 'today') {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      query.dueDate = { $gte: today, $lt: tomorrow }
+    } else if (dueDate === 'overdue') {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      query.dueDate = { $lt: today }
+      query.status = { $ne: 'completed' }
+    } else if (dueDate === 'upcoming') {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      query.dueDate = { $gte: today }
+    }
+    
+    const tasks = await Task.find(query)
+      .populate('relatedFamilyId', 'name')
+      .populate('relatedMemberId', 'firstName lastName')
+      .sort({ dueDate: 1, priority: -1 })
+      .lean()
+    
+    return NextResponse.json(tasks)
+  } catch (error: any) {
+    console.error('Error fetching tasks:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch tasks' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - Create a new task
+export async function POST(request: NextRequest) {
+  try {
+    await connectDB()
+    const body = await request.json()
+    const { 
+      title, 
+      description, 
+      dueDate, 
+      email, 
+      status, 
+      priority, 
+      relatedFamilyId, 
+      relatedMemberId, 
+      relatedPaymentId,
+      notes 
+    } = body
+
+    if (!title || !dueDate || !email) {
+      return NextResponse.json(
+        { error: 'Title, due date, and email are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      )
+    }
+
+    const task = await Task.create({
+      title,
+      description: description || undefined,
+      dueDate: new Date(dueDate),
+      email,
+      status: status || 'pending',
+      priority: priority || 'medium',
+      relatedFamilyId: relatedFamilyId || undefined,
+      relatedMemberId: relatedMemberId || undefined,
+      relatedPaymentId: relatedPaymentId || undefined,
+      notes: notes || undefined
+    })
+
+    const taskObj = task.toObject ? task.toObject() : task
+    return NextResponse.json(taskObj, { status: 201 })
+  } catch (error: any) {
+    console.error('Error creating task:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to create task' },
+      { status: 500 }
+    )
+  }
+}
+

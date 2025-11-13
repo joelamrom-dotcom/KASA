@@ -32,6 +32,7 @@ const FamilySchema = new Schema({
   paymentPlanId: { type: Schema.Types.ObjectId, ref: 'PaymentPlan' }, // Reference to PaymentPlan by ID
   currentPayment: { type: Number, default: 0 }, // Keep for backward compatibility
   openBalance: { type: Number, default: 0 }, // Deprecated - no longer used in UI, kept for backward compatibility
+  parentFamilyId: { type: Schema.Types.ObjectId, ref: 'Family' }, // Reference to parent family (for families created from members)
 }, { timestamps: true })
 
 // Family Member Schema
@@ -68,6 +69,7 @@ const FamilyMemberSchema = new Schema({
 // Payment Schema
 const PaymentSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  memberId: { type: Schema.Types.ObjectId, ref: 'FamilyMember' }, // Optional: for member-specific payments
   amount: { type: Number, required: true },
   paymentDate: { type: Date, required: true },
   year: Number, // Year for calculation purposes
@@ -163,6 +165,7 @@ const YearlyCalculationSchema = new Schema({
 // Statement Schema
 const StatementSchema = new Schema({
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  memberId: { type: Schema.Types.ObjectId, ref: 'FamilyMember' }, // Optional: for member-specific statements
   statementNumber: { type: String, required: true },
   date: { type: Date, required: true },
   fromDate: { type: Date, required: true },
@@ -215,6 +218,48 @@ const RecurringPaymentSchema = new Schema({
   notes: String,
 }, { timestamps: true })
 
+// Task Schema
+const TaskSchema = new Schema({
+  title: { type: String, required: true },
+  description: String,
+  dueDate: { type: Date, required: true },
+  email: { type: String, required: true }, // Email to notify on due date
+  status: { 
+    type: String, 
+    enum: ['pending', 'in_progress', 'completed', 'cancelled'], 
+    default: 'pending' 
+  },
+  priority: { 
+    type: String, 
+    enum: ['low', 'medium', 'high', 'urgent'], 
+    default: 'medium' 
+  },
+  relatedFamilyId: { type: Schema.Types.ObjectId, ref: 'Family' },
+  relatedMemberId: { type: Schema.Types.ObjectId, ref: 'FamilyMember' },
+  relatedPaymentId: { type: Schema.Types.ObjectId, ref: 'Payment' },
+  emailSent: { type: Boolean, default: false }, // Track if email was sent
+  completedAt: Date,
+  notes: String,
+}, { timestamps: true })
+
+// Report Schema (for AI-generated reports from chat conversations)
+const ReportSchema = new Schema({
+  title: { type: String, required: true },
+  question: { type: String, required: true }, // The question asked
+  answer: { type: String, required: true }, // The AI answer
+  reportType: { 
+    type: String, 
+    enum: ['chat', 'analysis', 'financial', 'custom'], 
+    default: 'chat' 
+  },
+  metadata: {
+    provider: String, // AI provider used (if applicable)
+    context: String, // Additional context used
+  },
+  tags: [String], // Tags for categorization
+  notes: String, // Additional notes
+}, { timestamps: true })
+
 // Export models
 export const PaymentPlan = mongoose.models.PaymentPlan || mongoose.model('PaymentPlan', PaymentPlanSchema)
 export const Family = mongoose.models.Family || mongoose.model('Family', FamilySchema)
@@ -229,3 +274,5 @@ export const EmailConfig = mongoose.models.EmailConfig || mongoose.model('EmailC
 export const CycleConfig = mongoose.models.CycleConfig || mongoose.model('CycleConfig', CycleConfigSchema)
 export const SavedPaymentMethod = mongoose.models.SavedPaymentMethod || mongoose.model('SavedPaymentMethod', SavedPaymentMethodSchema)
 export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.model('RecurringPayment', RecurringPaymentSchema)
+export const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema)
+export const Report = mongoose.models.Report || mongoose.model('Report', ReportSchema)

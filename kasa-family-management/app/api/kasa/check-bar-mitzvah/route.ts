@@ -10,7 +10,11 @@ export async function POST() {
     
     // Find all members with Hebrew birth dates who haven't had bar mitzvah event added yet
     const members = await FamilyMember.find({
-      hebrewBirthDate: { $exists: true, $ne: null, $ne: '' },
+      $and: [
+        { hebrewBirthDate: { $exists: true } },
+        { hebrewBirthDate: { $ne: null } },
+        { hebrewBirthDate: { $ne: '' } }
+      ],
       barMitzvahEventAdded: { $ne: true }
     })
 

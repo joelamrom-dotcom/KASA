@@ -24,47 +24,9 @@ export async function POST(request: NextRequest) {
       ? `${conversationContext}\nUser: ${message}\nAssistant:`
       : `User: ${message}\nAssistant:`
 
-    // Try multiple free AI services (in order of preference)
+    // Use only free AI services (no API keys required)
     
-    // Option 1: Try Together AI (if API key provided - free tier)
-    const togetherApiKey = process.env.TOGETHER_API_KEY
-    if (togetherApiKey) {
-      try {
-        const togetherResponse = await fetch(
-          'https://api.together.xyz/inference',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${togetherApiKey}`,
-            },
-            body: JSON.stringify({
-              model: 'meta-llama/Llama-3-8b-chat-hf',
-              prompt: `You are a helpful AI assistant. ${fullPrompt}`,
-              max_tokens: 1000,
-              temperature: 0.7,
-              top_p: 0.9,
-              top_k: 50,
-              repetition_penalty: 1.1,
-            }),
-          }
-        )
-
-        if (togetherResponse.ok) {
-          const data = await togetherResponse.json()
-          if (data.output?.choices?.[0]?.text) {
-            return NextResponse.json({
-              response: data.output.choices[0].text.trim(),
-              provider: 'together-ai',
-            })
-          }
-        }
-      } catch (error) {
-        console.log('Together AI unavailable, trying next option...')
-      }
-    }
-
-    // Option 2: Try Hugging Face Inference API (free, no API key needed)
+    // Option 1: Try Hugging Face Inference API (free, no API key needed)
     // Using multiple models for best results
     const hfModels = [
       'mistralai/Mistral-7B-Instruct-v0.2',
@@ -125,99 +87,6 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.log(`Model ${model} unavailable, trying next...`)
         continue
-      }
-    }
-
-    // Option 3: Try Perplexity API (if available, some free tier)
-    try {
-      const perplexityResponse = await fetch(
-        'https://api.perplexity.ai/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY || ''}`,
-          },
-          body: JSON.stringify({
-            model: 'llama-3.1-sonar-small-128k-online',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are a helpful AI assistant.',
-              },
-              ...conversationHistory.map((msg: any) => ({
-                role: msg.role,
-                content: msg.content,
-              })),
-              {
-                role: 'user',
-                content: message,
-              },
-            ],
-            max_tokens: 1000,
-            temperature: 0.7,
-          }),
-        }
-      )
-
-      if (perplexityResponse.ok) {
-        const data = await perplexityResponse.json()
-        if (data.choices?.[0]?.message?.content) {
-          return NextResponse.json({
-            response: data.choices[0].message.content.trim(),
-            provider: 'perplexity',
-          })
-        }
-      }
-    } catch (error) {
-      console.log('Perplexity unavailable...')
-    }
-
-    // Option 4: Try Groq (if API key provided - free tier)
-    const groqApiKey = process.env.GROQ_API_KEY
-    if (groqApiKey) {
-      try {
-        const groqResponse = await fetch(
-          'https://api.groq.com/openai/v1/chat/completions',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${groqApiKey}`,
-            },
-            body: JSON.stringify({
-              model: 'llama-3.1-8b-instant',
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a helpful AI assistant.',
-                },
-                ...conversationHistory.map((msg: any) => ({
-                  role: msg.role,
-                  content: msg.content,
-                })),
-                {
-                  role: 'user',
-                  content: message,
-                },
-              ],
-              temperature: 0.7,
-              max_tokens: 1000,
-            }),
-          }
-        )
-
-        if (groqResponse.ok) {
-          const data = await groqResponse.json()
-          if (data.choices?.[0]?.message?.content) {
-            return NextResponse.json({
-              response: data.choices[0].message.content.trim(),
-              provider: 'groq',
-            })
-          }
-        }
-      } catch (error) {
-        console.log('Groq unavailable...')
       }
     }
 
