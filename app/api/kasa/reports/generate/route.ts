@@ -209,11 +209,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-      // Generate families and members report
-      const families = await Family.find({}).sort({ name: 1 }).lean()
-      
-      // Get all members for each family
-      const familiesWithMembers = await Promise.all(
         families.map(async (family: any) => {
           const members = await FamilyMember.find({ familyId: family._id }).lean()
           return {
