@@ -105,10 +105,24 @@ export async function POST(request: NextRequest) {
 
     // FAMILIES SECTION
     if (includeFamilies || includeAll || defaultToFamilies) {
-      const families = await Family.find({}).sort({ name: 1 }).lean()
+      // Build query with year filter if specified (filter by wedding date year)
+      const familyQuery: any = {}
+      if (requestedYear) {
+        const startOfYear = new Date(requestedYear, 0, 1)
+        const endOfYear = new Date(requestedYear, 11, 31, 23, 59, 59, 999)
+        familyQuery.weddingDate = {
+          $gte: startOfYear,
+          $lte: endOfYear
+        }
+      }
+      
+      const families = await Family.find(familyQuery).sort({ name: 1 }).lean()
       recordCount.families = families.length
 
       csvRows.push(['FAMILIES'])
+      if (requestedYear) {
+        csvRows.push([`Filtered by Wedding Year: ${requestedYear}`])
+      }
       csvRows.push(['Name', 'Hebrew Name', 'Email', 'Phone', 'Wedding Date', 'Address', 'City', 'State', 'Zip', 'Payment Plan'])
       
       for (const family of families) {
@@ -140,11 +154,33 @@ export async function POST(request: NextRequest) {
     // MEMBERS SECTION
     if (includeMembers || includeAll) {
       const families = await Family.find({}).sort({ name: 1 }).lean()
-      const allMembers = await FamilyMember.find({}).sort({ familyId: 1, lastName: 1, firstName: 1 }).lean()
+      
+      // Build query with year filter if specified (filter by any date field matching the year)
+      let allMembers: any[] = []
+      if (requestedYear) {
+        const startOfYear = new Date(requestedYear, 0, 1)
+        const endOfYear = new Date(requestedYear, 11, 31, 23, 59, 59, 999)
+        
+        // Find members where any date field matches the requested year
+        const memberQuery: any = {
+          $or: [
+            { birthDate: { $gte: startOfYear, $lte: endOfYear } },
+            { barMitzvahDate: { $gte: startOfYear, $lte: endOfYear } },
+            { batMitzvahDate: { $gte: startOfYear, $lte: endOfYear } },
+            { weddingDate: { $gte: startOfYear, $lte: endOfYear } }
+          ]
+        }
+        allMembers = await FamilyMember.find(memberQuery).sort({ familyId: 1, lastName: 1, firstName: 1 }).lean()
+      } else {
+        allMembers = await FamilyMember.find({}).sort({ familyId: 1, lastName: 1, firstName: 1 }).lean()
+      }
       
       recordCount.totalMembers = allMembers.length
 
       csvRows.push(['MEMBERS'])
+      if (requestedYear) {
+        csvRows.push([`Filtered by Year: ${requestedYear} (Birth, Bar/Bat Mitzvah, or Wedding Date)`])
+      }
       csvRows.push(['Family Name', 'First Name', 'Last Name', 'Hebrew First Name', 'Hebrew Last Name', 'Birth Date', 'Gender', 'Bar Mitzvah Date', 'Bat Mitzvah Date', 'Wedding Date'])
       
       for (const member of allMembers) {
