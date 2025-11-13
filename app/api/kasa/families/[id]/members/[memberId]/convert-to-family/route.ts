@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Family, FamilyMember } from '@/lib/models'
+import { Family, FamilyMember, PaymentPlan } from '@/lib/models'
 
 // POST - Convert a child/member to their own family
 export async function POST(
@@ -64,6 +64,18 @@ export async function POST(
       paymentPlan = 4 // 17+ years
     }
 
+    // Find payment plan by plan number to get the paymentPlanId
+    let paymentPlanId = null
+    try {
+      const paymentPlanDoc = await PaymentPlan.findOne({ planNumber: paymentPlan })
+      if (paymentPlanDoc) {
+        paymentPlanId = paymentPlanDoc._id
+      }
+    } catch (error) {
+      console.error('Error finding payment plan:', error)
+      // Continue without paymentPlanId - it will be auto-converted later
+    }
+
     // Determine spouse information - use new fields if available, otherwise fall back to spouseName
     const spouseFirstName = member.spouseFirstName || (spouseName ? spouseName.trim().split(' ')[0] : '')
     const spouseLastName = spouseName && !member.spouseFirstName 
@@ -109,7 +121,8 @@ export async function POST(
         wifeFatherHebrewName: fatherHebrewName,
         wifeCellPhone: null
       }),
-      currentPlan: paymentPlan, // Calculate based on years married
+      currentPlan: paymentPlan, // Calculate based on years married (legacy field)
+      paymentPlanId: paymentPlanId || undefined, // Set paymentPlanId if found
       currentPayment: 0,
       openBalance: 0,
       parentFamilyId: originalFamily._id // Link to parent family

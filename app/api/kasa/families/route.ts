@@ -35,6 +35,7 @@ export async function GET() {
           ...familyObj,
           _id: familyObj._id?.toString() || familyObj._id,
           paymentPlanId: familyObj.paymentPlanId?.toString() || familyObj.paymentPlanId,
+          parentFamilyId: familyObj.parentFamilyId?.toString() || familyObj.parentFamilyId, // Include parentFamilyId
           memberCount: members.length,
           // Explicitly include Hebrew name fields
           hebrewName: familyObj.hebrewName,
