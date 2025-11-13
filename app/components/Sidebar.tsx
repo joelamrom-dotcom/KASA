@@ -43,7 +43,6 @@ export default function Sidebar() {
       { href: '/payments', label: 'Payments', icon: CurrencyDollarIcon, iconSolid: CurrencyDollarIconSolid },
       { href: '/tasks', label: 'Tasks', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
       { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
-      { href: '/analysis', label: 'Analysis', icon: ChartPieIcon, iconSolid: ChartPieIconSolid },
       { href: '/analysis/kasa-projection', label: 'Kasa Projection', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
       { href: '/events', label: 'Events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
       { href: '/reports', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
