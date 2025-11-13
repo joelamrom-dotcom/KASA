@@ -68,12 +68,14 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   const handleChatQuery = async () => {
     if (!chatQuery.trim() || chatLoading) return
 
+    const queryToProcess = chatQuery.trim() // Save the query before clearing
     setChatLoading(true)
     setChatAnswer(null)
+    setChatQuery('') // Clear input immediately after starting
 
     // Check if this is a report request
-    if (checkIfReportRequest(chatQuery)) {
-      await generateDataReport(chatQuery)
+    if (checkIfReportRequest(queryToProcess)) {
+      await generateDataReport(queryToProcess)
       setChatLoading(false)
       return
     }
@@ -84,7 +86,7 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: chatQuery,
+          question: queryToProcess,
           analysisData: null // Will be fetched on server
         })
       })
