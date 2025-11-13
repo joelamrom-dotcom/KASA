@@ -559,7 +559,8 @@ export async function POST(request: NextRequest) {
     if (includePayments || includeAll) {
       // Build query with year filter and field filters
       const paymentQuery: any = { ...fieldFilters.paymentFilters }
-      if (requestedYear && !paymentQuery.updatedAt && !paymentQuery.createdAt) {
+      // If paymentDate filter exists, don't apply year filter (date filter takes precedence)
+      if (requestedYear && !paymentQuery.updatedAt && !paymentQuery.createdAt && !paymentQuery.paymentDate) {
         paymentQuery.year = requestedYear
       }
       
