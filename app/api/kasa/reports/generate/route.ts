@@ -45,6 +45,10 @@ export async function POST(request: NextRequest) {
     let filename = ''
     let recordCount: any = {}
 
+    // Extract year from query (e.g., "2026", "year 2026", "in 2026")
+    const yearMatch = query.match(/\b(20\d{2})\b/)
+    const requestedYear = yearMatch ? parseInt(yearMatch[1]) : null
+
     // Use AI to understand what data to include in report
     // First try to use AI chat endpoint to understand the request
     let reportType = 'all' // default
@@ -166,7 +170,13 @@ export async function POST(request: NextRequest) {
 
     // PAYMENTS SECTION
     if (includePayments || includeAll) {
-      const payments = await Payment.find({})
+      // Build query with year filter if specified
+      const paymentQuery: any = {}
+      if (requestedYear) {
+        paymentQuery.year = requestedYear
+      }
+      
+      const payments = await Payment.find(paymentQuery)
         .populate('familyId', 'name')
         .sort({ paymentDate: -1 })
         .lean()
@@ -174,8 +184,11 @@ export async function POST(request: NextRequest) {
       recordCount.payments = payments.length
 
       csvRows.push(['PAYMENTS'])
+      if (requestedYear) {
+        csvRows.push([`Filtered by Year: ${requestedYear}`])
+      }
       csvRows.push(['Date', 'Year', 'Family', 'Amount', 'Type', 'Payment Method', 'Notes'])
-      
+
       for (const payment of payments) {
         const paymentObj = payment as any
         const family = paymentObj.familyId as any
@@ -195,7 +208,13 @@ export async function POST(request: NextRequest) {
 
     // LIFECYCLE EVENTS SECTION
     if (includeEvents || includeAll) {
-      const events = await LifecycleEventPayment.find({})
+      // Build query with year filter if specified
+      const eventQuery: any = {}
+      if (requestedYear) {
+        eventQuery.year = requestedYear
+      }
+      
+      const events = await LifecycleEventPayment.find(eventQuery)
         .populate('familyId', 'name')
         .sort({ eventDate: -1 })
         .lean()
@@ -203,8 +222,11 @@ export async function POST(request: NextRequest) {
       recordCount.events = events.length
 
       csvRows.push(['LIFECYCLE EVENTS'])
+      if (requestedYear) {
+        csvRows.push([`Filtered by Year: ${requestedYear}`])
+      }
       csvRows.push(['Date', 'Year', 'Family', 'Event Type', 'Amount', 'Notes'])
-      
+
       for (const event of events) {
         const eventObj = event as any
         const family = eventObj.familyId as any
@@ -223,8 +245,10 @@ export async function POST(request: NextRequest) {
 
     // Generate filename
     const dateStr = new Date().toISOString().split('T')[0]
+    const yearSuffix = requestedYear ? `_${requestedYear}` : ''
+    
     if (includeAll) {
-      filename = `Complete_Data_Report_${dateStr}.csv`
+      filename = `Complete_Data_Report${yearSuffix}_${dateStr}.csv`
     } else {
       const parts: string[] = []
       if (includeFamilies || defaultToFamilies) parts.push('Families')
@@ -232,8 +256,8 @@ export async function POST(request: NextRequest) {
       if (includePayments) parts.push('Payments')
       if (includeEvents) parts.push('Events')
       filename = parts.length > 0 
-        ? `${parts.join('_')}_Report_${dateStr}.csv`
-        : `Data_Report_${dateStr}.csv`
+        ? `${parts.join('_')}_Report${yearSuffix}_${dateStr}.csv`
+        : `Data_Report${yearSuffix}_${dateStr}.csv`
     }
 
     const csvContent = toCSV(csvRows)
