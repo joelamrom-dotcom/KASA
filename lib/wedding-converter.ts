@@ -112,7 +112,8 @@ export async function convertMembersOnWeddingDate() {
           }),
           currentPlan: paymentPlan,
           currentPayment: 0,
-          openBalance: 0
+          openBalance: 0,
+          parentFamilyId: originalFamily._id // Link to parent family
         })
 
         // Create spouse as a member if name provided (but NOT the converted member - they ARE the family)

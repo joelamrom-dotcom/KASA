@@ -32,6 +32,7 @@ const FamilySchema = new Schema({
   paymentPlanId: { type: Schema.Types.ObjectId, ref: 'PaymentPlan' }, // Reference to PaymentPlan by ID
   currentPayment: { type: Number, default: 0 }, // Keep for backward compatibility
   openBalance: { type: Number, default: 0 }, // Deprecated - no longer used in UI, kept for backward compatibility
+  parentFamilyId: { type: Schema.Types.ObjectId, ref: 'Family' }, // Reference to parent family (for families created from members)
 }, { timestamps: true })
 
 // Family Member Schema

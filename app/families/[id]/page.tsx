@@ -113,7 +113,9 @@ export default function FamilyDetailPage() {
     password: '',
     fromName: 'Kasa Family Management'
   })
-  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements' | 'sub-families'>('info')
+  const [subFamilies, setSubFamilies] = useState<any[]>([])
+  const [loadingSubFamilies, setLoadingSubFamilies] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
@@ -238,11 +240,28 @@ export default function FamilyDetailPage() {
     if (params.id) {
       fetchFamilyDetails()
       fetchStatements()
+      fetchSubFamilies()
     }
     fetchPaymentPlans()
     fetchLifecycleEventTypes()
     fetchEmailConfig()
   }, [params.id])
+
+  const fetchSubFamilies = async () => {
+    if (!params.id) return
+    setLoadingSubFamilies(true)
+    try {
+      const res = await fetch(`/api/kasa/families/${params.id}/sub-families`)
+      if (res.ok) {
+        const data = await res.json()
+        setSubFamilies(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching sub-families:', error)
+    } finally {
+      setLoadingSubFamilies(false)
+    }
+  }
 
   // Fetch saved payment methods when payment modal opens or credit card is selected
   useEffect(() => {
@@ -1837,7 +1856,8 @@ export default function FamilyDetailPage() {
                 { id: 'members', label: 'Members' },
                 { id: 'payments', label: 'Payments' },
                 { id: 'events', label: 'Lifecycle Events' },
-                { id: 'statements', label: 'Statements' }
+                { id: 'statements', label: 'Statements' },
+                { id: 'sub-families', label: 'Sub-Families' }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -3108,6 +3128,95 @@ export default function FamilyDetailPage() {
                               {sendingEmail === statement._id ? 'Sending...' : 'Send Email'}
                             </button>
                           )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'sub-families' && (
+              <div>
+                <div className="flex justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Sub-Families</h3>
+                  <p className="text-sm text-gray-500">
+                    Families created from members of this family
+                  </p>
+                </div>
+                {loadingSubFamilies ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <p className="text-gray-500 mt-4">Loading sub-families...</p>
+                  </div>
+                ) : subFamilies.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <div className="text-4xl mb-4">👨‍👩‍👧‍👦</div>
+                    <p className="text-gray-600 font-medium mb-2">No sub-families found</p>
+                    <p className="text-sm text-gray-500">
+                      When members of this family get married and are converted to their own families, they will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {subFamilies.map((subFamily: any) => (
+                      <div
+                        key={subFamily._id}
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="text-lg font-semibold text-gray-900">{subFamily.name}</h4>
+                              {subFamily.hebrewName && (
+                                <span className="text-sm text-gray-500" dir="rtl" style={{ fontFamily: 'Arial Hebrew, David, sans-serif' }}>
+                                  {subFamily.hebrewName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                              <div>
+                                <div className="text-xs text-gray-500">Wedding Date</div>
+                                <div className="font-medium">
+                                  {subFamily.weddingDate ? new Date(subFamily.weddingDate).toLocaleDateString() : 'N/A'}
+                                </div>
+                              </div>
+                              {subFamily.husbandFirstName && (
+                                <div>
+                                  <div className="text-xs text-gray-500">Husband</div>
+                                  <div className="font-medium">{subFamily.husbandFirstName}</div>
+                                </div>
+                              )}
+                              {subFamily.wifeFirstName && (
+                                <div>
+                                  <div className="text-xs text-gray-500">Wife</div>
+                                  <div className="font-medium">{subFamily.wifeFirstName}</div>
+                                </div>
+                              )}
+                              {subFamily.email && (
+                                <div>
+                                  <div className="text-xs text-gray-500">Email</div>
+                                  <div className="font-medium text-sm">{subFamily.email}</div>
+                                </div>
+                              )}
+                            </div>
+                            {subFamily.address && (
+                              <div className="mt-3 text-sm text-gray-600">
+                                <span className="text-gray-500">Address: </span>
+                                {subFamily.address}
+                                {subFamily.city && `, ${subFamily.city}`}
+                                {subFamily.state && `, ${subFamily.state}`}
+                                {subFamily.zip && ` ${subFamily.zip}`}
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <a
+                              href={`/families/${subFamily._id}`}
+                              className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm"
+                            >
+                              View Details
+                            </a>
+                          </div>
                         </div>
                       </div>
                     ))}

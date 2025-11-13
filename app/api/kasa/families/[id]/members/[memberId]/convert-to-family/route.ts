@@ -111,7 +111,8 @@ export async function POST(
       }),
       currentPlan: paymentPlan, // Calculate based on years married
       currentPayment: 0,
-      openBalance: 0
+      openBalance: 0,
+      parentFamilyId: originalFamily._id // Link to parent family
     })
 
     // Create spouse as a member if name provided
