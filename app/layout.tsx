@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import './error-handler'
-import Sidebar from './components/Sidebar'
-import FloatingKasaButton from './components/FloatingKasaButton'
+import AuthProvider from './components/AuthProvider'
+import LayoutContent from './components/LayoutContent'
 
 export const metadata: Metadata = {
   title: 'Kasa Family Management',
@@ -17,11 +17,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
-        <Sidebar />
-        <main className="ml-64 min-h-screen">
-          {children}
-        </main>
-        <FloatingKasaButton />
+        <AuthProvider>
+          <LayoutContent>{children}</LayoutContent>
+        </AuthProvider>
       </body>
     </html>
   )

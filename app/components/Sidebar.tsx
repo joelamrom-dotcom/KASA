@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { getUser, logout } from '@/lib/auth'
+import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { 
   HomeIcon,
   UserGroupIcon,
@@ -36,6 +38,7 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const user = getUser()
 
     const navItems = [
       { href: '/', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
@@ -97,7 +100,20 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-2">
+          {user && (
+            <div className="mb-2 px-4 py-2 text-sm text-gray-700">
+              <p className="font-medium">{user.firstName} {user.lastName}</p>
+              <p className="text-xs text-gray-500">{user.email}</p>
+            </div>
+          )}
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-gray-700 hover:bg-red-50 hover:text-red-700 group"
+          >
+            <ArrowRightOnRectangleIcon className="h-5 w-5 text-gray-500 group-hover:text-red-600" />
+            <span className="font-medium">Logout</span>
+          </button>
           <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
             <p className="text-xs text-gray-600 mb-1">System Status</p>
             <div className="flex items-center gap-2">

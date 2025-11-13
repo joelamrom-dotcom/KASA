@@ -53,8 +53,13 @@ function LoginForm() {
         setSuccess('Login successful! Redirecting...')
         localStorage.setItem('user', JSON.stringify(data.user))
         localStorage.setItem('token', data.token)
+        // Set cookie for server-side access
+        document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 days
+        
+        // Get redirect URL or default to dashboard
+        const redirectUrl = searchParams?.get('redirect') || '/'
         setTimeout(() => {
-          window.location.href = '/'
+          window.location.href = redirectUrl
         }, 1000)
       } else {
         setError(data.error || 'Login failed')
