@@ -89,7 +89,7 @@ function LoginForm() {
             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
               <ChartBarIcon className="h-7 w-7 text-white" />
             </div>
-            <span className="ml-3 text-2xl font-bold text-gray-900">AI SaaS</span>
+            <span className="ml-3 text-2xl font-bold text-gray-900">Kasa Family</span>
           </div>
 
           {/* Login Form Card with Glass Effect */}
@@ -114,10 +114,10 @@ function LoginForm() {
             )}
             
             <form className="space-y-5" onSubmit={handleSubmit}>
-              {/* Username/Email Field */}
+              {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Username
+                  Email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -255,7 +255,7 @@ function LoginForm() {
 
           {/* Footer */}
           <div className="mt-8 text-center text-xs text-gray-500">
-            © 2025 AI SaaS Platform. All rights reserved. | Privacy
+            © 2025 Kasa Family Management. All rights reserved.
           </div>
         </div>
       </div>
@@ -276,36 +276,20 @@ function LoginForm() {
         <div className="relative z-10 flex flex-col h-full">
           {/* Brand Name */}
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-white mb-2">AI SaaS</h1>
-            <p className="text-blue-200 text-sm">Platform</p>
+            <h1 className="text-4xl font-bold text-white mb-2">Kasa Family</h1>
+            <p className="text-blue-200 text-sm">Management System</p>
           </div>
 
           {/* Promotional Content */}
           <div className="flex-1 flex flex-col justify-center">
             <h2 className="text-5xl font-bold text-white mb-6 leading-tight">
-              Transform Your Business with AI
+              Manage Your Family Finances
             </h2>
             <p className="text-blue-100 text-lg mb-8 leading-relaxed">
-              Unlock the power of artificial intelligence to streamline your operations, 
-              enhance productivity, and drive innovation. Experience cutting-edge solutions 
-              designed for modern enterprises.
+              Track payments, manage family members, monitor lifecycle events, and stay organized 
+              with our comprehensive family management platform. Everything you need to manage 
+              your family's financial activities in one place.
             </p>
-            <button className="glass-panel bg-white text-blue-600 font-semibold py-3 px-6 rounded-lg hover:bg-blue-50 transition-all duration-300 inline-flex items-center w-fit backdrop-blur-sm border border-white/20">
-              Learn More
-              <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Bottom Navigation */}
-          <div className="mt-auto">
-            <div className="flex items-center space-x-6 text-white/80 text-sm">
-              <Link href="/products" className="hover:text-white transition-colors">Products</Link>
-              <Link href="/resources" className="hover:text-white transition-colors">Resources</Link>
-              <Link href="/support" className="hover:text-white transition-colors">Support</Link>
-              <Link href="/company" className="hover:text-white transition-colors">Company</Link>
-            </div>
           </div>
         </div>
       </div>
