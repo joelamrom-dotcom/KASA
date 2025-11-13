@@ -16,12 +16,62 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   const [reportTitle, setReportTitle] = useState('')
   const chatInputRef = useRef<HTMLInputElement>(null)
 
+  const checkIfReportRequest = (query: string): boolean => {
+    const queryLower = query.toLowerCase()
+    return (
+      queryLower.includes('report') && 
+      (queryLower.includes('famil') || queryLower.includes('member') || queryLower.includes('data'))
+    )
+  }
+
+  const generateDataReport = async (query: string) => {
+    try {
+      const res = await fetch('/api/kasa/reports/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        
+        // Download the CSV file
+        const blob = new Blob([data.csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', data.filename)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
+        // Show success message
+        setChatAnswer(`Report generated successfully!\n\n${data.recordCount.families} families\n${data.recordCount.totalMembers} total members\n\nFile downloaded: ${data.filename}`)
+      } else {
+        const errorData = await res.json()
+        setChatAnswer(`Error generating report: ${errorData.error || 'Failed to generate report'}`)
+      }
+    } catch (err: any) {
+      setChatAnswer(`Error: ${err.message || 'Failed to generate report'}`)
+    }
+  }
+
   const handleChatQuery = async () => {
     if (!chatQuery.trim() || chatLoading) return
 
     setChatLoading(true)
     setChatAnswer(null)
 
+    // Check if this is a report request
+    if (checkIfReportRequest(chatQuery)) {
+      await generateDataReport(chatQuery)
+      setChatLoading(false)
+      return
+    }
+
+    // Otherwise, handle as regular chat query
     try {
       const res = await fetch('/api/kasa/analysis/query', {
         method: 'POST',
@@ -175,6 +225,7 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
                   <li>"How many families do we have?"</li>
                   <li>"What are the payments by year?"</li>
                   <li>"Show me future projections"</li>
+                  <li>"I need a report from all families and their members"</li>
                 </ul>
               </div>
             </div>
