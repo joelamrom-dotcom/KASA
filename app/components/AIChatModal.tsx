@@ -19,8 +19,9 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   const checkIfReportRequest = (query: string): boolean => {
     const queryLower = query.toLowerCase()
     return (
-      queryLower.includes('report') && 
-      (queryLower.includes('famil') || queryLower.includes('member') || queryLower.includes('data'))
+      queryLower.includes('report') || 
+      (queryLower.includes('export') && queryLower.includes('data')) ||
+      (queryLower.includes('download') && (queryLower.includes('famil') || queryLower.includes('member') || queryLower.includes('payment') || queryLower.includes('event')))
     )
   }
 
@@ -47,8 +48,14 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
         document.body.removeChild(link)
         URL.revokeObjectURL(url)
 
-        // Show success message
-        setChatAnswer(`Report generated successfully!\n\n${data.recordCount.families} families\n${data.recordCount.totalMembers} total members\n\nFile downloaded: ${data.filename}`)
+        // Show success message with record counts
+        const counts = []
+        if (data.recordCount.families !== undefined) counts.push(`${data.recordCount.families} families`)
+        if (data.recordCount.totalMembers !== undefined) counts.push(`${data.recordCount.totalMembers} members`)
+        if (data.recordCount.payments !== undefined) counts.push(`${data.recordCount.payments} payments`)
+        if (data.recordCount.events !== undefined) counts.push(`${data.recordCount.events} events`)
+        
+        setChatAnswer(`Report generated successfully!\n\n${counts.join('\n')}\n\nFile downloaded: ${data.filename}`)
       } else {
         const errorData = await res.json()
         setChatAnswer(`Error generating report: ${errorData.error || 'Failed to generate report'}`)
@@ -226,6 +233,9 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
                   <li>"What are the payments by year?"</li>
                   <li>"Show me future projections"</li>
                   <li>"I need a report from all families and their members"</li>
+                  <li>"Generate a report with all data"</li>
+                  <li>"Export payments report"</li>
+                  <li>"Download events report"</li>
                 </ul>
               </div>
             </div>
