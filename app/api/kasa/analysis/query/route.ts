@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Family, FamilyMember, LifecycleEventPayment } from '@/lib/models'
+import { Family, FamilyMember, LifecycleEventPayment, Payment, PaymentPlan } from '@/lib/models'
 import { performAnalysis } from '@/lib/ml-analysis'
+import { calculateYearlyIncome } from '@/lib/calculations'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,12 +50,49 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Fetch additional data for comprehensive queries
+    const payments = await Payment.find({}).lean()
+    const paymentPlans = await PaymentPlan.find({}).lean()
+    const currentYear = new Date().getFullYear()
+
+    // Calculate payment statistics
+    const totalPayments = payments.reduce((sum, p: any) => sum + (p.amount || 0), 0)
+    const paymentsThisYear = payments.filter((p: any) => {
+      const paymentYear = p.year || (p.paymentDate ? new Date(p.paymentDate).getFullYear() : null)
+      return paymentYear === currentYear
+    })
+    const totalThisYear = paymentsThisYear.reduce((sum, p: any) => sum + (p.amount || 0), 0)
+    
+    // Payment methods breakdown
+    const paymentMethods: { [key: string]: number } = {}
+    payments.forEach((p: any) => {
+      const method = p.paymentMethod || 'cash'
+      paymentMethods[method] = (paymentMethods[method] || 0) + (p.amount || 0)
+    })
+
+    // Payments by year
+    const paymentsByYear: { [year: number]: number } = {}
+    payments.forEach((p: any) => {
+      const year = p.year || (p.paymentDate ? new Date(p.paymentDate).getFullYear() : currentYear)
+      paymentsByYear[year] = (paymentsByYear[year] || 0) + (p.amount || 0)
+    })
+
+    // Calculate yearly income
+    let yearlyIncomeData: any = {}
+    try {
+      yearlyIncomeData = await calculateYearlyIncome(currentYear, 0)
+    } catch (error) {
+      console.error('Error calculating yearly income:', error)
+    }
+
     // Perform analysis
     const analysis = performAnalysis(data, 20)
 
-    // Build context for AI
+    // Build comprehensive context for AI
     const context = `
-Analysis Data Summary:
+COMPREHENSIVE DATA SUMMARY:
+
+FAMILIES & MEMBERS:
 - Total Families: ${analysis.stability_analysis.current_stats.total_families}
 - Total Members: ${analysis.stability_analysis.current_stats.total_members}
 - Average Children per Family: ${analysis.stability_analysis.current_stats.avg_children_per_family.toFixed(1)}
@@ -63,7 +101,26 @@ Analysis Data Summary:
 - Average Weddings per Year: ${analysis.weddings_analysis.statistics.average.toFixed(1)}
 - Total Historical Weddings: ${analysis.weddings_analysis.statistics.total_historical}
 
-Recent Predictions (next 5 years):
+PAYMENTS & FINANCIAL DATA:
+- Total Payments (All Time): $${totalPayments.toLocaleString()}
+- Payments This Year (${currentYear}): $${totalThisYear.toLocaleString()}
+- Number of Payments This Year: ${paymentsThisYear.length}
+- Total Number of Payments: ${payments.length}
+- Payment Methods Breakdown: ${Object.entries(paymentMethods).map(([method, amount]) => `${method}: $${amount.toLocaleString()}`).join(', ')}
+
+PAYMENT PLANS:
+${paymentPlans.map((plan: any) => `- ${plan.name} (Plan ${plan.planNumber}): $${plan.yearlyPrice.toLocaleString()}/year`).join('\n')}
+
+YEARLY INCOME CALCULATION (${currentYear}):
+- Plan Income: $${(yearlyIncomeData.planIncome || 0).toLocaleString()}
+- Extra Donations: $${(yearlyIncomeData.extraDonation || 0).toLocaleString()}
+- Calculated Income: $${(yearlyIncomeData.calculatedIncome || 0).toLocaleString()}
+- Total Payments: $${(yearlyIncomeData.totalPayments || 0).toLocaleString()}
+
+RECENT PAYMENTS BY YEAR:
+${Object.entries(paymentsByYear).sort(([a], [b]) => parseInt(b) - parseInt(a)).slice(0, 5).map(([year, amount]) => `- ${year}: $${amount.toLocaleString()}`).join('\n')}
+
+FUTURE PREDICTIONS (next 5 years):
 ${Object.keys(analysis.children_analysis.predictions).slice(0, 5).map(year => {
   const pred = analysis.children_analysis.predictions[parseInt(year)]
   return `Year ${year}: ${pred.predicted} children (range: ${pred.range_min}-${pred.range_max}, confidence: ${pred.confidence})`
@@ -83,6 +140,17 @@ ${Object.keys(analysis.weddings_analysis.predictions).slice(0, 5).map(year => {
     }]
 
     const fullPrompt = `${context}\n\nUser Question: ${question}\n\nPlease provide a clear, helpful answer based on the analysis data above.`
+
+    // Prepare payment data for fallback
+    const paymentData = {
+      totalPayments,
+      totalThisYear,
+      paymentsThisYear: paymentsThisYear.length,
+      totalPaymentsCount: payments.length,
+      paymentMethods,
+      paymentsByYear,
+      yearlyIncome: yearlyIncomeData
+    }
 
     // Try to use AI chat endpoint
     try {
@@ -110,7 +178,7 @@ ${Object.keys(analysis.weddings_analysis.predictions).slice(0, 5).map(year => {
     }
 
     // Fallback: Generate intelligent response based on question
-    const answer = generateAnalysisAnswer(question, analysis, context)
+    const answer = generateAnalysisAnswer(question, analysis, context, paymentData)
 
     return NextResponse.json({
       answer,
@@ -126,10 +194,37 @@ ${Object.keys(analysis.weddings_analysis.predictions).slice(0, 5).map(year => {
   }
 }
 
-function generateAnalysisAnswer(question: string, analysis: any, context: string): string {
+function generateAnalysisAnswer(question: string, analysis: any, context: string, paymentData?: any): string {
   const q = question.toLowerCase()
 
-  // Answer common questions
+  // Payment-related questions
+  if (q.includes('payment') || q.includes('paid') || q.includes('money') || q.includes('income') || q.includes('revenue') || q.includes('balance')) {
+    if (paymentData) {
+      const currentYear = new Date().getFullYear()
+      return `Payment & Financial Information:
+- Total Payments (All Time): $${paymentData.totalPayments.toLocaleString()}
+- Payments This Year (${currentYear}): $${paymentData.totalThisYear.toLocaleString()}
+- Number of Payments This Year: ${paymentData.paymentsThisYear.length}
+- Total Number of Payments: ${paymentData.totalPaymentsCount}
+- Payment Methods: ${Object.entries(paymentData.paymentMethods).map(([method, amount]: [string, any]) => `${method}: $${amount.toLocaleString()}`).join(', ')}
+
+Yearly Income (${currentYear}):
+- Plan Income: $${paymentData.yearlyIncome?.planIncome?.toLocaleString() || '0'}
+- Extra Donations: $${paymentData.yearlyIncome?.extraDonation?.toLocaleString() || '0'}
+- Calculated Income: $${paymentData.yearlyIncome?.calculatedIncome?.toLocaleString() || '0'}
+- Total Payments: $${paymentData.yearlyIncome?.totalPayments?.toLocaleString() || '0'}
+
+Recent Payments by Year:
+${Object.entries(paymentData.paymentsByYear).sort(([a], [b]) => parseInt(b) - parseInt(a)).slice(0, 5).map(([year, amount]: [string, any]) => `- ${year}: $${amount.toLocaleString()}`).join('\n')}`
+    }
+    return `Payment information is available. Please ask specific questions like:
+- "How much was paid this year?"
+- "What's the total income?"
+- "Show me payment methods breakdown"
+- "What are the payments by year?"`
+  }
+
+  // Children-related questions
   if (q.includes('children') || q.includes('child')) {
     const firstPrediction = Object.values(analysis.children_analysis.predictions)[0] as { predicted: number } | undefined
     return `Based on the analysis:
@@ -141,6 +236,7 @@ function generateAnalysisAnswer(question: string, analysis: any, context: string
 The analysis shows ${analysis.children_analysis.statistics.trend} trend in children per family.`
   }
 
+  // Wedding-related questions
   if (q.includes('wedding') || q.includes('marriage')) {
     const firstWeddingPrediction = Object.values(analysis.weddings_analysis.predictions)[0] as { predicted: number } | undefined
     return `Wedding Analysis:
@@ -151,6 +247,7 @@ The analysis shows ${analysis.children_analysis.statistics.trend} trend in child
 The system predicts approximately ${analysis.weddings_analysis.statistics.average.toFixed(1)} weddings per year based on historical data.`
   }
 
+  // Family-related questions
   if (q.includes('family') || q.includes('families')) {
     return `Family Statistics:
 - Total families: ${analysis.stability_analysis.current_stats.total_families}
@@ -160,6 +257,7 @@ The system predicts approximately ${analysis.weddings_analysis.statistics.averag
 The community has ${analysis.stability_analysis.current_stats.total_families} families with an average of ${analysis.stability_analysis.current_stats.avg_children_per_family.toFixed(1)} children per family.`
   }
 
+  // Trend/projection questions
   if (q.includes('trend') || q.includes('future') || q.includes('projection')) {
     return `Future Projections:
 - Children trend: ${analysis.children_analysis.statistics.trend}
@@ -169,13 +267,14 @@ The community has ${analysis.stability_analysis.current_stats.total_families} fa
 Based on historical data, the community shows a ${analysis.children_analysis.statistics.trend} trend in children, with an average of ${analysis.weddings_analysis.statistics.average.toFixed(1)} weddings projected per year.`
   }
 
-  return `Based on the analysis data:
-- Total Families: ${analysis.stability_analysis.current_stats.total_families}
-- Total Members: ${analysis.stability_analysis.current_stats.total_members}
-- Average Children per Family: ${analysis.stability_analysis.current_stats.avg_children_per_family.toFixed(1)}
-- Children Trend: ${analysis.children_analysis.statistics.trend}
-- Average Weddings per Year: ${analysis.weddings_analysis.statistics.average.toFixed(1)}
+  // Default response
+  return `I can answer questions about:
+- Payments & Financial Data (total payments, income, payment methods, etc.)
+- Families & Members (total families, members, children per family)
+- Weddings (historical data, projections)
+- Children (trends, projections)
+- Future Trends & Projections
 
-You can ask specific questions about children, weddings, families, trends, or future projections.`
+Please ask a specific question about your data!`
 }
 
