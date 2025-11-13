@@ -17,11 +17,18 @@ function LoginForm() {
     password: '',
   })
 
-  // Check for OAuth errors in URL
+  // Check for OAuth errors, signup success, or reset success in URL
   useEffect(() => {
     const oauthError = searchParams?.get('error')
+    const signupSuccess = searchParams?.get('signup')
+    const resetSuccess = searchParams?.get('reset')
+    
     if (oauthError) {
       setError(decodeURIComponent(oauthError))
+    } else if (signupSuccess === 'success') {
+      setSuccess('Account created successfully! Please log in.')
+    } else if (resetSuccess === 'success') {
+      setSuccess('Password reset successfully! Please log in.')
     }
   }, [searchParams])
 
@@ -45,8 +52,9 @@ function LoginForm() {
       if (response.ok) {
         setSuccess('Login successful! Redirecting...')
         localStorage.setItem('user', JSON.stringify(data.user))
+        localStorage.setItem('token', data.token)
         setTimeout(() => {
-          window.location.href = '/dashboard'
+          window.location.href = '/'
         }, 1000)
       } else {
         setError(data.error || 'Login failed')
@@ -232,9 +240,9 @@ function LoginForm() {
 
               {/* New User Section */}
               <div className="text-center pt-4">
-                <span className="text-sm text-gray-600">Not a customer? </span>
-                <Link href="/register" className="text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-300 inline-block">
-                  Try for Free
+                <span className="text-sm text-gray-600">Don't have an account? </span>
+                <Link href="/signup" className="text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-300 inline-block">
+                  Sign Up
                 </Link>
               </div>
             </form>

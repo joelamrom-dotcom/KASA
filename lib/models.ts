@@ -260,6 +260,26 @@ const ReportSchema = new Schema({
   notes: String, // Additional notes
 }, { timestamps: true })
 
+// User Schema (for authentication)
+const UserSchema = new Schema({
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password: { type: String, required: true }, // Hashed password
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  role: { 
+    type: String, 
+    enum: ['admin', 'user', 'viewer'], 
+    default: 'user' 
+  },
+  isActive: { type: Boolean, default: true },
+  emailVerified: { type: Boolean, default: false },
+  emailVerificationToken: String,
+  emailVerificationExpires: Date,
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
+  lastLogin: Date,
+}, { timestamps: true })
+
 // Export models
 export const PaymentPlan = mongoose.models.PaymentPlan || mongoose.model('PaymentPlan', PaymentPlanSchema)
 export const Family = mongoose.models.Family || mongoose.model('Family', FamilySchema)
@@ -276,3 +296,4 @@ export const SavedPaymentMethod = mongoose.models.SavedPaymentMethod || mongoose
 export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.model('RecurringPayment', RecurringPaymentSchema)
 export const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema)
 export const Report = mongoose.models.Report || mongoose.model('Report', ReportSchema)
+export const User = mongoose.models.User || mongoose.model('User', UserSchema)
