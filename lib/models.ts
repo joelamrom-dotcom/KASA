@@ -242,6 +242,24 @@ const TaskSchema = new Schema({
   notes: String,
 }, { timestamps: true })
 
+// Report Schema (for AI-generated reports from chat conversations)
+const ReportSchema = new Schema({
+  title: { type: String, required: true },
+  question: { type: String, required: true }, // The question asked
+  answer: { type: String, required: true }, // The AI answer
+  reportType: { 
+    type: String, 
+    enum: ['chat', 'analysis', 'financial', 'custom'], 
+    default: 'chat' 
+  },
+  metadata: {
+    provider: String, // AI provider used (if applicable)
+    context: String, // Additional context used
+  },
+  tags: [String], // Tags for categorization
+  notes: String, // Additional notes
+}, { timestamps: true })
+
 // Export models
 export const PaymentPlan = mongoose.models.PaymentPlan || mongoose.model('PaymentPlan', PaymentPlanSchema)
 export const Family = mongoose.models.Family || mongoose.model('Family', FamilySchema)
@@ -257,3 +275,4 @@ export const CycleConfig = mongoose.models.CycleConfig || mongoose.model('CycleC
 export const SavedPaymentMethod = mongoose.models.SavedPaymentMethod || mongoose.model('SavedPaymentMethod', SavedPaymentMethodSchema)
 export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.model('RecurringPayment', RecurringPaymentSchema)
 export const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema)
+export const Report = mongoose.models.Report || mongoose.model('Report', ReportSchema)

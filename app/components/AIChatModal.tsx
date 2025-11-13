@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import { ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline'
 
 interface AIChatModalProps {
   isOpen: boolean
@@ -12,6 +12,9 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   const [chatQuery, setChatQuery] = useState('')
   const [chatAnswer, setChatAnswer] = useState<string | null>(null)
   const [chatLoading, setChatLoading] = useState(false)
+  const [showReportDialog, setShowReportDialog] = useState(false)
+  const [reportTitle, setReportTitle] = useState('')
+  const [savingReport, setSavingReport] = useState(false)
   const chatInputRef = useRef<HTMLInputElement>(null)
 
   const handleChatQuery = async () => {
@@ -54,7 +57,45 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   const handleClose = () => {
     setChatQuery('')
     setChatAnswer(null)
+    setShowReportDialog(false)
+    setReportTitle('')
     onClose()
+  }
+
+  const handleGenerateReport = async () => {
+    if (!chatQuery || !chatAnswer || !reportTitle.trim()) {
+      alert('Please provide a report title')
+      return
+    }
+
+    setSavingReport(true)
+    try {
+      const res = await fetch('/api/kasa/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: reportTitle.trim(),
+          question: chatQuery,
+          answer: chatAnswer,
+          reportType: 'chat',
+          tags: []
+        })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        alert('Report generated successfully!')
+        setShowReportDialog(false)
+        setReportTitle('')
+      } else {
+        const errorData = await res.json()
+        alert(`Error: ${errorData.error || 'Failed to generate report'}`)
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message || 'Failed to generate report'}`)
+    } finally {
+      setSavingReport(false)
+    }
   }
 
   if (!isOpen) return null
@@ -80,7 +121,24 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {chatAnswer && (
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <div className="text-sm text-blue-600 font-medium mb-2">Answer:</div>
+              <div className="flex items-start justify-between mb-2">
+                <div className="text-sm text-blue-600 font-medium">Answer:</div>
+                <button
+                  onClick={() => {
+                    // Auto-generate title from question (first 50 chars)
+                    const autoTitle = chatQuery.length > 50 
+                      ? chatQuery.substring(0, 50) + '...'
+                      : chatQuery
+                    setReportTitle(autoTitle)
+                    setShowReportDialog(true)
+                  }}
+                  className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  title="Generate Report"
+                >
+                  <DocumentArrowDownIcon className="h-4 w-4" />
+                  Generate Report
+                </button>
+              </div>
               <div className="text-gray-700 whitespace-pre-wrap">{chatAnswer}</div>
             </div>
           )}
@@ -137,6 +195,64 @@ export default function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
           </div>
         </div>
       </div>
+
+      {/* Report Generation Dialog */}
+      {showReportDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Generate Report</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Report Title *</label>
+                  <input
+                    type="text"
+                    value={reportTitle}
+                    onChange={(e) => setReportTitle(e.target.value)}
+                    placeholder="Enter report title..."
+                    className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                  <div className="text-gray-600 mb-1"><strong>Question:</strong></div>
+                  <div className="text-gray-700 mb-3">{chatQuery}</div>
+                  <div className="text-gray-600 mb-1"><strong>Answer Preview:</strong></div>
+                  <div className="text-gray-700 text-xs line-clamp-3">{chatAnswer?.substring(0, 150)}...</div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowReportDialog(false)
+                      setReportTitle('')
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleGenerateReport}
+                    disabled={savingReport || !reportTitle.trim()}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {savingReport ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <DocumentArrowDownIcon className="h-5 w-5" />
+                        <span>Generate Report</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
