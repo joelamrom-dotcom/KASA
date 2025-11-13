@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import AIChatModal from './AIChatModal'
 
