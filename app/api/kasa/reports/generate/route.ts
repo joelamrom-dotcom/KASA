@@ -25,6 +25,66 @@ function toCSV(rows: string[][]): string {
   }).join('\n')
 }
 
+// Helper function to parse date expressions
+function parseDateExpression(dateStr: string): { start: Date; end: Date } | null {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  
+  const dateStrLower = dateStr.toLowerCase().trim()
+  
+  // Today
+  if (dateStrLower === 'today') {
+    return {
+      start: today,
+      end: new Date(tomorrow.getTime() - 1) // End of today
+    }
+  }
+  
+  // Yesterday
+  if (dateStrLower === 'yesterday') {
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    return {
+      start: yesterday,
+      end: new Date(today.getTime() - 1) // End of yesterday
+    }
+  }
+  
+  // This week (last 7 days)
+  if (dateStrLower.includes('this week') || dateStrLower.includes('last 7 days')) {
+    const weekAgo = new Date(today)
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    return {
+      start: weekAgo,
+      end: new Date(tomorrow.getTime() - 1)
+    }
+  }
+  
+  // This month
+  if (dateStrLower.includes('this month')) {
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    return {
+      start: startOfMonth,
+      end: endOfMonth
+    }
+  }
+  
+  // Try parsing as date string (YYYY-MM-DD, MM/DD/YYYY, etc.)
+  const parsedDate = new Date(dateStr)
+  if (!isNaN(parsedDate.getTime())) {
+    const start = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate())
+    const end = new Date(start)
+    end.setDate(end.getDate() + 1)
+    end.setMilliseconds(end.getMilliseconds() - 1)
+    return { start, end }
+  }
+  
+  return null
+}
+
 // Helper function to parse field filters from query
 function parseFieldFilters(query: string, queryLower: string): {
   familyFilters: any
@@ -38,6 +98,52 @@ function parseFieldFilters(query: string, queryLower: string): {
   const paymentFilters: any = {}
   const eventFilters: any = {}
   const filterDescriptions: string[] = []
+
+  // Parse date range filters (from X to Y, from today, etc.)
+  const dateRangePatterns = [
+    { pattern: /from\s+([^to]+?)\s+to\s+([^greaterless]+?)(?:\s|$)/i, field: 'paymentDate', collections: ['payment'] },
+    { pattern: /from\s+([^to]+?)\s+to\s+([^greaterless]+?)(?:\s|$)/i, field: 'eventDate', collections: ['event'] },
+    { pattern: /from\s+(today|yesterday|this week|this month|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})(?:\s|$)/i, field: 'paymentDate', collections: ['payment'] },
+    { pattern: /from\s+(today|yesterday|this week|this month|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})(?:\s|$)/i, field: 'eventDate', collections: ['event'] },
+    { pattern: /(?:on|in)\s+(today|yesterday|this week|this month)(?:\s|$)/i, field: 'paymentDate', collections: ['payment'] },
+    { pattern: /(?:on|in)\s+(today|yesterday|this week|this month)(?:\s|$)/i, field: 'eventDate', collections: ['event'] }
+  ]
+
+  for (const { pattern, field, collections } of dateRangePatterns) {
+    const match = query.match(pattern)
+    if (match) {
+      if (match[2]) {
+        // From X to Y format
+        const startDate = parseDateExpression(match[1].trim())
+        const endDate = parseDateExpression(match[2].trim())
+        if (startDate && endDate) {
+          const dateRange = { $gte: startDate.start, $lte: endDate.end }
+          if (collections.includes('payment')) {
+            paymentFilters[field] = dateRange
+            filterDescriptions.push(`payment date from ${match[1].trim()} to ${match[2].trim()}`)
+          }
+          if (collections.includes('event')) {
+            eventFilters[field] = dateRange
+            filterDescriptions.push(`event date from ${match[1].trim()} to ${match[2].trim()}`)
+          }
+        }
+      } else if (match[1]) {
+        // Single date (from today, on today, etc.)
+        const dateExpr = parseDateExpression(match[1].trim())
+        if (dateExpr) {
+          const dateRange = { $gte: dateExpr.start, $lte: dateExpr.end }
+          if (collections.includes('payment')) {
+            paymentFilters[field] = dateRange
+            filterDescriptions.push(`payment date: ${match[1].trim()}`)
+          }
+          if (collections.includes('event')) {
+            eventFilters[field] = dateRange
+            filterDescriptions.push(`event date: ${match[1].trim()}`)
+          }
+        }
+      }
+    }
+  }
 
   // Parse date filters (last updated, created, etc.)
   const dateFieldPatterns = [
@@ -63,10 +169,12 @@ function parseFieldFilters(query: string, queryLower: string): {
     }
   }
 
-  // Parse amount filters for payments and events
+  // Parse amount filters for payments and events (support "greater than", "more than", etc.)
   const amountPatterns = [
+    { pattern: /(?:amount|greater|more)\s*(?:than|>)\s*(\d+(?:\.\d+)?)/i, operator: '$gt' },
     { pattern: /amount\s*>\s*(\d+(?:\.\d+)?)/i, operator: '$gt' },
     { pattern: /amount\s*>=\s*(\d+(?:\.\d+)?)/i, operator: '$gte' },
+    { pattern: /(?:amount|less|lower)\s*(?:than|<)\s*(\d+(?:\.\d+)?)/i, operator: '$lt' },
     { pattern: /amount\s*<\s*(\d+(?:\.\d+)?)/i, operator: '$lt' },
     { pattern: /amount\s*<=\s*(\d+(?:\.\d+)?)/i, operator: '$lte' },
     { pattern: /amount\s*=\s*(\d+(?:\.\d+)?)/i, operator: '$eq' },
@@ -75,15 +183,34 @@ function parseFieldFilters(query: string, queryLower: string): {
 
   for (const { pattern, operator } of amountPatterns) {
     const match = query.match(pattern)
-    if (match && (queryLower.includes('payment') || queryLower.includes('event'))) {
+    if (match && (queryLower.includes('payment') || queryLower.includes('event') || queryLower.includes('greater') || queryLower.includes('more'))) {
       const amount = parseFloat(match[1])
-      if (queryLower.includes('payment')) {
-        paymentFilters.amount = { [operator]: amount }
-        filterDescriptions.push(`payment amount ${operator} ${amount}`)
+      // Only apply to payments if query mentions payments, or if it's a general amount filter
+      if (queryLower.includes('payment') || (!queryLower.includes('event') && (queryLower.includes('payment') || queryLower.includes('greater') || queryLower.includes('more')))) {
+        // Merge with existing amount filter if present
+        if (paymentFilters.amount) {
+          // Combine operators (e.g., if we have > 50 and > 55, keep the more restrictive one)
+          if (operator === '$gt' && paymentFilters.amount.$gt !== undefined) {
+            paymentFilters.amount.$gt = Math.max(paymentFilters.amount.$gt, amount)
+          } else {
+            paymentFilters.amount = { [operator]: amount }
+          }
+        } else {
+          paymentFilters.amount = { [operator]: amount }
+        }
+        filterDescriptions.push(`payment amount ${operator === '$gt' ? '>' : operator === '$gte' ? '>=' : operator === '$lt' ? '<' : operator === '$lte' ? '<=' : '='} ${amount}`)
       }
       if (queryLower.includes('event')) {
-        eventFilters.amount = { [operator]: amount }
-        filterDescriptions.push(`event amount ${operator} ${amount}`)
+        if (eventFilters.amount) {
+          if (operator === '$gt' && eventFilters.amount.$gt !== undefined) {
+            eventFilters.amount.$gt = Math.max(eventFilters.amount.$gt, amount)
+          } else {
+            eventFilters.amount = { [operator]: amount }
+          }
+        } else {
+          eventFilters.amount = { [operator]: amount }
+        }
+        filterDescriptions.push(`event amount ${operator === '$gt' ? '>' : operator === '$gte' ? '>=' : operator === '$lt' ? '<' : operator === '$lte' ? '<=' : '='} ${amount}`)
       }
       break // Only match first amount pattern
     }
