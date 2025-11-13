@@ -45,11 +45,45 @@ export async function POST(request: NextRequest) {
     let filename = ''
     let recordCount: any = {}
 
-    // Detect what data to include in report
-    const includeFamilies = queryLower.includes('famil') || queryLower.includes('all')
-    const includeMembers = queryLower.includes('member') || queryLower.includes('all')
-    const includePayments = queryLower.includes('payment') || queryLower.includes('all')
-    const includeEvents = queryLower.includes('event') || queryLower.includes('lifecycle') || queryLower.includes('all')
+    // Use AI to understand what data to include in report
+    // First try to use AI chat endpoint to understand the request
+    let reportType = 'all' // default
+    let aiSuggestion = null
+    
+    try {
+      const aiResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/ai/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: `Based on this report request: "${query}", determine what data should be included. Respond with ONLY a JSON object with these boolean fields: includeFamilies, includeMembers, includePayments, includeEvents. Example: {"includeFamilies": true, "includeMembers": true, "includePayments": false, "includeEvents": false}`,
+          conversationHistory: []
+        })
+      })
+
+      if (aiResponse.ok) {
+        const aiData = await aiResponse.json()
+        // Try to parse JSON from AI response
+        try {
+          const jsonMatch = aiData.response?.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            aiSuggestion = JSON.parse(jsonMatch[0])
+          }
+        } catch (e) {
+          // If AI response can't be parsed, fall back to keyword matching
+        }
+      }
+    } catch (error) {
+      // If AI is unavailable, fall back to keyword matching
+      console.log('AI unavailable, using keyword matching')
+    }
+
+    // Detect what data to include in report (use AI suggestion if available, otherwise keyword matching)
+    const includeFamilies = aiSuggestion?.includeFamilies ?? (queryLower.includes('famil') || queryLower.includes('all'))
+    const includeMembers = aiSuggestion?.includeMembers ?? (queryLower.includes('member') || queryLower.includes('all'))
+    const includePayments = aiSuggestion?.includePayments ?? (queryLower.includes('payment') || queryLower.includes('all'))
+    const includeEvents = aiSuggestion?.includeEvents ?? (queryLower.includes('event') || queryLower.includes('lifecycle') || queryLower.includes('all'))
     const includeAll = queryLower.includes('all') || (!includeFamilies && !includeMembers && !includePayments && !includeEvents)
 
     // Header
