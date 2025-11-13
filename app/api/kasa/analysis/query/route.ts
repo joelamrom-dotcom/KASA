@@ -91,10 +91,19 @@ export async function POST(request: NextRequest) {
       paymentsByYear[year] = (paymentsByYear[year] || 0) + (p.amount || 0)
     })
 
-    // Calculate yearly income
+    // Calculate yearly income for current year and future years
     let yearlyIncomeData: any = {}
+    let futureYearIncomeData: { [year: number]: any } = {}
     try {
       yearlyIncomeData = await calculateYearlyIncome(currentYear, 0)
+      // Calculate for next 5 years for projections
+      for (let year = currentYear + 1; year <= currentYear + 5; year++) {
+        try {
+          futureYearIncomeData[year] = await calculateYearlyIncome(year, 0)
+        } catch (error) {
+          console.error(`Error calculating income for ${year}:`, error)
+        }
+      }
     } catch (error) {
       console.error('Error calculating yearly income:', error)
     }
@@ -197,6 +206,11 @@ YEARLY INCOME CALCULATION (${currentYear}):
 - Calculated Income: $${(yearlyIncomeData.calculatedIncome || 0).toLocaleString()}
 - Total Payments: $${(yearlyIncomeData.totalPayments || 0).toLocaleString()}
 
+FUTURE YEAR PROJECTIONS (Income):
+${Object.entries(futureYearIncomeData).map(([year, data]: [string, any]) => 
+  `Year ${year}: Plan Income: $${(data.planIncome || 0).toLocaleString()}, Calculated Income: $${(data.calculatedIncome || 0).toLocaleString()}, Expected Payments: $${(data.totalPayments || 0).toLocaleString()}`
+).join('\n')}
+
 PAYMENTS BY YEAR:
 ${Object.entries(paymentsByYear).sort(([a], [b]) => parseInt(b) - parseInt(a)).slice(0, 10).map(([year, amount]) => `- ${year}: $${amount.toLocaleString()}`).join('\n')}
 
@@ -244,7 +258,8 @@ Answer questions clearly and helpfully based on ALL available database data. You
       totalPaymentsCount: payments.length,
       paymentMethods,
       paymentsByYear,
-      yearlyIncome: yearlyIncomeData
+      yearlyIncome: yearlyIncomeData,
+      futureYearIncome: futureYearIncomeData
     }
 
     // Try to use AI chat endpoint
@@ -273,7 +288,7 @@ Answer questions clearly and helpfully based on ALL available database data. You
     }
 
     // Fallback: Generate intelligent response based on question
-    const answer = generateAnalysisAnswer(question, analysis, context, paymentData)
+    const answer = generateAnalysisAnswer(question, analysis, context, paymentData, futureYearIncomeData)
 
     return NextResponse.json({
       answer,
@@ -289,17 +304,52 @@ Answer questions clearly and helpfully based on ALL available database data. You
   }
 }
 
-function generateAnalysisAnswer(question: string, analysis: any, context: string, paymentData?: any): string {
+function generateAnalysisAnswer(question: string, analysis: any, context: string, paymentData?: any, futureYearIncome?: any): string {
   const q = question.toLowerCase()
 
-  // Payment-related questions
+  // Extract year from question (e.g., "2026", "year 2026", "in 2026")
+  const yearMatch = q.match(/\b(20\d{2})\b/)
+  const requestedYear = yearMatch ? parseInt(yearMatch[1]) : null
+
+  // Payment/Income-related questions
   if (q.includes('payment') || q.includes('paid') || q.includes('money') || q.includes('income') || q.includes('revenue') || q.includes('balance')) {
     if (paymentData) {
       const currentYear = new Date().getFullYear()
+      
+      // If specific year requested
+      if (requestedYear) {
+        if (requestedYear === currentYear) {
+          return `Year ${currentYear} Financial Information:
+- Plan Income: $${paymentData.yearlyIncome?.planIncome?.toLocaleString() || '0'}
+- Extra Donations: $${paymentData.yearlyIncome?.extraDonation?.toLocaleString() || '0'}
+- Calculated Income: $${paymentData.yearlyIncome?.calculatedIncome?.toLocaleString() || '0'}
+- Total Payments (Actual): $${paymentData.totalThisYear.toLocaleString()}
+- Number of Payments: ${paymentData.paymentsThisYear || 0}`
+        } else if (requestedYear > currentYear && futureYearIncome && futureYearIncome[requestedYear]) {
+          const yearData = futureYearIncome[requestedYear]
+          return `Projected Financial Information for Year ${requestedYear}:
+- Plan Income: $${(yearData.planIncome || 0).toLocaleString()}
+- Calculated Income: $${(yearData.calculatedIncome || 0).toLocaleString()}
+- Expected Payments: $${(yearData.totalPayments || 0).toLocaleString()}
+
+Note: This is a projection based on current payment plans and expected family growth.`
+        } else if (requestedYear < currentYear) {
+          // Historical year
+          const historicalPayments = paymentData.paymentsByYear?.[requestedYear] || 0
+          return `Historical Financial Information for Year ${requestedYear}:
+- Total Payments: $${historicalPayments.toLocaleString()}
+
+Note: Historical income calculations are based on payment plans active during that year.`
+        } else {
+          return `I don't have specific data for year ${requestedYear}. Available years: ${currentYear} (current) and projections for ${currentYear + 1}-${currentYear + 5}.`
+        }
+      }
+      
+      // General payment/income question
       return `Payment & Financial Information:
 - Total Payments (All Time): $${paymentData.totalPayments.toLocaleString()}
 - Payments This Year (${currentYear}): $${paymentData.totalThisYear.toLocaleString()}
-- Number of Payments This Year: ${paymentData.paymentsThisYear.length}
+- Number of Payments This Year: ${paymentData.paymentsThisYear || 0}
 - Total Number of Payments: ${paymentData.totalPaymentsCount}
 - Payment Methods: ${Object.entries(paymentData.paymentMethods).map(([method, amount]: [string, any]) => `${method}: $${amount.toLocaleString()}`).join(', ')}
 
@@ -310,11 +360,14 @@ Yearly Income (${currentYear}):
 - Total Payments: $${paymentData.yearlyIncome?.totalPayments?.toLocaleString() || '0'}
 
 Recent Payments by Year:
-${Object.entries(paymentData.paymentsByYear).sort(([a], [b]) => parseInt(b) - parseInt(a)).slice(0, 5).map(([year, amount]: [string, any]) => `- ${year}: $${amount.toLocaleString()}`).join('\n')}`
+${Object.entries(paymentData.paymentsByYear).sort(([a], [b]) => parseInt(b) - parseInt(a)).slice(0, 5).map(([year, amount]: [string, any]) => `- ${year}: $${amount.toLocaleString()}`).join('\n')}
+
+To get projections for future years, ask: "What's the income for 2026?" or "Show me projections for 2027"`
     }
     return `Payment information is available. Please ask specific questions like:
 - "How much was paid this year?"
 - "What's the total income?"
+- "What's the income for 2026?" (for future projections)
 - "Show me payment methods breakdown"
 - "What are the payments by year?"`
   }
