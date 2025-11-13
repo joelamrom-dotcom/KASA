@@ -131,20 +131,22 @@ function generateAnalysisAnswer(question: string, analysis: any, context: string
 
   // Answer common questions
   if (q.includes('children') || q.includes('child')) {
+    const firstPrediction = Object.values(analysis.children_analysis.predictions)[0] as { predicted: number } | undefined
     return `Based on the analysis:
 - Current average children per family: ${analysis.stability_analysis.current_stats.avg_children_per_family.toFixed(1)}
 - Historical average: ${analysis.children_analysis.statistics.average.toFixed(1)}
 - Trend: ${analysis.children_analysis.statistics.trend}
-- Projected children for next year: ${Object.values(analysis.children_analysis.predictions)[0]?.predicted || 'N/A'}
+- Projected children for next year: ${firstPrediction?.predicted || 'N/A'}
 
 The analysis shows ${analysis.children_analysis.statistics.trend} trend in children per family.`
   }
 
   if (q.includes('wedding') || q.includes('marriage')) {
+    const firstWeddingPrediction = Object.values(analysis.weddings_analysis.predictions)[0] as { predicted: number } | undefined
     return `Wedding Analysis:
 - Average weddings per year (historical): ${analysis.weddings_analysis.statistics.average.toFixed(1)}
 - Total historical weddings: ${analysis.weddings_analysis.statistics.total_historical}
-- Projected weddings for next year: ${Object.values(analysis.weddings_analysis.predictions)[0]?.predicted || 'N/A'}
+- Projected weddings for next year: ${firstWeddingPrediction?.predicted || 'N/A'}
 
 The system predicts approximately ${analysis.weddings_analysis.statistics.average.toFixed(1)} weddings per year based on historical data.`
   }
