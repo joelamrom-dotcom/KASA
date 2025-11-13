@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-<<<<<<< HEAD
+  reactStrictMode: true,
   images: {
     domains: ['localhost'],
   },
@@ -12,10 +12,3 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
-=======
-  reactStrictMode: true,
-}
-
-module.exports = nextConfig
-
->>>>>>> e871ae6ee9b954bce1542dbaba651a8702b4a713
