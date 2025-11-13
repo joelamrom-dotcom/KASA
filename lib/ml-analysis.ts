@@ -118,15 +118,20 @@ function predictWithML(
     // Predict future years
     const predicted = futureYears.map(year => Math.max(0, model(year)))
     
-    // Calculate confidence intervals
+    // Calculate confidence intervals with reasonable bounds
     const residuals = years.map((year, i) => values[i] - model(year))
     const meanResidual = residuals.reduce((a, b) => a + b, 0) / residuals.length
     const variance = residuals.reduce((sum, r) => sum + Math.pow(r - meanResidual, 2), 0) / residuals.length
     const stdError = Math.sqrt(variance)
     
-    // 95% confidence interval (1.96 standard deviations)
-    const lower = predicted.map(p => Math.max(0, p - 1.96 * stdError))
-    const upper = predicted.map(p => p + 1.96 * stdError)
+    // Cap stdError to reasonable value (max 50% of average value)
+    const avgValue = values.reduce((a, b) => a + b, 0) / values.length
+    const maxStdError = Math.max(avgValue * 0.5, 1) // At least 1, or 50% of average
+    const cappedStdError = Math.min(stdError, maxStdError)
+    
+    // 95% confidence interval (1.96 standard deviations) with reasonable bounds
+    const lower = predicted.map(p => Math.max(0, Math.max(0, p - 1.96 * cappedStdError)))
+    const upper = predicted.map(p => Math.min(p + 1.96 * cappedStdError, p * 2)) // Cap upper at 2x predicted
     
     return { predicted, lower, upper }
   } catch (error) {

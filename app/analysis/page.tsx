@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChartBarIcon, CalendarIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect, useRef } from 'react'
+import { ChartBarIcon, CalendarIcon, UserGroupIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface AnalysisResult {
   analysis_date: string
@@ -67,6 +67,11 @@ export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [yearsAhead, setYearsAhead] = useState(10)
+  const [showChat, setShowChat] = useState(false)
+  const [chatQuery, setChatQuery] = useState('')
+  const [chatAnswer, setChatAnswer] = useState<string | null>(null)
+  const [chatLoading, setChatLoading] = useState(false)
+  const chatInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchAnalysis()
@@ -122,6 +127,43 @@ export default function AnalysisPage() {
   const currentYear = new Date().getFullYear()
   const predictionYears = Array.from({ length: yearsAhead }, (_, i) => currentYear + i + 1)
 
+  const handleChatQuery = async () => {
+    if (!chatQuery.trim() || chatLoading || !analysis) return
+
+    setChatLoading(true)
+    setChatAnswer(null)
+
+    try {
+      const res = await fetch('/api/kasa/analysis/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: chatQuery,
+          analysisData: null // Will be fetched on server
+        })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setChatAnswer(data.answer)
+      } else {
+        const errorData = await res.json()
+        setChatAnswer(`Error: ${errorData.error || 'Failed to get answer'}`)
+      }
+    } catch (err: any) {
+      setChatAnswer(`Error: ${err.message || 'Failed to process query'}`)
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleChatQuery()
+    }
+  }
+
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
@@ -160,8 +202,91 @@ export default function AnalysisPage() {
             >
               Refresh
             </button>
+            <button
+              onClick={() => {
+                setShowChat(!showChat)
+                setTimeout(() => chatInputRef.current?.focus(), 100)
+              }}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                showChat 
+                  ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <ChatBubbleLeftRightIcon className="h-5 w-5" />
+              Ask Questions
+            </button>
           </div>
         </div>
+
+        {/* AI Query Interface */}
+        {showChat && (
+          <div className="mb-8 bg-white rounded-lg shadow-lg border-2 border-purple-200">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ChatBubbleLeftRightIcon className="h-5 w-5 text-purple-600" />
+                <h3 className="text-lg font-semibold">Ask About Your Analysis</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowChat(false)
+                  setChatQuery('')
+                  setChatAnswer(null)
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="flex gap-2 mb-4">
+                <input
+                  ref={chatInputRef}
+                  type="text"
+                  value={chatQuery}
+                  onChange={(e) => setChatQuery(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask questions like: 'How many children are projected?', 'What's the wedding trend?', 'How many families do we have?'"
+                  className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  disabled={chatLoading}
+                />
+                <button
+                  onClick={handleChatQuery}
+                  disabled={chatLoading || !chatQuery.trim()}
+                  className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {chatLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Analyzing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PaperAirplaneIcon className="h-5 w-5" />
+                      <span>Ask</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              {chatAnswer && (
+                <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="text-sm text-purple-600 font-medium mb-2">Answer:</div>
+                  <div className="text-gray-700 whitespace-pre-wrap">{chatAnswer}</div>
+                </div>
+              )}
+              <div className="mt-4 text-xs text-gray-500">
+                <p className="font-medium mb-1">Example questions:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>"How many children are projected for next year?"</li>
+                  <li>"What's the trend in weddings?"</li>
+                  <li>"How many families do we have?"</li>
+                  <li>"What's the average children per family?"</li>
+                  <li>"Show me future projections"</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Current Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
