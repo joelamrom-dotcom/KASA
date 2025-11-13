@@ -15,7 +15,8 @@ import {
   PresentationChartBarIcon,
   CurrencyDollarIcon,
   ClipboardDocumentListIcon,
-  ChartPieIcon
+  ChartPieIcon,
+  ArrowUpTrayIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -29,7 +30,8 @@ import {
   PresentationChartBarIcon as PresentationChartBarIconSolid,
   CurrencyDollarIcon as CurrencyDollarIconSolid,
   ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
-  ChartPieIcon as ChartPieIconSolid
+  ChartPieIcon as ChartPieIconSolid,
+  ArrowUpTrayIcon as ArrowUpTrayIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
