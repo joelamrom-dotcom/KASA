@@ -17,8 +17,8 @@ function GoogleAuthSuccessContent() {
         localStorage.setItem('user', JSON.stringify(user))
         localStorage.setItem('sessionToken', token)
         
-        // Redirect to dashboard
-        window.location.href = '/dashboard'
+        // Redirect to home page
+        window.location.href = '/'
       } catch (error) {
         console.error('Error parsing user data:', error)
         window.location.href = '/login?error=' + encodeURIComponent('Failed to process authentication')

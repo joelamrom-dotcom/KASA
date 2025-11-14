@@ -263,7 +263,7 @@ const ReportSchema = new Schema({
 // User Schema (for authentication)
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, required: true }, // Hashed password
+  password: { type: String, required: false }, // Hashed password (optional for OAuth users)
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   role: { 
@@ -278,6 +278,9 @@ const UserSchema = new Schema({
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   lastLogin: Date,
+  // Google OAuth fields
+  googleId: { type: String, unique: true, sparse: true }, // Google user ID (sparse index allows multiple nulls)
+  profilePicture: String, // Profile picture URL from Google
 }, { timestamps: true })
 
 // Family Note Schema

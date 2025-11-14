@@ -37,9 +37,28 @@ To configure email settings:
 
 **No environment variables needed for email!** The email configuration is stored securely in the `EmailConfig` collection in your MongoDB database.
 
-## Optional Variables (for Stripe payments)
+## Optional Variables
 
-### Stripe Configuration
+### Google OAuth (for Sign in with Google)
+- **GOOGLE_CLIENT_ID**
+  - Description: Google OAuth 2.0 Client ID
+  - Example: `123456789-abcdefghijklmnop.apps.googleusercontent.com`
+  - Required: No (only if using Google Sign-In)
+  - How to get: [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
+
+- **GOOGLE_CLIENT_SECRET**
+  - Description: Google OAuth 2.0 Client Secret
+  - Example: `GOCSPX-abcdefghijklmnopqrstuvwxyz`
+  - Required: No (only if using Google Sign-In)
+  - How to get: Same as GOOGLE_CLIENT_ID
+
+- **GOOGLE_REDIRECT_URI**
+  - Description: OAuth redirect URI (auto-generated if not set)
+  - Example: `https://your-app.vercel.app/api/auth/google/callback`
+  - Required: No (defaults to `${NEXT_PUBLIC_BASE_URL}/api/auth/google/callback`)
+  - Note: Must match exactly what's configured in Google Cloud Console
+
+### Stripe Configuration (for payments)
 - **STRIPE_SECRET_KEY**
   - Description: Stripe secret key for server-side operations
   - Example: `sk_live_...` or `sk_test_...`
