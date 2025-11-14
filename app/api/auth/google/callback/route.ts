@@ -106,13 +106,17 @@ export async function GET(request: NextRequest) {
     if (!user) {
       // Create new user from Google account
       const nameParts = (googleUser.name || '').split(' ')
-      const firstName = nameParts[0] || googleUser.given_name || ''
+      const firstName = nameParts[0] || googleUser.given_name || 'User'
       const lastName = nameParts.slice(1).join(' ') || googleUser.family_name || ''
+
+      // Ensure firstName and lastName are not empty (required fields)
+      const finalFirstName = firstName.trim() || 'User'
+      const finalLastName = lastName.trim() || ''
 
       user = await User.create({
         email: googleUser.email.toLowerCase(),
-        firstName,
-        lastName,
+        firstName: finalFirstName,
+        lastName: finalLastName || 'User', // Use 'User' as default if lastName is empty
         password: null, // OAuth users don't have passwords
         role: 'user',
         isActive: true,
