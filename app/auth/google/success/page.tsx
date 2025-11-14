@@ -15,7 +15,9 @@ function GoogleAuthSuccessContent() {
         const user = JSON.parse(userParam)
         // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(user))
-        localStorage.setItem('sessionToken', token)
+        localStorage.setItem('token', token)
+        // Set cookie for server-side access
+        document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 days
         
         // Redirect to home page
         window.location.href = '/'
