@@ -278,8 +278,44 @@ export default function StatementsPage() {
   }
 
   const handleSavePDF = async (statement: Statement) => {
-    await handlePrint(statement)
-    // Browser's print dialog allows saving as PDF
+    try {
+      // Fetch statement details with transactions
+      const res = await fetch(`/api/kasa/statements/${statement._id}`)
+      const statementData = await res.json()
+      
+      if (!res.ok) {
+        throw new Error(statementData.error || 'Failed to fetch statement details')
+      }
+
+      // Generate PDF
+      const pdfRes = await fetch('/api/kasa/statements/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          statement: statementData.statement,
+          familyName: families.find(f => f._id === statement.familyId)?.name || 'Family',
+          transactions: statementData.transactions || []
+        })
+      })
+
+      if (!pdfRes.ok) {
+        throw new Error('Failed to generate PDF')
+      }
+
+      // Download PDF
+      const pdfBlob = await pdfRes.blob()
+      const url = URL.createObjectURL(pdfBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Statement_${statement.statementNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error saving PDF:', error)
+      alert('Error saving PDF. Please try again.')
+    }
   }
 
   const handleSendEmails = async (e: React.FormEvent) => {

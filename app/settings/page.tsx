@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
+import html2pdf from 'html2pdf.js'
 
 interface LifecycleEventType {
   _id: string
@@ -67,6 +68,8 @@ export default function SettingsPage() {
   // Kevittel state
   const [kevittelFamilies, setKevittelFamilies] = useState<any[]>([])
   const [kevittelLoading, setKevittelLoading] = useState(true)
+  const [editingKevittel, setEditingKevittel] = useState<{ familyId: string; entryIndex: number } | null>(null)
+  const [kevittelEditText, setKevittelEditText] = useState('')
 
   // Cycle Configuration state
   const [cycleConfig, setCycleConfig] = useState<any>(null)
@@ -451,6 +454,117 @@ export default function SettingsPage() {
 
   const toggleExpandPlan = (planId: string) => {
     setExpandedPlan(expandedPlan === planId ? null : planId)
+  }
+
+  // Kevittel edit functions
+  const handleEditKevittel = (familyId: string, entryIndex: number, currentText: string) => {
+    setEditingKevittel({ familyId, entryIndex })
+    setKevittelEditText(currentText)
+  }
+
+  const handleSaveKevittel = async (familyId: string, entryIndex: number) => {
+    try {
+      const family = kevittelFamilies.find(f => f._id === familyId)
+      if (!family) return
+
+      // Parse the edited text to update the appropriate field
+      const editedText = kevittelEditText.trim()
+      
+      // Determine which field to update based on entryIndex
+      // 0 = husband, 1 = wife, 2+ = children
+      const entries: string[] = []
+      if (family.husbandHebrewName && family.husbandHebrewName.trim() !== '') {
+        let husbandEntry = family.husbandHebrewName
+        if (family.husbandFatherHebrewName && family.husbandFatherHebrewName.trim() !== '') {
+          husbandEntry += ` בן ${family.husbandFatherHebrewName}`
+        }
+        entries.push(husbandEntry)
+      }
+      if (family.wifeHebrewName && family.wifeHebrewName.trim() !== '') {
+        let wifeEntry = `וזו' ${family.wifeHebrewName}`
+        if (family.wifeFatherHebrewName && family.wifeFatherHebrewName.trim() !== '') {
+          wifeEntry += ` בת ${family.wifeFatherHebrewName}`
+        }
+        entries.push(wifeEntry)
+      }
+      const children = family.members || []
+      children.forEach((child: any) => {
+        const childHebrewName = child.hebrewFirstName || ''
+        if (childHebrewName && childHebrewName.trim() !== '') {
+          entries.push(`ב' ${childHebrewName}`)
+        }
+      })
+
+      if (entryIndex === 0 && entries.length > 0) {
+        // Editing husband entry
+        const parts = editedText.split(' בן ')
+        const husbandName = parts[0].trim()
+        const fatherName = parts.length > 1 ? parts[1].trim() : ''
+        
+        const updateData: any = { husbandHebrewName: husbandName }
+        if (fatherName) {
+          updateData.husbandFatherHebrewName = fatherName
+        }
+        
+        const res = await fetch(`/api/kasa/families/${familyId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        })
+        
+        if (res.ok) {
+          await fetchKevittelData()
+        }
+      } else if (entryIndex === 1 && entries.length > 1) {
+        // Editing wife entry
+        const wifeText = editedText.replace(/^וזו'?\s*/, '').trim()
+        const parts = wifeText.split(' בת ')
+        const wifeName = parts[0].trim()
+        const fatherName = parts.length > 1 ? parts[1].trim() : ''
+        
+        const updateData: any = { wifeHebrewName: wifeName }
+        if (fatherName) {
+          updateData.wifeFatherHebrewName = fatherName
+        }
+        
+        const res = await fetch(`/api/kasa/families/${familyId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        })
+        
+        if (res.ok) {
+          await fetchKevittelData()
+        }
+      } else if (entryIndex >= 2) {
+        // Editing child entry
+        const childText = editedText.replace(/^ב'?\s*/, '').trim()
+        const childIndex = entryIndex - 2
+        const children = family.members || []
+        if (children[childIndex]) {
+          const res = await fetch(`/api/kasa/families/${familyId}/members/${children[childIndex]._id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hebrewFirstName: childText })
+          })
+          
+          if (res.ok) {
+            await fetchKevittelData()
+          }
+        }
+      }
+      
+      setEditingKevittel(null)
+      setKevittelEditText('')
+    } catch (error) {
+      console.error('Error saving kevittel:', error)
+      alert('Error saving kevittel entry')
+    }
+  }
+
+  const handleCancelEditKevittel = () => {
+    setEditingKevittel(null)
+    setKevittelEditText('')
   }
 
   // Kevittel functions
@@ -1181,9 +1295,8 @@ export default function SettingsPage() {
                   Print
                 </button>
                 <button
-                  onClick={() => {
-                    const printWindow = window.open('', '_blank')
-                    if (printWindow) {
+                  onClick={async () => {
+                    try {
                       const familiesWithKevittel = kevittelFamilies
                         .filter((family) => {
                           const hasHusbandName = family.husbandHebrewName && family.husbandHebrewName.trim() !== ''
@@ -1230,40 +1343,35 @@ export default function SettingsPage() {
                         })
                         .filter(text => text.trim() !== '')
                       
-                      printWindow.document.write(`
-                        <html>
-                          <head>
-                            <title>Kevittel</title>
-                            <style>
-                              @media print {
-                                @page { margin: 2cm; }
-                                body { margin: 0; }
-                              }
-                              body {
-                                font-family: Arial Hebrew, David, sans-serif;
-                                direction: rtl;
-                                text-align: right;
-                                padding: 40px;
-                                line-height: 2;
-                                font-size: 18px;
-                              }
-                              .kevittel-item {
-                                margin-bottom: 20px;
-                                padding: 10px 0;
-                                border-bottom: 1px solid #eee;
-                              }
-                              .kevittel-item:last-child {
-                                border-bottom: none;
-                              }
-                            </style>
-                          </head>
-                          <body>
-                            ${familiesWithKevittel.map(text => `<div class="kevittel-item">${text}</div>`).join('')}
-                          </body>
-                        </html>
-                      `)
-                      printWindow.document.close()
-                      printWindow.print()
+                      // Create a temporary div with the content
+                      const tempDiv = document.createElement('div')
+                      tempDiv.style.position = 'absolute'
+                      tempDiv.style.left = '-9999px'
+                      tempDiv.style.direction = 'rtl'
+                      tempDiv.style.textAlign = 'right'
+                      tempDiv.style.fontFamily = 'Arial Hebrew, David, sans-serif'
+                      tempDiv.style.padding = '40px'
+                      tempDiv.style.lineHeight = '2'
+                      tempDiv.style.fontSize = '18px'
+                      tempDiv.innerHTML = familiesWithKevittel.map(text => `<div style="margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #eee;">${text}</div>`).join('')
+                      document.body.appendChild(tempDiv)
+                      
+                      // Generate PDF
+                      const opt = {
+                        margin: [20, 20, 20, 20] as [number, number, number, number],
+                        filename: `Kevittel_${new Date().toISOString().split('T')[0]}.pdf`,
+                        image: { type: 'jpeg' as const, quality: 0.98 },
+                        html2canvas: { scale: 2 },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+                      }
+                      
+                      await html2pdf().set(opt).from(tempDiv).save()
+                      
+                      // Remove temporary div
+                      document.body.removeChild(tempDiv)
+                    } catch (error) {
+                      console.error('Error generating PDF:', error)
+                      alert('Error generating PDF. Please try again.')
                     }
                   }}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
@@ -1379,17 +1487,70 @@ export default function SettingsPage() {
                           key={family._id} 
                           className="border-b border-gray-200 py-3 print:py-2 print:border-gray-300"
                         >
-                          {entries.map((entry, index) => (
-                            <div 
-                              key={index}
-                              className="text-xl font-semibold text-gray-900 print:text-lg print:font-normal mb-2 last:mb-0"
-                              dir="rtl"
-                              lang="he"
-                              style={{ fontFamily: 'Arial Hebrew, David, sans-serif', textAlign: 'right', lineHeight: '1.8' }}
-                            >
-                              {entry}
-                            </div>
-                          ))}
+                          {entries.map((entry, index) => {
+                            const isEditing = editingKevittel?.familyId === family._id && editingKevittel?.entryIndex === index
+                            
+                            return (
+                              <div 
+                                key={index}
+                                className="flex items-center gap-2 mb-2 last:mb-0 group"
+                                dir="rtl"
+                                lang="he"
+                              >
+                                {isEditing ? (
+                                  <>
+                                    <input
+                                      type="text"
+                                      value={kevittelEditText}
+                                      onChange={(e) => setKevittelEditText(e.target.value)}
+                                      className="flex-1 text-xl font-semibold text-gray-900 border border-blue-500 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      dir="rtl"
+                                      lang="he"
+                                      style={{ fontFamily: 'Arial Hebrew, David, sans-serif', textAlign: 'right', lineHeight: '1.8' }}
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleSaveKevittel(family._id, index)
+                                        } else if (e.key === 'Escape') {
+                                          handleCancelEditKevittel()
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => handleSaveKevittel(family._id, index)}
+                                      className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEditKevittel}
+                                      className="px-3 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 transition-colors text-sm"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div
+                                      className="flex-1 text-xl font-semibold text-gray-900 print:text-lg print:font-normal"
+                                      dir="rtl"
+                                      lang="he"
+                                      style={{ fontFamily: 'Arial Hebrew, David, sans-serif', textAlign: 'right', lineHeight: '1.8' }}
+                                    >
+                                      {entry}
+                                    </div>
+                                    <button
+                                      onClick={() => handleEditKevittel(family._id, index, entry)}
+                                      className="opacity-0 group-hover:opacity-100 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all text-sm"
+                                      title="Edit"
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       )
                     }).filter(Boolean)}
