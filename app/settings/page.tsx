@@ -1346,9 +1346,9 @@ export default function SettingsPage() {
                             }
                           })
                           
-                          return entries.length > 0 ? entries.join('<br>') : ''
+                          return entries.length > 0 ? { entries, familyName: family.name } : null
                         })
-                        .filter(text => text && text.trim() !== '')
+                        .filter((item): item is { entries: string[]; familyName: string } => item !== null)
                       
                       if (familiesWithKevittel.length === 0) {
                         alert('No kevittel data to export. Please add Hebrew names to families.')
@@ -1362,6 +1362,8 @@ export default function SettingsPage() {
                         return
                       }
                       
+                      const currentDate = new Date().toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })
+                      
                       printWindow.document.write(`
                         <!DOCTYPE html>
                         <html dir="rtl" lang="he">
@@ -1373,6 +1375,10 @@ export default function SettingsPage() {
                                 @page { margin: 2cm; }
                                 body { margin: 0; }
                               }
+                              * {
+                                direction: rtl;
+                                text-align: right;
+                              }
                               body {
                                 font-family: Arial Hebrew, David, sans-serif;
                                 direction: rtl;
@@ -1382,18 +1388,42 @@ export default function SettingsPage() {
                                 font-size: 18px;
                                 background: white;
                               }
-                              .kevittel-item {
-                                margin-bottom: 20px;
-                                padding: 10px 0;
-                                border-bottom: 1px solid #eee;
+                              .kevittel-family {
+                                margin-bottom: 30px;
+                                padding-bottom: 20px;
+                                border-bottom: 2px solid #ddd;
+                                page-break-inside: avoid;
                               }
-                              .kevittel-item:last-child {
+                              .kevittel-family:last-child {
                                 border-bottom: none;
+                              }
+                              .kevittel-entry {
+                                margin-bottom: 10px;
+                                padding: 5px 0;
+                                font-size: 18px;
+                                line-height: 2;
+                              }
+                              .footer {
+                                margin-top: 40px;
+                                padding-top: 20px;
+                                border-top: 1px solid #ddd;
+                                text-align: center;
+                                direction: rtl;
+                                font-size: 14px;
+                                color: #666;
                               }
                             </style>
                           </head>
                           <body>
-                            ${familiesWithKevittel.map(text => `<div class="kevittel-item">${text}</div>`).join('')}
+                            ${familiesWithKevittel.map(family => `
+                              <div class="kevittel-family">
+                                ${family.entries.map(entry => `<div class="kevittel-entry">${entry}</div>`).join('')}
+                              </div>
+                            `).join('')}
+                            <div class="footer">
+                              <p>נוצר ב-${currentDate}</p>
+                              <p>מערכת ניהול משפחות קאסא</p>
+                            </div>
                           </body>
                         </html>
                       `)
