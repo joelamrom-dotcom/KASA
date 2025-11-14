@@ -24,34 +24,18 @@ Add these environment variables to your Vercel project settings:
   - Required: Yes
   - Note: Update this to your actual Vercel deployment URL
 
-## Optional Variables (for email functionality)
+## Email Configuration (Stored in Database)
 
-### Email/SMTP Configuration
-- **SMTP_HOST**
-  - Description: SMTP server hostname
-  - Example: `smtp.gmail.com`
-  - Required: No (only if you want password reset emails)
+**Note:** SMTP settings are stored in the database, not as environment variables!
 
-- **SMTP_PORT**
-  - Description: SMTP server port
-  - Example: `587`
-  - Required: No (defaults to 587)
+To configure email settings:
+1. Log into your application
+2. Go to **Settings** page
+3. Configure your email settings in the "Email Configuration" section
+4. Enter your email address and password/app password
+5. The system will use these settings for password reset emails
 
-- **SMTP_USER**
-  - Description: SMTP username/email
-  - Example: `your-email@gmail.com`
-  - Required: No (only if you want password reset emails)
-
-- **SMTP_PASS**
-  - Description: SMTP password or app password
-  - Example: `your-app-password`
-  - Required: No (only if you want password reset emails)
-  - Note: For Gmail, use an App Password, not your regular password
-
-- **SMTP_FROM**
-  - Description: Email address to send from
-  - Example: `noreply@yourdomain.com`
-  - Required: No (defaults to SMTP_USER)
+**No environment variables needed for email!** The email configuration is stored securely in the `EmailConfig` collection in your MongoDB database.
 
 ## Optional Variables (for Stripe payments)
 
@@ -84,7 +68,10 @@ For basic functionality, you need at minimum:
 - `JWT_SECRET`
 - `NEXT_PUBLIC_BASE_URL`
 
-Email functionality will work without SMTP variables (it will log reset URLs to console in development mode).
+**Email Configuration:**
+- Email settings are stored in the database (configure via Settings page)
+- No environment variables needed for email!
+- Password reset emails will work once you configure email settings in the app
 
-Stripe functionality is optional and only needed if you're processing payments.
+**Stripe functionality is optional** and only needed if you're processing payments.
 

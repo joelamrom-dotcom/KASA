@@ -1,26 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { User } from '@/lib/models'
+import { User, EmailConfig } from '@/lib/models'
 import crypto from 'crypto'
 import nodemailer from 'nodemailer'
 
 export const dynamic = 'force-dynamic'
-
-// Email configuration (you should move this to environment variables)
-const getEmailTransporter = () => {
-  // Check if email config exists in database
-  // For now, using a simple configuration
-  // You should configure this based on your email provider
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,20 +42,35 @@ export async function POST(request: NextRequest) {
     // Create reset URL
     const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`
 
-    // Send email (only if SMTP is configured)
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    // Get email configuration from database
+    const emailConfigDoc = await EmailConfig.findOne({ isActive: true })
+    
+    // Send email if email config exists in database
+    if (emailConfigDoc && emailConfigDoc.email && emailConfigDoc.password) {
       try {
-        const transporter = getEmailTransporter()
+        // Create nodemailer transporter using database config
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: emailConfigDoc.email,
+            pass: emailConfigDoc.password
+          }
+        })
+
         await transporter.sendMail({
-          from: process.env.SMTP_FROM || process.env.SMTP_USER,
+          from: `${emailConfigDoc.fromName || 'Kasa Family Management'} <${emailConfigDoc.email}>`,
           to: user.email,
-          subject: 'Password Reset Request',
+          subject: 'Password Reset Request - Kasa Family Management',
           html: `
             <h2>Password Reset Request</h2>
-            <p>You requested a password reset. Click the link below to reset your password:</p>
-            <p><a href="${resetUrl}">${resetUrl}</a></p>
+            <p>Hello ${user.firstName},</p>
+            <p>You requested a password reset for your Kasa Family Management account. Click the link below to reset your password:</p>
+            <p><a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a></p>
+            <p>Or copy and paste this URL into your browser:</p>
+            <p>${resetUrl}</p>
             <p>This link will expire in 1 hour.</p>
-            <p>If you didn't request this, please ignore this email.</p>
+            <p>If you didn't request this, please ignore this email and your password will remain unchanged.</p>
+            <p>Regards,<br>Kasa Family Management Team</p>
           `,
         })
       } catch (emailError) {
@@ -79,8 +78,9 @@ export async function POST(request: NextRequest) {
         // Still return success to not reveal if user exists
       }
     } else {
-      // In development, log the reset URL
-      console.log('Password reset URL (development):', resetUrl)
+      // In development, log the reset URL if no email config
+      console.log('Password reset URL (no email config in database):', resetUrl)
+      console.log('Please configure email settings in the Settings page to enable password reset emails.')
     }
 
     return NextResponse.json({
