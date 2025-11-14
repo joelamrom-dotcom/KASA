@@ -160,10 +160,6 @@ export default function Home() {
               </h1>
               <p className="text-gray-700 text-lg">Welcome back! Here's your financial overview</p>
             </div>
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 glass-strong rounded-xl border border-white/30 shadow-lg backdrop-blur-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-700 font-medium">All Systems Operational</span>
-            </div>
           </div>
         </div>
         

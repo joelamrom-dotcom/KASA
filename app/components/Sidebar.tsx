@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getUser, logout } from '@/lib/auth'
-import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { useState, useRef, useEffect } from 'react'
 import { 
   HomeIcon,
   UserGroupIcon,
@@ -41,6 +42,25 @@ import {
 export default function Sidebar() {
   const pathname = usePathname()
   const user = getUser()
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false)
+      }
+    }
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showUserMenu])
 
     const navItems = [
       { href: '/', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
@@ -103,27 +123,49 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10 space-y-2">
+        <div className="p-4 border-t border-white/10">
           {user && (
-            <div className="mb-2 px-4 py-2 text-sm text-gray-700">
-              <p className="font-medium">{user.firstName} {user.lastName}</p>
-              <p className="text-xs text-gray-500">{user.email}</p>
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-gray-700 hover:bg-white/10 hover:text-gray-900 group"
+              >
+                <div className="p-2 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg border border-white/30">
+                  <UserCircleIcon className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-sm">{user.firstName} {user.lastName}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+                <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* User Dropdown Menu */}
+              {showUserMenu && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 glass-strong rounded-xl shadow-xl border border-white/30 backdrop-blur-xl overflow-hidden">
+                  <div className="p-4 border-b border-white/20">
+                    <p className="text-sm font-semibold text-gray-800">{user.firstName} {user.lastName}</p>
+                    <p className="text-xs text-gray-600 mt-1">{user.email}</p>
+                    {user.role && (
+                      <span className="inline-block mt-2 px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-700 rounded border border-blue-300/50 capitalize">
+                        {user.role}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout()
+                      setShowUserMenu(false)
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-700 transition-all duration-200 group"
+                  >
+                    <ArrowRightOnRectangleIcon className="h-5 w-5 text-gray-500 group-hover:text-red-600" />
+                    <span className="font-medium">Logout</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
-          <button
-            onClick={() => logout()}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-gray-700 hover:bg-red-50 hover:text-red-700 group"
-          >
-            <ArrowRightOnRectangleIcon className="h-5 w-5 text-gray-500 group-hover:text-red-600" />
-            <span className="font-medium">Logout</span>
-          </button>
-          <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-            <p className="text-xs text-gray-600 mb-1">System Status</p>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-gray-700">All Systems Operational</span>
-            </div>
-          </div>
         </div>
       </div>
     </aside>
