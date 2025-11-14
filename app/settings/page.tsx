@@ -1299,6 +1299,11 @@ export default function SettingsPage() {
                       // Dynamically import html2pdf only in the browser
                       const html2pdf = (await import('html2pdf.js')).default
                       
+                      if (kevittelFamilies.length === 0) {
+                        alert('No kevittel data available. Please add Hebrew names to families.')
+                        return
+                      }
+                      
                       const familiesWithKevittel = kevittelFamilies
                         .filter((family) => {
                           const hasHusbandName = family.husbandHebrewName && family.husbandHebrewName.trim() !== ''
@@ -1341,29 +1346,62 @@ export default function SettingsPage() {
                             }
                           })
                           
-                          return entries.join('<br>') // Join with <br> for HTML
+                          return entries.length > 0 ? entries.join('<br>') : ''
                         })
-                        .filter(text => text.trim() !== '')
+                        .filter(text => text && text.trim() !== '')
+                      
+                      if (familiesWithKevittel.length === 0) {
+                        alert('No kevittel data to export. Please add Hebrew names to families.')
+                        return
+                      }
                       
                       // Create a temporary div with the content
                       const tempDiv = document.createElement('div')
-                      tempDiv.style.position = 'absolute'
-                      tempDiv.style.left = '-9999px'
+                      tempDiv.style.position = 'fixed'
+                      tempDiv.style.top = '0'
+                      tempDiv.style.left = '0'
+                      tempDiv.style.width = '794px' // A4 width in pixels (210mm at 96 DPI)
+                      tempDiv.style.minHeight = '1123px' // A4 height in pixels (297mm at 96 DPI)
+                      tempDiv.style.padding = '40px'
+                      tempDiv.style.backgroundColor = 'white'
                       tempDiv.style.direction = 'rtl'
                       tempDiv.style.textAlign = 'right'
                       tempDiv.style.fontFamily = 'Arial Hebrew, David, sans-serif'
-                      tempDiv.style.padding = '40px'
                       tempDiv.style.lineHeight = '2'
                       tempDiv.style.fontSize = '18px'
-                      tempDiv.innerHTML = familiesWithKevittel.map(text => `<div style="margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #eee;">${text}</div>`).join('')
+                      tempDiv.style.zIndex = '-1'
+                      tempDiv.style.visibility = 'hidden'
+                      tempDiv.style.pointerEvents = 'none'
+                      // Build HTML content
+                      const htmlContent = familiesWithKevittel
+                        .map(text => `<div style="margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #eee; direction: rtl; text-align: right; font-family: Arial Hebrew, David, sans-serif; line-height: 2; font-size: 18px;">${text}</div>`)
+                        .join('')
+                      
+                      tempDiv.innerHTML = htmlContent
                       document.body.appendChild(tempDiv)
+                      
+                      // Wait for the div to be rendered and fonts to load
+                      await new Promise(resolve => setTimeout(resolve, 200))
+                      
+                      // Verify content is there
+                      if (!tempDiv.innerHTML || tempDiv.textContent?.trim() === '') {
+                        document.body.removeChild(tempDiv)
+                        alert('Error: Content is empty. Please try again.')
+                        return
+                      }
                       
                       // Generate PDF
                       const opt = {
                         margin: [20, 20, 20, 20] as [number, number, number, number],
                         filename: `Kevittel_${new Date().toISOString().split('T')[0]}.pdf`,
                         image: { type: 'jpeg' as const, quality: 0.98 },
-                        html2canvas: { scale: 2 },
+                        html2canvas: { 
+                          scale: 2,
+                          useCORS: true,
+                          logging: false,
+                          windowWidth: 794, // A4 width in pixels at 96 DPI
+                          windowHeight: 1123 // A4 height in pixels at 96 DPI
+                        },
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
                       }
                       
