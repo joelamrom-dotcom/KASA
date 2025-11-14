@@ -108,10 +108,15 @@ export default function CalculationsPage() {
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Yearly Calculations</h1>
+          <div>
+            <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Yearly Calculations
+            </h1>
+            <p className="text-gray-600">View and manage yearly financial calculations</p>
+          </div>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all duration-200 transform hover:scale-105"
           >
             <CalculatorIcon className="h-5 w-5" />
             Calculate Year

@@ -70,7 +70,12 @@ export default function EventsPage() {
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">All Lifecycle Events</h1>
+          <div>
+            <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              All Lifecycle Events
+            </h1>
+            <p className="text-gray-600">View and manage all lifecycle events</p>
+          </div>
         </div>
 
         {/* Filter Tabs */}
