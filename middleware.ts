@@ -7,10 +7,13 @@ const publicRoutes = [
   '/signup',
   '/forgot-password',
   '/reset-password',
+  '/auth/google/success', // Google OAuth callback success page
   '/api/auth/login',
   '/api/auth/signup',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
+  '/api/auth/google', // Google OAuth initiation
+  '/api/auth/google/callback', // Google OAuth callback
 ]
 
 export function middleware(request: NextRequest) {

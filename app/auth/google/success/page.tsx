@@ -13,14 +13,27 @@ function GoogleAuthSuccessContent() {
     if (token && userParam) {
       try {
         const user = JSON.parse(userParam)
+        
         // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(user))
         localStorage.setItem('token', token)
+        
         // Set cookie for server-side access
         document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 days
         
-        // Redirect to home page
-        window.location.href = '/'
+        // Verify data was stored
+        const storedToken = localStorage.getItem('token')
+        const storedUser = localStorage.getItem('user')
+        
+        if (!storedToken || !storedUser) {
+          throw new Error('Failed to store authentication data')
+        }
+        
+        // Small delay to ensure localStorage is persisted and AuthProvider can read it
+        setTimeout(() => {
+          // Force a hard redirect to ensure AuthProvider re-checks
+          window.location.replace('/')
+        }, 100)
       } catch (error) {
         console.error('Error parsing user data:', error)
         window.location.href = '/login?error=' + encodeURIComponent('Failed to process authentication')

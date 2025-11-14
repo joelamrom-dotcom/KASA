@@ -10,6 +10,7 @@ const publicRoutes = [
   '/signup',
   '/forgot-password',
   '/reset-password',
+  '/auth/google/success', // Google OAuth callback success page
 ]
 
 interface AuthContextType {
@@ -37,15 +38,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         return
       }
 
-      // Check if user is authenticated
-      if (!isAuthenticated()) {
-        // Redirect to login with return URL
-        const loginUrl = `/login?redirect=${encodeURIComponent(pathname || '/')}`
-        router.push(loginUrl)
-        return
-      }
+      // Small delay to allow localStorage to be set (especially for OAuth redirects)
+      setTimeout(() => {
+        // Check if user is authenticated
+        if (!isAuthenticated()) {
+          // Redirect to login with return URL
+          const loginUrl = `/login?redirect=${encodeURIComponent(pathname || '/')}`
+          router.push(loginUrl)
+          return
+        }
 
-      setIsChecking(false)
+        setIsChecking(false)
+      }, 50)
     }
 
     checkAuth()
