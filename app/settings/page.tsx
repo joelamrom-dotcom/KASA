@@ -1355,43 +1355,56 @@ export default function SettingsPage() {
                         return
                       }
                       
-                      // Create a temporary div with the content
-                      const tempDiv = document.createElement('div')
-                      tempDiv.style.position = 'absolute'
-                      tempDiv.style.top = '0'
-                      tempDiv.style.left = '0'
-                      tempDiv.style.width = '794px' // A4 width in pixels (210mm at 96 DPI)
-                      tempDiv.style.minHeight = '1123px' // A4 height in pixels (297mm at 96 DPI)
-                      tempDiv.style.padding = '40px'
-                      tempDiv.style.backgroundColor = 'white'
-                      tempDiv.style.direction = 'rtl'
-                      tempDiv.style.textAlign = 'right'
-                      tempDiv.style.fontFamily = 'Arial Hebrew, David, sans-serif'
-                      tempDiv.style.lineHeight = '2'
-                      tempDiv.style.fontSize = '18px'
-                      tempDiv.style.zIndex = '99999'
-                      // Position off-screen but still visible to html2canvas
-                      tempDiv.style.transform = 'translateX(-10000px)'
-                      tempDiv.style.pointerEvents = 'none'
-                      // Build HTML content
-                      const htmlContent = familiesWithKevittel
-                        .map(text => `<div style="margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #eee; direction: rtl; text-align: right; font-family: Arial Hebrew, David, sans-serif; line-height: 2; font-size: 18px;">${text}</div>`)
-                        .join('')
-                      
-                      tempDiv.innerHTML = htmlContent
-                      document.body.appendChild(tempDiv)
-                      
-                      // Wait for the div to be rendered and fonts to load
-                      await new Promise(resolve => setTimeout(resolve, 200))
-                      
-                      // Verify content is there
-                      if (!tempDiv.innerHTML || tempDiv.textContent?.trim() === '') {
-                        document.body.removeChild(tempDiv)
-                        alert('Error: Content is empty. Please try again.')
+                      // Create a new window with the content for PDF generation
+                      const printWindow = window.open('', '_blank')
+                      if (!printWindow) {
+                        alert('Please allow popups to generate PDF')
                         return
                       }
                       
-                      // Generate PDF
+                      printWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html dir="rtl" lang="he">
+                          <head>
+                            <meta charset="UTF-8">
+                            <title>Kevittel</title>
+                            <style>
+                              @media print {
+                                @page { margin: 2cm; }
+                                body { margin: 0; }
+                              }
+                              body {
+                                font-family: Arial Hebrew, David, sans-serif;
+                                direction: rtl;
+                                text-align: right;
+                                padding: 40px;
+                                line-height: 2;
+                                font-size: 18px;
+                                background: white;
+                              }
+                              .kevittel-item {
+                                margin-bottom: 20px;
+                                padding: 10px 0;
+                                border-bottom: 1px solid #eee;
+                              }
+                              .kevittel-item:last-child {
+                                border-bottom: none;
+                              }
+                            </style>
+                          </head>
+                          <body>
+                            ${familiesWithKevittel.map(text => `<div class="kevittel-item">${text}</div>`).join('')}
+                          </body>
+                        </html>
+                      `)
+                      printWindow.document.close()
+                      
+                      // Wait for content to load
+                      await new Promise(resolve => setTimeout(resolve, 500))
+                      
+                      // Generate PDF from the new window's content
+                      const contentElement = printWindow.document.body
+                      
                       const opt = {
                         margin: [20, 20, 20, 20] as [number, number, number, number],
                         filename: `Kevittel_${new Date().toISOString().split('T')[0]}.pdf`,
@@ -1400,16 +1413,16 @@ export default function SettingsPage() {
                           scale: 2,
                           useCORS: true,
                           logging: false,
-                          windowWidth: 794, // A4 width in pixels at 96 DPI
-                          windowHeight: 1123 // A4 height in pixels at 96 DPI
+                          windowWidth: printWindow.innerWidth,
+                          windowHeight: printWindow.innerHeight
                         },
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
                       }
                       
-                      await html2pdf().set(opt).from(tempDiv).save()
+                      await html2pdf().set(opt).from(contentElement).save()
                       
-                      // Remove temporary div
-                      document.body.removeChild(tempDiv)
+                      // Close the print window
+                      printWindow.close()
                     } catch (error) {
                       console.error('Error generating PDF:', error)
                       alert('Error generating PDF. Please try again.')
