@@ -18,7 +18,8 @@ import {
   CurrencyDollarIcon,
   ClipboardDocumentListIcon,
   ChartPieIcon,
-  ArrowUpTrayIcon
+  ArrowUpTrayIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -33,7 +34,8 @@ import {
   CurrencyDollarIcon as CurrencyDollarIconSolid,
   ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
   ChartPieIcon as ChartPieIconSolid,
-  ArrowUpTrayIcon as ArrowUpTrayIconSolid
+  ArrowUpTrayIcon as ArrowUpTrayIconSolid,
+  TrashIcon as TrashIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -50,6 +52,7 @@ export default function Sidebar() {
       { href: '/reports', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
       { href: '/statements', label: 'Statements', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
+      { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
       { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
     ]
 

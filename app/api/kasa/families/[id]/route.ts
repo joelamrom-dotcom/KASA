@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, FamilyMember, Payment, Withdrawal, LifecycleEventPayment, PaymentPlan } from '@/lib/models'
 import { calculateFamilyBalance } from '@/lib/calculations'
+import { moveToRecycleBin } from '@/lib/recycle-bin'
 
 // GET - Get family by ID with full details
 export async function GET(
@@ -142,7 +143,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete family
+// DELETE - Delete family (move to recycle bin)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -150,13 +151,7 @@ export async function DELETE(
   try {
     await connectDB()
     
-    // Delete related records first
-    await FamilyMember.deleteMany({ familyId: params.id })
-    await Payment.deleteMany({ familyId: params.id })
-    await Withdrawal.deleteMany({ familyId: params.id })
-    await LifecycleEventPayment.deleteMany({ familyId: params.id })
-    
-    const family = await Family.findByIdAndDelete(params.id)
+    const family = await Family.findById(params.id)
     
     if (!family) {
       return NextResponse.json(
@@ -165,7 +160,37 @@ export async function DELETE(
       )
     }
 
-    return NextResponse.json({ message: 'Family deleted successfully' })
+    // Get related records to move to recycle bin
+    const members = await FamilyMember.find({ familyId: params.id })
+    const payments = await Payment.find({ familyId: params.id })
+    const withdrawals = await Withdrawal.find({ familyId: params.id })
+    const lifecycleEvents = await LifecycleEventPayment.find({ familyId: params.id })
+    
+    // Move related records to recycle bin
+    for (const member of members) {
+      await moveToRecycleBin('member', member._id.toString(), member.toObject())
+    }
+    for (const payment of payments) {
+      await moveToRecycleBin('payment', payment._id.toString(), payment.toObject())
+    }
+    for (const withdrawal of withdrawals) {
+      await moveToRecycleBin('withdrawal', withdrawal._id.toString(), withdrawal.toObject())
+    }
+    for (const event of lifecycleEvents) {
+      await moveToRecycleBin('lifecycleEvent', event._id.toString(), event.toObject())
+    }
+    
+    // Move family to recycle bin
+    await moveToRecycleBin('family', params.id, family.toObject())
+    
+    // Now delete from database
+    await FamilyMember.deleteMany({ familyId: params.id })
+    await Payment.deleteMany({ familyId: params.id })
+    await Withdrawal.deleteMany({ familyId: params.id })
+    await LifecycleEventPayment.deleteMany({ familyId: params.id })
+    await Family.findByIdAndDelete(params.id)
+
+    return NextResponse.json({ message: 'Family moved to recycle bin successfully' })
   } catch (error: any) {
     console.error('Error deleting family:', error)
     return NextResponse.json(

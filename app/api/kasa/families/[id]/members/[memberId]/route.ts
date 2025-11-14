@@ -225,7 +225,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete a member
+// DELETE - Delete a member (move to recycle bin)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string; memberId: string } }
@@ -233,7 +233,7 @@ export async function DELETE(
   try {
     await connectDB()
     
-    const member = await FamilyMember.findOneAndDelete({
+    const member = await FamilyMember.findOne({
       _id: params.memberId,
       familyId: params.id
     })
@@ -245,7 +245,17 @@ export async function DELETE(
       )
     }
 
-    return NextResponse.json({ message: 'Member deleted successfully' })
+    // Move to recycle bin
+    const { moveToRecycleBin } = await import('@/lib/recycle-bin')
+    await moveToRecycleBin('member', params.memberId, member.toObject())
+    
+    // Delete from database
+    await FamilyMember.findOneAndDelete({
+      _id: params.memberId,
+      familyId: params.id
+    })
+
+    return NextResponse.json({ message: 'Member moved to recycle bin successfully' })
   } catch (error: any) {
     console.error('Error deleting member:', error)
     return NextResponse.json(

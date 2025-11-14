@@ -280,6 +280,30 @@ const UserSchema = new Schema({
   lastLogin: Date,
 }, { timestamps: true })
 
+// Family Note Schema
+const FamilyNoteSchema = new Schema({
+  familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  note: { type: String, required: true },
+  checked: { type: Boolean, default: false }, // Mark as reviewed/checked
+  checkedAt: Date, // When it was checked
+  checkedBy: String, // Who checked it (user email or name)
+}, { timestamps: true })
+
+// Recycle Bin Schema
+const RecycleBinSchema = new Schema({
+  recordType: { 
+    type: String, 
+    required: true,
+    enum: ['family', 'member', 'payment', 'withdrawal', 'lifecycleEvent', 'note', 'task', 'statement', 'paymentPlan', 'savedPaymentMethod', 'recurringPayment']
+  },
+  originalId: { type: String, required: true }, // Original record ID
+  recordData: { type: Schema.Types.Mixed, required: true }, // Full record data as JSON
+  deletedBy: String, // User who deleted it (optional)
+  deletedAt: { type: Date, default: Date.now },
+  restoredAt: Date, // When it was restored (if restored)
+  restoredBy: String, // Who restored it
+}, { timestamps: true })
+
 // Export models
 export const PaymentPlan = mongoose.models.PaymentPlan || mongoose.model('PaymentPlan', PaymentPlanSchema)
 export const Family = mongoose.models.Family || mongoose.model('Family', FamilySchema)
@@ -297,3 +321,5 @@ export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.mod
 export const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema)
 export const Report = mongoose.models.Report || mongoose.model('Report', ReportSchema)
 export const User = mongoose.models.User || mongoose.model('User', UserSchema)
+export const FamilyNote = mongoose.models.FamilyNote || mongoose.model('FamilyNote', FamilyNoteSchema)
+export const RecycleBin = mongoose.models.RecycleBin || mongoose.model('RecycleBin', RecycleBinSchema)

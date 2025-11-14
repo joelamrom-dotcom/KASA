@@ -11,7 +11,9 @@ import {
   TrashIcon,
   PrinterIcon,
   DocumentArrowDownIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  CheckIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { calculateHebrewAge, convertToHebrewDate } from '@/lib/hebrew-date'
 import StripePaymentForm from '@/app/components/StripePaymentForm'
@@ -113,7 +115,12 @@ export default function FamilyDetailPage() {
     password: '',
     fromName: 'Kasa Family Management'
   })
-  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements' | 'sub-families'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements' | 'sub-families' | 'notes'>('info')
+  const [notes, setNotes] = useState<any[]>([])
+  const [loadingNotes, setLoadingNotes] = useState(false)
+  const [showNoteModal, setShowNoteModal] = useState(false)
+  const [editingNote, setEditingNote] = useState<any>(null)
+  const [noteText, setNoteText] = useState('')
   const [subFamilies, setSubFamilies] = useState<any[]>([])
   const [loadingSubFamilies, setLoadingSubFamilies] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
@@ -145,7 +152,7 @@ export default function FamilyDetailPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const tab = urlParams.get('tab')
-    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements' || tab === 'sub-families') {
+    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements' || tab === 'sub-families' || tab === 'notes') {
       setActiveTab(tab as any)
       // Auto-open modal if coming from quick add
       if (tab === 'members' && urlParams.get('add') === 'true') {
@@ -241,11 +248,18 @@ export default function FamilyDetailPage() {
       fetchFamilyDetails()
       fetchStatements()
       fetchSubFamilies()
+      fetchNotes()
     }
     fetchPaymentPlans()
     fetchLifecycleEventTypes()
     fetchEmailConfig()
   }, [params.id])
+
+  useEffect(() => {
+    if (activeTab === 'notes' && params.id) {
+      fetchNotes()
+    }
+  }, [activeTab, params.id])
 
   const fetchSubFamilies = async () => {
     if (!params.id) return
@@ -260,6 +274,120 @@ export default function FamilyDetailPage() {
       console.error('Error fetching sub-families:', error)
     } finally {
       setLoadingSubFamilies(false)
+    }
+  }
+
+  const fetchNotes = async () => {
+    if (!params.id) return
+    setLoadingNotes(true)
+    try {
+      const res = await fetch(`/api/kasa/families/${params.id}/notes`)
+      if (res.ok) {
+        const data = await res.json()
+        setNotes(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching notes:', error)
+    } finally {
+      setLoadingNotes(false)
+    }
+  }
+
+  const handleAddNote = () => {
+    setEditingNote(null)
+    setNoteText('')
+    setShowNoteModal(true)
+  }
+
+  const handleEditNote = (note: any) => {
+    setEditingNote(note)
+    setNoteText(note.note)
+    setShowNoteModal(true)
+  }
+
+  const handleSaveNote = async () => {
+    if (!noteText.trim()) {
+      alert('Please enter a note')
+      return
+    }
+
+    try {
+      if (editingNote) {
+        // Update existing note
+        const res = await fetch(`/api/kasa/families/${params.id}/notes/${editingNote._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: noteText.trim() })
+        })
+        if (res.ok) {
+          await fetchNotes()
+          setShowNoteModal(false)
+          setEditingNote(null)
+          setNoteText('')
+        } else {
+          const errorData = await res.json()
+          alert(`Error updating note: ${errorData.error || 'Unknown error'}`)
+        }
+      } else {
+        // Create new note
+        const res = await fetch(`/api/kasa/families/${params.id}/notes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: noteText.trim() })
+        })
+        if (res.ok) {
+          await fetchNotes()
+          setShowNoteModal(false)
+          setNoteText('')
+        } else {
+          const errorData = await res.json()
+          alert(`Error creating note: ${errorData.error || 'Unknown error'}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error saving note:', error)
+      alert('Error saving note. Please try again.')
+    }
+  }
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('Are you sure you want to delete this note?')) return
+
+    try {
+      const res = await fetch(`/api/kasa/families/${params.id}/notes/${noteId}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        await fetchNotes()
+      } else {
+        const errorData = await res.json()
+        alert(`Error deleting note: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error)
+      alert('Error deleting note. Please try again.')
+    }
+  }
+
+  const handleToggleChecked = async (note: any) => {
+    try {
+      const res = await fetch(`/api/kasa/families/${params.id}/notes/${note._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          checked: !note.checked,
+          checkedBy: 'Current User' // You can get this from auth context
+        })
+      })
+      if (res.ok) {
+        await fetchNotes()
+      } else {
+        const errorData = await res.json()
+        alert(`Error updating note: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error toggling note checked status:', error)
+      alert('Error updating note. Please try again.')
     }
   }
 
@@ -1857,7 +1985,8 @@ export default function FamilyDetailPage() {
                 { id: 'payments', label: 'Payments' },
                 { id: 'events', label: 'Lifecycle Events' },
                 { id: 'statements', label: 'Statements' },
-                { id: 'sub-families', label: 'Sub-Families' }
+                { id: 'sub-families', label: 'Sub-Families' },
+                { id: 'notes', label: 'Notes' }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -3224,6 +3353,138 @@ export default function FamilyDetailPage() {
                 )}
               </div>
             )}
+
+            {activeTab === 'notes' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Notes</h3>
+                    <p className="text-sm text-gray-500">Add and manage notes for this family</p>
+                  </div>
+                  <button
+                    onClick={handleAddNote}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:shadow-lg transition-all text-sm"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add Note
+                  </button>
+                </div>
+
+                {loadingNotes ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <p className="text-gray-500 mt-4">Loading notes...</p>
+                  </div>
+                ) : notes.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <div className="text-4xl mb-4">📝</div>
+                    <p className="text-gray-600 font-medium mb-2">No notes yet</p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Add notes to keep track of important information about this family.
+                    </p>
+                    <button
+                      onClick={handleAddNote}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Add First Note
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                            <span className="sr-only">Checked</span>
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Note
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Created
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Checked
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {notes.map((note: any) => (
+                          <tr 
+                            key={note._id} 
+                            className={note.checked ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <button
+                                onClick={() => handleToggleChecked(note)}
+                                className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                                  note.checked
+                                    ? 'bg-green-500 border-green-500 text-white'
+                                    : 'border-gray-300 hover:border-green-400'
+                                }`}
+                                title={note.checked ? 'Mark as unchecked' : 'Mark as checked'}
+                              >
+                                {note.checked && <CheckIcon className="h-4 w-4" />}
+                              </button>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900 whitespace-pre-wrap">
+                                {note.note}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-500">
+                                {new Date(note.createdAt).toLocaleDateString()}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {new Date(note.createdAt).toLocaleTimeString()}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {note.checked ? (
+                                <div>
+                                  <div className="text-sm text-gray-500">
+                                    {note.checkedAt ? new Date(note.checkedAt).toLocaleDateString() : 'N/A'}
+                                  </div>
+                                  {note.checkedBy && (
+                                    <div className="text-xs text-gray-400">
+                                      by {note.checkedBy}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400">Not checked</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleEditNote(note)}
+                                  className="text-blue-600 hover:text-blue-900 p-1"
+                                  title="Edit note"
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteNote(note._id)}
+                                  className="text-red-600 hover:text-red-900 p-1"
+                                  title="Delete note"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -4237,6 +4498,60 @@ export default function FamilyDetailPage() {
               </div>
             </form>
           </Modal>
+        )}
+
+        {showNoteModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="glass-strong rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/30">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {editingNote ? 'Edit Note' : 'Add Note'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowNoteModal(false)
+                    setEditingNote(null)
+                    setNoteText('')
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">Note *</label>
+                  <textarea
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all min-h-[150px]"
+                    placeholder="Enter your note here..."
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-4 justify-end pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNoteModal(false)
+                      setEditingNote(null)
+                      setNoteText('')
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveNote}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all"
+                  >
+                    {editingNote ? 'Update Note' : 'Add Note'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>
