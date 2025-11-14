@@ -1357,7 +1357,7 @@ export default function SettingsPage() {
                       
                       // Create a temporary div with the content
                       const tempDiv = document.createElement('div')
-                      tempDiv.style.position = 'fixed'
+                      tempDiv.style.position = 'absolute'
                       tempDiv.style.top = '0'
                       tempDiv.style.left = '0'
                       tempDiv.style.width = '794px' // A4 width in pixels (210mm at 96 DPI)
@@ -1369,8 +1369,9 @@ export default function SettingsPage() {
                       tempDiv.style.fontFamily = 'Arial Hebrew, David, sans-serif'
                       tempDiv.style.lineHeight = '2'
                       tempDiv.style.fontSize = '18px'
-                      tempDiv.style.zIndex = '-1'
-                      tempDiv.style.visibility = 'hidden'
+                      tempDiv.style.zIndex = '99999'
+                      // Position off-screen but still visible to html2canvas
+                      tempDiv.style.transform = 'translateX(-10000px)'
                       tempDiv.style.pointerEvents = 'none'
                       // Build HTML content
                       const htmlContent = familiesWithKevittel
