@@ -125,13 +125,13 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse">
-            <div className="h-12 bg-gray-200 rounded-lg w-1/4 mb-8"></div>
+            <div className="h-12 glass-strong rounded-xl w-1/4 mb-8"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-32 bg-white rounded-lg border border-gray-200"></div>
+                <div key={i} className="h-32 glass-strong rounded-xl border border-white/30"></div>
               ))}
             </div>
           </div>
@@ -149,20 +149,20 @@ export default function Home() {
   }).length
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-2 text-gray-900">
+              <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Dashboard
               </h1>
-              <p className="text-gray-600 text-lg">Welcome back! Here's your financial overview</p>
+              <p className="text-gray-700 text-lg">Welcome back! Here's your financial overview</p>
             </div>
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-600 font-medium">All Systems Operational</span>
+            <div className="hidden md:flex items-center gap-2 px-4 py-2 glass-strong rounded-xl border border-white/30 shadow-lg backdrop-blur-sm">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-gray-700 font-medium">All Systems Operational</span>
             </div>
           </div>
         </div>
@@ -197,22 +197,22 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Tasks Section - Takes 2 columns */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="glass-strong rounded-xl shadow-xl border border-white/30 p-6 backdrop-blur-xl">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <CalendarIcon className="h-6 w-6 text-gray-700" />
+                  <div className="p-2 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg border border-white/30">
+                    <CalendarIcon className="h-6 w-6 text-blue-700" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-semibold text-gray-900">Tasks</h2>
-                    <p className="text-sm text-gray-500">
+                    <h2 className="text-2xl font-semibold text-gray-800">Tasks</h2>
+                    <p className="text-sm text-gray-600">
                       {pendingTasks} pending • {overdueTasks} overdue
                     </p>
                   </div>
                 </div>
                 <Link
                   href="/tasks"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all"
                 >
                   <PlusIcon className="h-5 w-5" />
                   <span className="hidden sm:inline">Add Task</span>
@@ -230,10 +230,10 @@ export default function Home() {
                   <button
                     key={filter.key}
                     onClick={() => setTaskFilter(filter.key as any)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       taskFilter === filter.key
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                        : 'glass border border-white/30 text-gray-700 hover:bg-white/20'
                     }`}
                   >
                     {filter.label}
@@ -244,14 +244,14 @@ export default function Home() {
               {/* Tasks List */}
               {loadingTasks ? (
                 <div className="text-center py-12">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                  <p className="text-gray-500 mt-4">Loading tasks...</p>
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <p className="text-gray-600 mt-4">Loading tasks...</p>
                 </div>
               ) : tasks.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                <div className="text-center py-12 glass rounded-xl border-2 border-dashed border-white/40">
                   <div className="text-4xl mb-4">📋</div>
-                  <p className="text-gray-600 font-medium mb-2">No tasks found</p>
-                  <Link href="/tasks" className="text-gray-900 hover:text-gray-700 font-medium inline-flex items-center gap-1">
+                  <p className="text-gray-700 font-medium mb-2">No tasks found</p>
+                  <Link href="/tasks" className="text-blue-600 hover:text-purple-600 font-medium inline-flex items-center gap-1">
                     Create your first task <span>→</span>
                   </Link>
                 </div>
@@ -265,27 +265,27 @@ export default function Home() {
                     const isDueToday = dueDate.toDateString() === today.toDateString()
                     
                     const priorityColors = {
-                      low: 'bg-gray-100 text-gray-700 border-gray-200',
-                      medium: 'bg-blue-50 text-blue-700 border-blue-200',
-                      high: 'bg-orange-50 text-orange-700 border-orange-200',
-                      urgent: 'bg-red-50 text-red-700 border-red-200'
+                      low: 'glass border-white/30 text-gray-700',
+                      medium: 'bg-blue-500/20 text-blue-700 border-blue-300/50',
+                      high: 'bg-orange-500/20 text-orange-700 border-orange-300/50',
+                      urgent: 'bg-red-500/20 text-red-700 border-red-300/50'
                     }
 
                     const statusColors = {
-                      pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-                      in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
-                      completed: 'bg-green-50 text-green-700 border-green-200',
-                      cancelled: 'bg-gray-50 text-gray-700 border-gray-200'
+                      pending: 'bg-yellow-500/20 text-yellow-700 border-yellow-300/50',
+                      in_progress: 'bg-blue-500/20 text-blue-700 border-blue-300/50',
+                      completed: 'bg-green-500/20 text-green-700 border-green-300/50',
+                      cancelled: 'glass border-white/30 text-gray-700'
                     }
 
                     return (
                       <Link
                         key={task._id}
                         href="/tasks"
-                        className={`block p-4 rounded-lg border transition-all ${
+                        className={`block p-4 rounded-lg border transition-all backdrop-blur-sm ${
                           isOverdue 
-                            ? 'bg-red-50/50 border-red-200 hover:border-red-300' 
-                            : 'bg-white border-gray-200 hover:border-gray-300'
+                            ? 'bg-red-500/10 border-red-300/50 hover:border-red-400/70 hover:bg-red-500/15' 
+                            : 'glass border-white/30 hover:border-white/50 hover:bg-white/20'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-4">
@@ -346,12 +346,12 @@ export default function Home() {
           {/* Quick Actions & Setup - Takes 1 column */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="glass-strong rounded-xl shadow-xl border border-white/30 p-6 backdrop-blur-xl">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <BoltIcon className="h-6 w-6 text-gray-700" />
+                <div className="p-2 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg border border-white/30">
+                  <BoltIcon className="h-6 w-6 text-blue-700" />
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900">Quick Actions</h2>
+                <h2 className="text-2xl font-semibold text-gray-800">Quick Actions</h2>
               </div>
               <div className="space-y-3">
                 <ActionButton 
@@ -378,12 +378,12 @@ export default function Home() {
             </div>
 
             {/* Quick Setup */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="glass-strong rounded-xl shadow-xl border border-white/30 p-6 backdrop-blur-xl">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <SparklesIcon className="h-6 w-6 text-gray-700" />
+                <div className="p-2 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg border border-white/30">
+                  <SparklesIcon className="h-6 w-6 text-blue-700" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Quick Setup</h3>
+                <h3 className="text-xl font-semibold text-gray-800">Quick Setup</h3>
               </div>
               <p className="text-sm text-gray-600 mb-4">
                 Initialize default payment plans and lifecycle events to get started:
@@ -400,7 +400,7 @@ export default function Home() {
                     alert('Error initializing data')
                   }
                 }}
-                className="w-full px-4 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
               >
                 <SparklesIcon className="h-5 w-5" />
                 Initialize Default Data
@@ -427,12 +427,12 @@ function StatCard({
   isPositive?: boolean
 }) {
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+    <div className="glass-strong rounded-xl p-6 shadow-xl border border-white/30 hover:shadow-2xl transition-all backdrop-blur-xl">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+          <p className="text-sm font-medium text-gray-700 mb-1">{title}</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-gray-900">{value}</p>
+            <p className="text-3xl font-bold text-gray-800">{value}</p>
             {isBalance && (
               <div className={`${isPositive ? 'text-green-600' : 'text-red-600'}`}>
                 {isPositive ? (
@@ -444,8 +444,8 @@ function StatCard({
             )}
           </div>
         </div>
-        <div className="p-3 bg-gray-100 rounded-lg">
-          <Icon className="h-6 w-6 text-gray-700" />
+        <div className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg border border-white/30">
+          <Icon className="h-6 w-6 text-blue-700" />
         </div>
       </div>
     </div>
@@ -464,10 +464,10 @@ function ActionButton({
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all group"
+      className="flex items-center gap-3 p-4 glass rounded-lg border border-white/30 hover:bg-white/30 hover:border-white/50 transition-all group backdrop-blur-sm"
     >
-      <div className="p-2 bg-white rounded-lg group-hover:bg-gray-100 transition-colors">
-        <Icon className="h-5 w-5 text-gray-700" />
+      <div className="p-2 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg border border-white/30 group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all">
+        <Icon className="h-5 w-5 text-blue-700" />
       </div>
       <span className="font-medium text-gray-700 group-hover:text-gray-900">{label}</span>
     </Link>
