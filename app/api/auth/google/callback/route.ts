@@ -100,42 +100,61 @@ export async function GET(request: NextRequest) {
 
     await connectDB()
 
-    // Find or create user
+    // Get the mode (signup or login) from cookie
+    const mode = request.cookies.get('oauth_mode')?.value || 'login'
+
+    // Check if user exists in database
     let user = await User.findOne({ email: googleUser.email.toLowerCase() })
 
     if (!user) {
-      // Create new user from Google account
-      const nameParts = (googleUser.name || '').split(' ')
-      const firstName = nameParts[0] || googleUser.given_name || 'User'
-      const lastName = nameParts.slice(1).join(' ') || googleUser.family_name || ''
+      // User doesn't exist
+      if (mode === 'login') {
+        // Coming from login page - user must sign up first
+        return NextResponse.redirect(
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/signup?error=${encodeURIComponent('No account found with this email. Please sign up first.')}`
+        )
+      } else {
+        // Coming from signup page - create new user
+        const nameParts = (googleUser.name || '').split(' ')
+        const firstName = nameParts[0] || googleUser.given_name || 'User'
+        const lastName = nameParts.slice(1).join(' ') || googleUser.family_name || ''
 
-      // Ensure firstName and lastName are not empty (required fields)
-      const finalFirstName = firstName.trim() || 'User'
-      const finalLastName = lastName.trim() || ''
+        // Ensure firstName and lastName are not empty (required fields)
+        const finalFirstName = firstName.trim() || 'User'
+        const finalLastName = lastName.trim() || ''
 
-      user = await User.create({
-        email: googleUser.email.toLowerCase(),
-        firstName: finalFirstName,
-        lastName: finalLastName || 'User', // Use 'User' as default if lastName is empty
-        password: null, // OAuth users don't have passwords
-        role: 'user',
-        isActive: true,
-        emailVerified: true, // Google emails are verified
-        googleId: googleUser.id,
-        profilePicture: googleUser.picture,
-        lastLogin: new Date(),
-      })
+        user = await User.create({
+          email: googleUser.email.toLowerCase(),
+          firstName: finalFirstName,
+          lastName: finalLastName || 'User', // Use 'User' as default if lastName is empty
+          password: null, // OAuth users don't have passwords
+          role: 'user',
+          isActive: true,
+          emailVerified: true, // Google emails are verified
+          googleId: googleUser.id,
+          profilePicture: googleUser.picture,
+          lastLogin: new Date(),
+        })
+      }
     } else {
-      // Update existing user
-      if (!user.googleId) {
-        user.googleId = googleUser.id
+      // User exists
+      if (mode === 'signup') {
+        // Coming from signup page but user already exists - redirect to login
+        return NextResponse.redirect(
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/login?error=${encodeURIComponent('An account with this email already exists. Please sign in instead.')}`
+        )
+      } else {
+        // Coming from login page - update existing user and login
+        if (!user.googleId) {
+          user.googleId = googleUser.id
+        }
+        if (googleUser.picture && !user.profilePicture) {
+          user.profilePicture = googleUser.picture
+        }
+        user.emailVerified = true
+        user.lastLogin = new Date()
+        await user.save()
       }
-      if (googleUser.picture && !user.profilePicture) {
-        user.profilePicture = googleUser.picture
-      }
-      user.emailVerified = true
-      user.lastLogin = new Date()
-      await user.save()
     }
 
     // Check if account is active
@@ -182,8 +201,9 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(redirectUrl.toString())
     
-    // Clear OAuth state cookie
+    // Clear OAuth state and mode cookies
     response.cookies.delete('oauth_state')
+    response.cookies.delete('oauth_mode')
     
     // Set session cookie
     const isProduction = process.env.NODE_ENV === 'production'

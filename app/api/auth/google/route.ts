@@ -15,6 +15,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Get mode from query parameter (signup or login)
+    const searchParams = request.nextUrl.searchParams
+    const mode = searchParams.get('mode') || 'login' // Default to 'login' if not specified
+
     // Generate state for CSRF protection
     const state = crypto.randomBytes(32).toString('hex')
     
@@ -33,6 +37,15 @@ export async function GET(request: NextRequest) {
     
     // Set state cookie
     response.cookies.set('oauth_state', state, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 600, // 10 minutes
+      path: '/'
+    })
+    
+    // Store mode in cookie to know if this is signup or login
+    response.cookies.set('oauth_mode', mode, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',

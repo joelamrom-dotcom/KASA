@@ -271,7 +271,7 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => {
-                  window.location.href = '/api/auth/google'
+                  window.location.href = '/api/auth/google?mode=signup'
                 }}
                 className="w-full glass-panel bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg border border-gray-300 transition-all duration-300 flex items-center justify-center shadow-sm hover:shadow-md"
               >
