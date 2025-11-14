@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
-import html2pdf from 'html2pdf.js'
 
 interface LifecycleEventType {
   _id: string
@@ -1297,6 +1296,9 @@ export default function SettingsPage() {
                 <button
                   onClick={async () => {
                     try {
+                      // Dynamically import html2pdf only in the browser
+                      const html2pdf = (await import('html2pdf.js')).default
+                      
                       const familiesWithKevittel = kevittelFamilies
                         .filter((family) => {
                           const hasHusbandName = family.husbandHebrewName && family.husbandHebrewName.trim() !== ''
