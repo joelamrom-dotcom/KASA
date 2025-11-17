@@ -15,7 +15,7 @@ import {
 import { setAuth } from '@/lib/auth'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
 import Toast from '@/app/components/Toast'
-import LoadingSkeleton from '@/app/components/LoadingSkeleton'
+import { TableSkeleton } from '@/app/components/LoadingSkeleton'
 
 interface User {
   _id: string
@@ -214,7 +214,7 @@ export default function UsersPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <LoadingSkeleton />
+        <TableSkeleton />
       </div>
     )
   }
