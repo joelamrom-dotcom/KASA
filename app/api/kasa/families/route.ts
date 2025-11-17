@@ -19,16 +19,20 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Special handling for joelamrom@gmail.com - always check DB role
+    // Special handling for joelamrom@gmail.com - ALWAYS check DB role (bypass token)
     let userRole = user.role
     let isSuperAdminUser = user.role === 'super_admin'
-    if (user.email === 'joelamrom@gmail.com' && !isSuperAdminUser) {
-      console.log('GET /api/kasa/families - Checking DB role for joelamrom@gmail.com')
+    const emailLower = user.email?.toLowerCase()
+    if (emailLower === 'joelamrom@gmail.com') {
+      console.log('GET /api/kasa/families - ALWAYS checking DB role for joelamrom@gmail.com (bypassing token)')
       const dbUser = await User.findOne({ email: 'joelamrom@gmail.com' })
+      console.log('GET /api/kasa/families - DB user found:', dbUser ? 'yes' : 'no', 'DB role:', dbUser?.role)
       if (dbUser && dbUser.role === 'super_admin') {
-        console.log('GET /api/kasa/families - DB confirms super_admin role for joelamrom@gmail.com')
+        console.log('GET /api/kasa/families - ✅ DB confirms super_admin role - GRANTING ACCESS TO ALL FAMILIES')
         userRole = 'super_admin'
         isSuperAdminUser = true
+      } else {
+        console.log('GET /api/kasa/families - ❌ DB role is not super_admin')
       }
     }
     
