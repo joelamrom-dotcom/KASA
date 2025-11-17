@@ -54,21 +54,40 @@ export default function ImpersonationBanner() {
 
   const handleExitImpersonation = async () => {
     try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
       const response = await fetch('/api/auth/exit-impersonation', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       })
 
       if (!response.ok) {
-        throw new Error('Failed to exit impersonation')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Exit impersonation error response:', errorData)
+        throw new Error(errorData.error || 'Failed to exit impersonation')
       }
 
       const data = await response.json()
       
+      // Clear old tokens first
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      
       // Set the new token and user data
-      setAuth(data.token, data.user)
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      
+      // Set cookie for server-side access
+      document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`
       
       // Reload the page to refresh the UI
-      window.location.href = '/'
+      window.location.replace('/')
     } catch (error) {
       console.error('Error exiting impersonation:', error)
       alert('Failed to exit impersonation. Please try again.')

@@ -25,16 +25,22 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if currently impersonating (token should have impersonatedBy field)
-    // We need to decode the token to check
-    let token = request.cookies.get('token')?.value
+    // Prioritize Authorization header (like other API routes)
+    let token: string | undefined
+    
+    // Check Authorization header first (client explicitly sends this)
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7)
+    }
+    
+    // Fallback to cookie if no Authorization header
     if (!token) {
-      const authHeader = request.headers.get('authorization')
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7)
-      }
+      token = request.cookies.get('token')?.value
     }
     
     if (!token) {
+      console.log('Exit impersonation - No token found')
       return NextResponse.json(
         { error: 'No token found' },
         { status: 401 }
@@ -43,7 +49,15 @@ export async function POST(request: NextRequest) {
     
     // Decode token to check for impersonation
     const decoded = jwt.decode(token) as any
+    console.log('Exit impersonation - Token decoded:', {
+      userId: decoded?.userId,
+      email: decoded?.email,
+      role: decoded?.role,
+      impersonatedBy: decoded?.impersonatedBy
+    })
+    
     if (!decoded || !decoded.impersonatedBy) {
+      console.log('Exit impersonation - Not impersonating (no impersonatedBy field)')
       return NextResponse.json(
         { error: 'Not currently impersonating' },
         { status: 400 }
