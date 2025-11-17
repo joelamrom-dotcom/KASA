@@ -44,12 +44,15 @@ export async function GET(request: NextRequest) {
       // Calculate income based on user's families
       const calculationData = await calculateYearlyIncome(yearNum, 0, user.userId)
       
+      // Return calculation data with year and ensure calculatedIncome exists
+      // Note: calculateYearlyIncome doesn't return calculatedExpenses or balance,
+      // those are only in YearlyCalculation model
       return NextResponse.json({
         year: yearNum,
-        calculatedIncome: calculationData.calculatedIncome || 0,
-        calculatedExpenses: calculationData.calculatedExpenses || 0,
-        balance: calculationData.balance || 0,
-        ...calculationData
+        ...calculationData,
+        calculatedIncome: calculationData.calculatedIncome ?? 0,
+        calculatedExpenses: 0, // Not calculated by calculateYearlyIncome
+        balance: 0 // Not calculated by calculateYearlyIncome
       })
     }
     
