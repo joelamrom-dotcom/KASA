@@ -374,6 +374,7 @@ export default function CalculationsPage() {
         )}
       </div>
     </div>
+    </React.Fragment>
   )
 }
 
