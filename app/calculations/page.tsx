@@ -80,7 +80,7 @@ export default function CalculationsPage() {
     }
   }
 
-  const handleCalculate = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCalculate = async (e: any) => {
     e.preventDefault()
     try {
       const res = await fetch('/api/kasa/calculations', {
