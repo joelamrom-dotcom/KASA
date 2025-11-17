@@ -62,6 +62,21 @@ function LoginForm() {
       const data = await response.json()
 
       if (response.ok) {
+        // Clear any old/stale tokens first to prevent conflicts
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+        
+        // Validate that the returned user email matches what we logged in with
+        const loginEmail = formData.email.toLowerCase().trim()
+        const returnedEmail = data.user?.email?.toLowerCase().trim()
+        
+        if (returnedEmail && returnedEmail !== loginEmail) {
+          console.warn(`Email mismatch: logged in with ${loginEmail}, but token has ${returnedEmail}`)
+          setError('Authentication error: Email mismatch. Please try logging in again.')
+          return
+        }
+        
         setSuccess('Login successful! Redirecting...')
         localStorage.setItem('user', JSON.stringify(data.user))
         localStorage.setItem('token', data.token)

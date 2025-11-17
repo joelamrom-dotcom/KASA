@@ -14,6 +14,11 @@ function GoogleAuthSuccessContent() {
       try {
         const user = JSON.parse(userParam)
         
+        // Clear any old/stale tokens first to prevent conflicts
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+        
         // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(user))
         localStorage.setItem('token', token)

@@ -278,8 +278,55 @@ export default function UsersPage() {
 
         {/* Error Message - Only show if we have an error AND no users loaded */}
         {error && users.length === 0 && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-red-700 font-medium mb-2">{error}</p>
+              <p className="text-sm text-red-600">
+                Your session may be using an old token. Please refresh your session or log out and log back in.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token')
+                    const response = await fetch('/api/auth/refresh-user', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                      }
+                    })
+                    if (response.ok) {
+                      const data = await response.json()
+                      localStorage.setItem('token', data.token)
+                      localStorage.setItem('user', JSON.stringify(data.user))
+                      document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`
+                      window.location.reload()
+                    } else {
+                      showToast('Failed to refresh session. Please log out and log back in.', 'error')
+                    }
+                  } catch (err) {
+                    showToast('Failed to refresh session. Please log out and log back in.', 'error')
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                Refresh Session
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.clear()
+                  document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+                  window.location.href = '/login'
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
           </div>
         )}
 

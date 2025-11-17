@@ -103,8 +103,11 @@ export async function GET(request: NextRequest) {
     // Get the mode (signup or login) from cookie
     const mode = request.cookies.get('oauth_mode')?.value || 'login'
 
+    // Normalize email for consistency
+    const normalizedEmail = googleUser.email.toLowerCase().trim()
+
     // Check if user exists in database
-    let user = await User.findOne({ email: googleUser.email.toLowerCase() })
+    let user = await User.findOne({ email: normalizedEmail })
 
     if (!user) {
       // User doesn't exist
@@ -124,7 +127,7 @@ export async function GET(request: NextRequest) {
         const finalLastName = lastName.trim() || ''
 
         user = await User.create({
-          email: googleUser.email.toLowerCase(),
+          email: normalizedEmail,
           firstName: finalFirstName,
           lastName: finalLastName || 'User', // Use 'User' as default if lastName is empty
           password: null, // OAuth users don't have passwords
@@ -145,6 +148,10 @@ export async function GET(request: NextRequest) {
         )
       } else {
         // Coming from login page - update existing user and login
+        // Ensure email is normalized
+        if (user.email.toLowerCase().trim() !== normalizedEmail) {
+          user.email = normalizedEmail
+        }
         if (!user.googleId) {
           user.googleId = googleUser.id
         }
@@ -164,11 +171,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Ensure email in token matches normalized email from DB
+    const tokenEmail = user.email.toLowerCase().trim()
+    
     // Create JWT token
     const token = jwt.sign(
       {
         userId: user._id.toString(),
-        email: user.email,
+        email: tokenEmail, // Use normalized email
         role: user.role,
       },
       JWT_SECRET,

@@ -29,22 +29,37 @@ export async function POST(request: NextRequest) {
 
     console.log('Refreshing user session for:', currentUser.email, 'Current role in token:', currentUser.role)
 
-    // Fetch fresh user data from database using the email from token (more reliable)
-    const user = await User.findOne({ email: currentUser.email })
+    // Try to find user by userId first (most reliable)
+    let user = null
+    if (currentUser.userId) {
+      user = await User.findById(currentUser.userId)
+      console.log('User lookup by userId:', currentUser.userId, user ? 'Found' : 'Not found')
+    }
+    
+    // If not found by userId, try by email (normalized)
+    if (!user && currentUser.email) {
+      const normalizedEmail = currentUser.email.toLowerCase().trim()
+      user = await User.findOne({ email: normalizedEmail })
+      console.log('User lookup by email:', normalizedEmail, user ? 'Found' : 'Not found')
+    }
+    
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found. Please log out and log back in.' },
         { status: 404 }
       )
     }
 
     console.log('User found in DB:', user.email, 'Role in DB:', user.role)
 
-    // Create new JWT token with updated role
+    // Normalize email for token (ensure consistency)
+    const normalizedEmail = user.email.toLowerCase().trim()
+
+    // Create new JWT token with updated role and normalized email
     const token = jwt.sign(
       {
         userId: user._id.toString(),
-        email: user.email,
+        email: normalizedEmail, // Use normalized email
         role: user.role,
         familyId: user.familyId?.toString()
       },

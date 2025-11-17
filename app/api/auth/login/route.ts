@@ -22,13 +22,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Normalize email for lookup
+    const normalizedEmail = email.toLowerCase().trim()
+    
     // Find user by email
-    const user = await User.findOne({ email: email.toLowerCase() })
+    const user = await User.findOne({ email: normalizedEmail })
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
+    }
+    
+    // Ensure the user's email in DB matches what was provided (case-insensitive)
+    // This prevents issues with stale tokens or email mismatches
+    if (user.email.toLowerCase().trim() !== normalizedEmail) {
+      console.warn(`Email mismatch in DB: stored email is ${user.email}, but login attempted with ${normalizedEmail}`)
+      // Update the email in DB to match the normalized version
+      user.email = normalizedEmail
+      await user.save()
     }
 
     // Check if account is active

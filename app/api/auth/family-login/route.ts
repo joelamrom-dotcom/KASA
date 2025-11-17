@@ -25,16 +25,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Normalize phone number (remove spaces, dashes, parentheses)
+    // Normalize email and phone number
+    const normalizedEmail = email.toLowerCase().trim()
     const normalizedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '')
 
     // Find user by email
-    const user = await User.findOne({ email: email.toLowerCase() })
+    const user = await User.findOne({ email: normalizedEmail })
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid email or phone number' },
         { status: 401 }
       )
+    }
+    
+    // Ensure the user's email in DB matches what was provided (case-insensitive)
+    if (user.email.toLowerCase().trim() !== normalizedEmail) {
+      user.email = normalizedEmail
+      await user.save()
     }
 
     // Check if user is a family user
@@ -87,11 +94,14 @@ export async function POST(request: NextRequest) {
     user.lastLogin = new Date()
     await user.save()
 
+    // Ensure email in token matches normalized email from DB
+    const tokenEmail = user.email.toLowerCase().trim()
+    
     // Create JWT token
     const token = jwt.sign(
       {
         userId: user._id.toString(),
-        email: user.email,
+        email: tokenEmail, // Use normalized email
         role: user.role,
         familyId: user.familyId?.toString(),
       },
