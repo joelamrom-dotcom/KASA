@@ -184,15 +184,15 @@ export default function CalculationsPage() {
                         {calc.year}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600">
-                        ${calc.calculatedIncome.toLocaleString()}
+                        ${(calc.calculatedIncome || 0).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">
-                        ${calc.calculatedExpenses.toLocaleString()}
+                        ${(calc.calculatedExpenses || 0).toLocaleString()}
                       </td>
                       <td className={`px-4 py-3 whitespace-nowrap text-sm text-right font-bold ${
-                        calc.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                        (calc.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        ${calc.balance.toLocaleString()}
+                        ${(calc.balance || 0).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
                         <button
@@ -259,11 +259,11 @@ export default function CalculationsPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>Extra Donation:</span>
-                      <span className="font-medium">${calc.extraDonation.toLocaleString()}</span>
+                      <span className="font-medium">${(calc.extraDonation || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2 mt-2">
                       <span className="font-bold">Calculated Income:</span>
-                      <span className="font-bold text-green-600">${calc.calculatedIncome.toLocaleString()}</span>
+                      <span className="font-bold text-green-600">${(calc.calculatedIncome || 0).toLocaleString()}</span>
                     </div>
                     <div className="text-xs text-gray-500 mt-1 italic">
                       Note: Payments fulfill plan commitments and are not additional income. Income = Plan Income + Extra Donation.
@@ -276,32 +276,32 @@ export default function CalculationsPage() {
                   <h3 className="text-lg font-semibold mb-4 text-red-600">Expenses</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>Chasena ({calc.chasenaCount}):</span>
-                      <span className="font-medium">${calc.chasenaAmount.toLocaleString()}</span>
+                      <span>Chasena ({calc.chasenaCount || 0}):</span>
+                      <span className="font-medium">${(calc.chasenaAmount || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Bar Mitzvah ({calc.barMitzvahCount}):</span>
-                      <span className="font-medium">${calc.barMitzvahAmount.toLocaleString()}</span>
+                      <span>Bar Mitzvah ({calc.barMitzvahCount || 0}):</span>
+                      <span className="font-medium">${(calc.barMitzvahAmount || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Birth Boy ({calc.birthBoyCount}):</span>
-                      <span className="font-medium">${calc.birthBoyAmount.toLocaleString()}</span>
+                      <span>Birth Boy ({calc.birthBoyCount || 0}):</span>
+                      <span className="font-medium">${(calc.birthBoyAmount || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Birth Girl ({calc.birthGirlCount}):</span>
-                      <span className="font-medium">${calc.birthGirlAmount.toLocaleString()}</span>
+                      <span>Birth Girl ({calc.birthGirlCount || 0}):</span>
+                      <span className="font-medium">${(calc.birthGirlAmount || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2 mt-2">
                       <span>Total Expenses:</span>
-                      <span className="font-bold">${calc.totalExpenses.toLocaleString()}</span>
+                      <span className="font-bold">${(calc.totalExpenses || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Extra Expense:</span>
-                      <span className="font-medium">${calc.extraExpense.toLocaleString()}</span>
+                      <span className="font-medium">${(calc.extraExpense || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2 mt-2">
                       <span className="font-bold">Calculated Expenses:</span>
-                      <span className="font-bold text-red-600">${calc.calculatedExpenses.toLocaleString()}</span>
+                      <span className="font-bold text-red-600">${(calc.calculatedExpenses || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -311,8 +311,8 @@ export default function CalculationsPage() {
               <div className="mt-6 pt-6 border-t">
                 <div className="flex justify-between items-center">
                   <span className="text-xl font-semibold">Balance (Income - Expenses):</span>
-                  <span className={`text-2xl font-bold ${calc.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${calc.balance.toLocaleString()}
+                  <span className={`text-2xl font-bold ${(calc.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${(calc.balance || 0).toLocaleString()}
                   </span>
                 </div>
               </div>
