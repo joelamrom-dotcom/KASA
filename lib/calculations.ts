@@ -46,11 +46,15 @@ export function calculateAgeInYear(birthDate: Date, year: number): number {
 /**
  * Count members by payment plan for a given year
  * Payment plans are family-based, except males at 13+ Hebrew years get Plan 3 (Bucher Plan)
+ * @param year - The year to calculate for
+ * @param userId - Optional: filter by userId (if not provided, includes all families)
  */
-export async function countMembersByPaymentPlan(year: number) {
+export async function countMembersByPaymentPlan(year: number, userId?: string) {
   await connectDB()
   
-  const families = await Family.find({})
+  // Filter families by userId if provided
+  const familyQuery = userId ? { userId } : {}
+  const families = await Family.find(familyQuery)
   const counts = {
     plan1: 0,
     plan2: 0,
@@ -187,23 +191,55 @@ export function calculateIncomeByAgeGroup(counts: {
 
 /**
  * Calculate total income for a year based on family payment plans
+ * @param year - The year to calculate for
+ * @param extraDonation - Extra donation amount
+ * @param userId - Optional: filter by userId (if not provided, includes all families/payments)
  */
-export async function calculateYearlyIncome(year: number, extraDonation: number = 0) {
+export async function calculateYearlyIncome(year: number, extraDonation: number = 0, userId?: string) {
   await connectDB()
   
-  const counts = await countMembersByPaymentPlan(year)
+  const counts = await countMembersByPaymentPlan(year, userId)
   const incomeByPlan = calculateIncomeByPaymentPlan(counts)
   
-  // Get all payments from this year
+  // Get payments from this year, filtered by userId if provided
   const startDate = new Date(year, 0, 1)
   const endDate = new Date(year, 11, 31, 23, 59, 59)
   
-  const payments = await Payment.find({
+  // Build payment query - filter by userId if provided
+  let paymentQuery: any = {
     $or: [
       { year: year }, // Primary: use the year field
       { paymentDate: { $gte: startDate, $lte: endDate } } // Fallback: use date range
     ]
-  })
+  }
+  
+  // If userId provided, we need to filter payments by family's userId
+  // Payments don't have userId directly, but they have familyId
+  if (userId) {
+    // Get all family IDs for this user
+    const userFamilies = await Family.find({ userId }).select('_id').lean()
+    const familyIds = userFamilies.map(f => f._id)
+    
+    if (familyIds.length > 0) {
+      // Combine familyId filter with the $or condition
+      paymentQuery = {
+        $and: [
+          {
+            $or: [
+              { year: year },
+              { paymentDate: { $gte: startDate, $lte: endDate } }
+            ]
+          },
+          { familyId: { $in: familyIds } }
+        ]
+      }
+    } else {
+      // User has no families, return empty result
+      paymentQuery = { _id: { $exists: false } } // Impossible query
+    }
+  }
+  
+  const payments = await Payment.find(paymentQuery)
   
   const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0)
   console.log(`Found ${payments.length} payments for year ${year}, total: $${totalPayments}`)
