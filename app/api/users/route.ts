@@ -29,35 +29,8 @@ export async function GET(request: NextRequest) {
     
     console.log('GET /api/users - Token info - userId:', user.userId, 'email:', user.email, 'role:', user.role)
     
-    // First, check if joelamrom@gmail.com or yoelamrom@gmail.com exists and is super_admin (special case)
-    // Check both variations in case of typo
-    const joelamromUser = await User.findOne({ 
-      $or: [
-        { email: 'joelamrom@gmail.com' },
-        { email: 'yoelamrom@gmail.com' }
-      ]
-    })
-    
-    if (joelamromUser) {
-      console.log('GET /api/users - Found joelamrom/yoelamrom in DB. Email:', joelamromUser.email, 'Role:', joelamromUser.role)
-      
-      // Check if current user matches (by email or userId)
-      const userEmailLower = user.email?.toLowerCase().trim()
-      const dbEmailLower = joelamromUser.email?.toLowerCase().trim()
-      const isJoelamrom = 
-        (userEmailLower === 'joelamrom@gmail.com' || userEmailLower === 'yoelamrom@gmail.com') ||
-        (dbEmailLower === 'joelamrom@gmail.com' || dbEmailLower === 'yoelamrom@gmail.com') ||
-        (user.userId && user.userId === joelamromUser._id.toString())
-      
-      if (isJoelamrom && joelamromUser.role === 'super_admin') {
-        console.log('GET /api/users - ✅ Current user matches joelamrom/yoelamrom with super_admin role - GRANTING ACCESS')
-        hasSuperAdminAccess = true
-        dbUser = joelamromUser
-      }
-    }
-    
-    // If not joelamrom, try to find current user in DB by userId first (most reliable)
-    if (!hasSuperAdminAccess && user.userId) {
+    // Try to find current user in DB by userId first (most reliable)
+    if (user.userId) {
       try {
         dbUser = await User.findById(user.userId)
         if (dbUser) {
@@ -72,15 +45,31 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // If not found by userId, try by email
+    // If not found by userId, try by email (handles both joelamrom and yoelamrom)
     if (!hasSuperAdminAccess && !dbUser && user.email) {
       try {
-        dbUser = await User.findOne({ email: user.email.toLowerCase().trim() })
+        const userEmailLower = user.email.toLowerCase().trim()
+        dbUser = await User.findOne({ email: userEmailLower })
         if (dbUser) {
           console.log('GET /api/users - Found user by email:', dbUser.email, 'DB role:', dbUser.role)
           if (dbUser.role === 'super_admin') {
             console.log('GET /api/users - ✅ DB confirms super_admin role - GRANTING ACCESS')
             hasSuperAdminAccess = true
+          }
+        } else {
+          // Also check for joelamrom/yoelamrom variations (in case of typo)
+          const alternateEmail = userEmailLower === 'joelamrom@gmail.com' 
+            ? 'yoelamrom@gmail.com' 
+            : userEmailLower === 'yoelamrom@gmail.com' 
+            ? 'joelamrom@gmail.com' 
+            : null
+          
+          if (alternateEmail) {
+            dbUser = await User.findOne({ email: alternateEmail })
+            if (dbUser && dbUser.role === 'super_admin') {
+              console.log('GET /api/users - ✅ Found alternate email with super_admin role - GRANTING ACCESS')
+              hasSuperAdminAccess = true
+            }
           }
         }
       } catch (err) {
