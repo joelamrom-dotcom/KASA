@@ -69,54 +69,9 @@ export default function UsersPage() {
         return
       }
       
-      // Always refresh for joelamrom@gmail.com to ensure role is up to date
-      if (user.email === 'joelamrom@gmail.com') {
-        try {
-          console.log('Users page: Refreshing session for joelamrom@gmail.com, current role:', user.role)
-          const token = localStorage.getItem('token')
-          const res = await fetch('/api/auth/refresh-user', { 
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            }
-          })
-          if (res.ok) {
-            const data = await res.json()
-            console.log('Users page: Refreshed user:', data.user, 'New role:', data.user.role)
-            setAuth(data.token, data.user)
-            
-            // If role changed or wasn't super_admin, reload
-            if (user.role !== data.user.role || data.user.role !== 'super_admin') {
-              console.log('Users page: Role changed or not super_admin, reloading...')
-              window.location.reload()
-              return
-            }
-            
-            // Update current user with refreshed data
-            setCurrentUser(data.user)
-            fetchUsers()
-            return
-          } else if (res.status === 404) {
-            // Refresh endpoint not deployed yet - DB fallback will handle access
-            // Continue with current user and fetch users
-            console.log('Users page: Refresh endpoint not available (404), using DB fallback')
-            setCurrentUser(user)
-            fetchUsers()
-            return
-          } else {
-            console.error('Users page: Refresh failed:', res.status)
-          }
-        } catch (error) {
-          console.error('Users page: Failed to refresh:', error)
-        }
-      }
-      
-      // Check if user is super_admin
-      if (user.role !== 'super_admin') {
-        window.location.href = '/'
-        return
-      }
-
+      // Note: DB fallback in API routes handles access for joelamrom@gmail.com
+      // The /api/users endpoint will check DB and grant access if role is super_admin
+      // So we can proceed directly to fetch users
       setCurrentUser(user)
       fetchUsers()
     }
