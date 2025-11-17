@@ -163,17 +163,20 @@ export default function UsersPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(errorData.error || 'Failed to update user')
       }
 
       const updatedUser = await response.json()
       setUsers(users.map(u => u._id === editingUserId ? updatedUser : u))
       setEditingUserId(null)
+      setError('') // Clear any previous errors on success
       showToast('User updated successfully', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user')
-      showToast(err instanceof Error ? err.message : 'Failed to update user', 'error')
+      // Don't set main error state for PUT errors - only show toast
+      // The banner should only show for GET errors (when users.length === 0)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update user'
+      showToast(errorMessage, 'error')
     }
   }
 
@@ -195,17 +198,20 @@ export default function UsersPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(errorData.error || 'Failed to delete user')
       }
 
       setUsers(users.filter(u => u._id !== userToDelete._id))
       setShowDeleteDialog(false)
       setUserToDelete(null)
+      setError('') // Clear any previous errors on success
       showToast('User deleted successfully', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete user')
-      showToast(err instanceof Error ? err.message : 'Failed to delete user', 'error')
+      // Don't set main error state for DELETE errors - only show toast
+      // The banner should only show for GET errors (when users.length === 0)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete user'
+      showToast(errorMessage, 'error')
     }
   }
 
@@ -220,7 +226,7 @@ export default function UsersPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(errorData.error || 'Failed to impersonate user')
       }
 
@@ -232,8 +238,10 @@ export default function UsersPage() {
       // Redirect to dashboard
       window.location.href = '/'
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to impersonate user')
-      showToast(err instanceof Error ? err.message : 'Failed to impersonate user', 'error')
+      // Don't set main error state for impersonate errors - only show toast
+      // The banner should only show for GET errors (when users.length === 0)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to impersonate user'
+      showToast(errorMessage, 'error')
     }
   }
 
