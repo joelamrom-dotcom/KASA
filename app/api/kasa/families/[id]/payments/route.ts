@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Payment } from '@/lib/models'
+import { Payment, Family } from '@/lib/models'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
 // GET - Get all payments for a family
 export async function GET(
@@ -9,6 +10,33 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Check if family exists and user has access
+    const family = await Family.findById(params.id)
+    if (!family) {
+      return NextResponse.json(
+        { error: 'Family not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
+      )
+    }
+    
     const payments = await Payment.find({ familyId: params.id }).sort({ paymentDate: -1 })
     
     // Log payment methods to debug
@@ -41,6 +69,33 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Check if family exists and user has access
+    const family = await Family.findById(params.id)
+    if (!family) {
+      return NextResponse.json(
+        { error: 'Family not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
+      )
+    }
+    
     const body = await request.json()
     const { amount, paymentDate, year, type, paymentMethod, ccInfo, checkInfo, notes, memberId } = body
 

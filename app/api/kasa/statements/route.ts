@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Statement, Family, Payment, Withdrawal, LifecycleEventPayment } from '@/lib/models'
 import { calculateFamilyBalance } from '@/lib/calculations'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
-// GET - Get all statements or filter by family
+// GET - Get all statements or filter by family (filtered by user)
 export async function GET(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const searchParams = request.nextUrl.searchParams
     const familyId = searchParams.get('familyId')
     
@@ -15,7 +26,21 @@ export async function GET(request: NextRequest) {
       query.familyId = familyId
     }
     
-    const statements = await Statement.find(query).sort({ date: -1 })
+    let statements = await Statement.find(query).sort({ date: -1 }).lean()
+    
+    // Filter by user ownership - admin sees all, regular users only their families' statements
+    if (!isAdmin(user)) {
+      // Get user's family IDs
+      const userFamilies = await Family.find({ userId: user.userId }).select('_id')
+      const userFamilyIds = userFamilies.map(f => f._id.toString())
+      
+      // Filter statements to only those belonging to user's families
+      statements = statements.filter((statement: any) => {
+        const statementFamilyId = statement.familyId?.toString()
+        return userFamilyIds.includes(statementFamilyId)
+      })
+    }
+    
     return NextResponse.json(statements)
   } catch (error: any) {
     console.error('Error fetching statements:', error)
@@ -30,6 +55,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     const { familyId, fromDate, toDate } = body
 
@@ -45,6 +80,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Family not found' },
         { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
       )
     }
 

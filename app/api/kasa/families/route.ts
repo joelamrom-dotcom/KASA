@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, FamilyMember, PaymentPlan } from '@/lib/models'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
-// GET - Get all families
-export async function GET() {
+// GET - Get all families (filtered by user)
+export async function GET(request: NextRequest) {
   try {
     await connectDB()
-    const families = await Family.find({}).sort({ name: 1 })
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - admin sees all, regular users see only their data
+    const query = isAdmin(user) ? {} : { userId: user.userId }
+    
+    const families = await Family.find(query).sort({ name: 1 })
     
     // Get member counts and ensure paymentPlanId is set for each family
     const familiesWithMembers = await Promise.all(
@@ -119,7 +133,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const family = await Family.create({
+      userId: user.userId, // Associate family with user
       name,
       hebrewName: hebrewName || undefined,
       weddingDate: new Date(weddingDate),

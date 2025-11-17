@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Task, Family, FamilyMember } from '@/lib/models'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
 export const dynamic = 'force-dynamic'
 
-// GET - Get all tasks with optional filters
+// GET - Get all tasks with optional filters (filtered by user)
 export async function GET(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -15,6 +25,11 @@ export async function GET(request: NextRequest) {
     const dueDate = searchParams.get('dueDate') // Filter by due date (e.g., 'today', 'overdue', 'upcoming')
     
     const query: any = {}
+    
+    // Filter by user - admin sees all, regular users only their tasks
+    if (!isAdmin(user)) {
+      query.userId = user.userId
+    }
     
     if (status) {
       query.status = status
@@ -61,6 +76,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     const { 
       title, 
@@ -90,8 +115,20 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
+    // If relatedFamilyId is provided, verify user has access
+    if (relatedFamilyId && !isAdmin(user)) {
+      const family = await Family.findById(relatedFamilyId)
+      if (!family || family.userId?.toString() !== user.userId) {
+        return NextResponse.json(
+          { error: 'Forbidden - You do not have access to this family' },
+          { status: 403 }
+        )
+      }
+    }
 
     const task = await Task.create({
+      userId: user.userId, // Associate task with user
       title,
       description: description || undefined,
       dueDate: new Date(dueDate),

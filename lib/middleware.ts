@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from 'next/server'
+import jwt from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+
+export interface AuthenticatedRequest {
+  userId: string
+  email: string
+  role: 'admin' | 'user' | 'viewer'
+}
+
+/**
+ * Extract user from JWT token in request
+ */
+export function getAuthenticatedUser(request: NextRequest): AuthenticatedRequest | null {
+  try {
+    // Try to get token from cookie first
+    let token = request.cookies.get('token')?.value
+    
+    // If not in cookie, try Authorization header
+    if (!token) {
+      const authHeader = request.headers.get('authorization')
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7)
+      }
+    }
+    
+    if (!token) {
+      return null
+    }
+    
+    // Verify and decode token
+    const decoded = jwt.verify(token, JWT_SECRET) as any
+    
+    return {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role || 'user'
+    }
+  } catch (error) {
+    console.error('Error authenticating user:', error)
+    return null
+  }
+}
+
+/**
+ * Middleware to require authentication
+ */
+export function requireAuth(request: NextRequest): AuthenticatedRequest {
+  const user = getAuthenticatedUser(request)
+  
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+  
+  return user
+}
+
+/**
+ * Check if user is admin
+ */
+export function isAdmin(user: AuthenticatedRequest | null): boolean {
+  return user?.role === 'admin'
+}
+

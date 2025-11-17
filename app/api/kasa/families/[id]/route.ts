@@ -3,6 +3,7 @@ import connectDB from '@/lib/database'
 import { Family, FamilyMember, Payment, Withdrawal, LifecycleEventPayment, PaymentPlan } from '@/lib/models'
 import { calculateFamilyBalance } from '@/lib/calculations'
 import { moveToRecycleBin } from '@/lib/recycle-bin'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
 // GET - Get family by ID with full details
 export async function GET(
@@ -11,12 +12,30 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const family = await Family.findById(params.id)
     
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
         { status: 404 }
+      )
+    }
+    
+    // Check ownership - admin can access all, regular users only their own
+    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
       )
     }
 
@@ -53,6 +72,33 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Check if family exists and user has access
+    const family = await Family.findById(params.id)
+    if (!family) {
+      return NextResponse.json(
+        { error: 'Family not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
+      )
+    }
+    
     const body = await request.json()
     console.log('PUT /api/kasa/families/[id] - Received body:', JSON.stringify(body, null, 2))
     

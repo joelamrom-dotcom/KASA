@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { FamilyMember, LifecycleEventPayment } from '@/lib/models'
+import { FamilyMember, LifecycleEventPayment, Family } from '@/lib/models'
 import { calculateBarMitzvahDate, hasReachedBarMitzvahAge } from '@/lib/hebrew-date'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
 // GET - Get all members for a family
 export async function GET(
@@ -10,6 +11,33 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Check if family exists and user has access
+    const family = await Family.findById(params.id)
+    if (!family) {
+      return NextResponse.json(
+        { error: 'Family not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
+      )
+    }
+    
     const members = await FamilyMember.find({ familyId: params.id }).sort({ birthDate: 1 })
     return NextResponse.json(members)
   } catch (error: any) {
@@ -28,6 +56,33 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Check if family exists and user has access
+    const family = await Family.findById(params.id)
+    if (!family) {
+      return NextResponse.json(
+        { error: 'Family not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
+      )
+    }
+    
     const body = await request.json()
     const { 
       firstName, hebrewFirstName, lastName, hebrewLastName, birthDate, hebrewBirthDate, gender,

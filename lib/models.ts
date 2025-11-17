@@ -10,6 +10,7 @@ const PaymentPlanSchema = new Schema({
 
 // Family Schema
 const FamilySchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this family data (optional for migration)
   name: { type: String, required: true },
   hebrewName: String, // Required in frontend, optional in schema for backward compatibility
   weddingDate: { type: Date, required: true },
@@ -34,6 +35,9 @@ const FamilySchema = new Schema({
   openBalance: { type: Number, default: 0 }, // Deprecated - no longer used in UI, kept for backward compatibility
   parentFamilyId: { type: Schema.Types.ObjectId, ref: 'Family' }, // Reference to parent family (for families created from members)
 }, { timestamps: true })
+
+// Add index for userId for better query performance
+FamilySchema.index({ userId: 1 })
 
 // Family Member Schema
 const FamilyMemberSchema = new Schema({
@@ -220,6 +224,7 @@ const RecurringPaymentSchema = new Schema({
 
 // Task Schema
 const TaskSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this task (optional for migration)
   title: { type: String, required: true },
   description: String,
   dueDate: { type: Date, required: true },
@@ -242,8 +247,11 @@ const TaskSchema = new Schema({
   notes: String,
 }, { timestamps: true })
 
+TaskSchema.index({ userId: 1 })
+
 // Report Schema (for AI-generated reports from chat conversations)
 const ReportSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this report (optional for migration)
   title: { type: String, required: true },
   question: { type: String, required: true }, // The question asked
   answer: { type: String, required: true }, // The AI answer
@@ -259,6 +267,8 @@ const ReportSchema = new Schema({
   tags: [String], // Tags for categorization
   notes: String, // Additional notes
 }, { timestamps: true })
+
+ReportSchema.index({ userId: 1 })
 
 // User Schema (for authentication)
 const UserSchema = new Schema({

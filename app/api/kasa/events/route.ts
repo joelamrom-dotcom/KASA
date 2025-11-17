@@ -1,14 +1,33 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { LifecycleEventPayment, Family } from '@/lib/models'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
-// GET - Get all lifecycle events with family details
-export async function GET() {
+// GET - Get all lifecycle events with family details (filtered by user)
+export async function GET(request: NextRequest) {
   try {
     await connectDB()
     
-    // Find all lifecycle events
-    const events = await LifecycleEventPayment.find({})
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - admin sees all, regular users only their families' events
+    let query: any = {}
+    if (!isAdmin(user)) {
+      // Get user's family IDs
+      const userFamilies = await Family.find({ userId: user.userId }).select('_id')
+      const userFamilyIds = userFamilies.map(f => f._id)
+      query.familyId = { $in: userFamilyIds }
+    }
+    
+    // Find lifecycle events
+    const events = await LifecycleEventPayment.find(query)
       .sort({ eventDate: -1 })
       .populate('familyId', 'name')
     
