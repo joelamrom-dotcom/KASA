@@ -106,8 +106,7 @@ export default function CalculationsPage() {
   }
 
   return (
-    <>
-      <div className="min-h-screen p-8 bg-gray-50">
+    <div className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -373,7 +372,6 @@ export default function CalculationsPage() {
         )}
       </div>
     </div>
-    </>
   )
 }
 
