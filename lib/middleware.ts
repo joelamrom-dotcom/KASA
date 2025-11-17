@@ -12,17 +12,37 @@ export interface AuthenticatedRequest {
 
 /**
  * Extract user from JWT token in request
+ * For API routes, prioritizes Authorization header over cookies to ensure fresh tokens are used
  */
 export function getAuthenticatedUser(request: NextRequest): AuthenticatedRequest | null {
   try {
-    // Try to get token from cookie first
-    let token = request.cookies.get('token')?.value
+    let token: string | undefined
     
-    // If not in cookie, try Authorization header
-    if (!token) {
+    // For API routes, check Authorization header FIRST (client explicitly sends this)
+    // This ensures we use the fresh token from localStorage, not stale cookies
+    const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+    
+    if (isApiRoute) {
+      // API routes: Authorization header takes priority
       const authHeader = request.headers.get('authorization')
       if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.substring(7)
+      }
+      
+      // Fallback to cookie if no Authorization header
+      if (!token) {
+        token = request.cookies.get('token')?.value
+      }
+    } else {
+      // Non-API routes: Cookie first (for SSR/SSG)
+      token = request.cookies.get('token')?.value
+      
+      // Fallback to Authorization header
+      if (!token) {
+        const authHeader = request.headers.get('authorization')
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          token = authHeader.substring(7)
+        }
       }
     }
     
@@ -32,6 +52,14 @@ export function getAuthenticatedUser(request: NextRequest): AuthenticatedRequest
     
     // Verify and decode token
     const decoded = jwt.verify(token, JWT_SECRET) as any
+    
+    // Log token info for debugging (only for /api/users to avoid spam)
+    if (isApiRoute && request.nextUrl.pathname === '/api/users') {
+      const cookieToken = request.cookies.get('token')?.value
+      const headerToken = request.headers.get('authorization')?.substring(7)
+      const tokenSource = token === headerToken ? 'Authorization header' : token === cookieToken ? 'Cookie' : 'Unknown'
+      console.log('getAuthenticatedUser - Token email:', decoded.email, 'Role:', decoded.role, 'Source:', tokenSource)
+    }
     
     return {
       userId: decoded.userId,

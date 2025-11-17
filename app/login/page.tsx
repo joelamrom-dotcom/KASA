@@ -63,9 +63,19 @@ function LoginForm() {
 
       if (response.ok) {
         // Clear any old/stale tokens first to prevent conflicts
+        // Clear localStorage
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+        
+        // Clear ALL possible cookie variations (different paths, domains)
+        const cookiePaths = ['/', '/api', '/users', '/dashboard']
+        const domains = [window.location.hostname, `.${window.location.hostname}`]
+        cookiePaths.forEach(path => {
+          domains.forEach(domain => {
+            document.cookie = `token=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT; domain=${domain}`
+          })
+          document.cookie = `token=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+        })
         
         // Validate that the returned user email matches what we logged in with
         const loginEmail = formData.email.toLowerCase().trim()
@@ -77,17 +87,37 @@ function LoginForm() {
           return
         }
         
+        console.log('✅ Login successful - Storing new token:', data.token.substring(0, 20) + '...')
+        console.log('✅ User email in response:', returnedEmail)
+        console.log('✅ User role in response:', data.user?.role)
+        
         setSuccess('Login successful! Redirecting...')
+        
+        // Store new token and user data
         localStorage.setItem('user', JSON.stringify(data.user))
         localStorage.setItem('token', data.token)
-        // Set cookie for server-side access
-        document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 days
+        
+        // Set cookie for server-side access (with explicit path and domain)
+        const isProduction = window.location.hostname !== 'localhost'
+        const cookieDomain = isProduction ? `.${window.location.hostname.split('.').slice(-2).join('.')}` : ''
+        const cookieOptions = `path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${cookieDomain ? `; domain=${cookieDomain}` : ''}`
+        document.cookie = `token=${data.token}; ${cookieOptions}`
+        
+        // Verify token was stored
+        const storedToken = localStorage.getItem('token')
+        const storedUser = localStorage.getItem('user')
+        console.log('✅ Token stored in localStorage:', storedToken ? 'Yes' : 'No')
+        console.log('✅ User stored in localStorage:', storedUser ? 'Yes' : 'No')
         
         // Get redirect URL or default to dashboard
         const redirectUrl = searchParams?.get('redirect') || '/'
+        
+        // Use replace instead of href to prevent back button issues
+        // Small delay to ensure localStorage/cookies are persisted
         setTimeout(() => {
-          window.location.href = redirectUrl
-        }, 1000)
+          console.log('🔄 Redirecting to:', redirectUrl)
+          window.location.replace(redirectUrl)
+        }, 500)
       } else {
         setError(data.error || 'Login failed')
       }
