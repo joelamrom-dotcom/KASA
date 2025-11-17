@@ -23,7 +23,7 @@ export function exportToCSV<T extends Record<string, any>>(
       // Handle null/undefined
       if (value === null || value === undefined) return '""'
       // Handle dates
-      if (value instanceof Date) {
+      if (typeof value === 'object' && value instanceof Date) {
         return `"${value.toLocaleDateString()}"`
       }
       // Handle objects/arrays (stringify)
