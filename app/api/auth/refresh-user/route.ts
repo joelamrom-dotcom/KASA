@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
     delete userObj.emailVerificationToken
     delete userObj.emailVerificationExpires
 
-    return NextResponse.json({
+    // Create response with token in both JSON and cookie
+    const response = NextResponse.json({
       token,
       user: {
         id: userObj._id,
@@ -71,6 +72,17 @@ export async function POST(request: NextRequest) {
         familyId: userObj.familyId?.toString()
       }
     })
+
+    // Set cookie with new token
+    response.cookies.set('token', token, {
+      httpOnly: false, // Allow client-side access
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/'
+    })
+
+    return response
   } catch (error: any) {
     console.error('Refresh user error:', error)
     return NextResponse.json(

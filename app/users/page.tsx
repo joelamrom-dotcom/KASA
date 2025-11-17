@@ -62,20 +62,59 @@ export default function UsersPage() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
   useEffect(() => {
-    const user = getUser()
-    if (!user) {
+    const checkAndRefresh = async () => {
+      const user = getUser()
+      if (!user) {
         window.location.href = '/login'
-      return
+        return
       }
-    
-    // Check if user is super_admin
-    if (user.role !== 'super_admin') {
-      window.location.href = '/'
-      return
-    }
+      
+      // Always refresh for joelamrom@gmail.com to ensure role is up to date
+      if (user.email === 'joelamrom@gmail.com') {
+        try {
+          console.log('Users page: Refreshing session for joelamrom@gmail.com, current role:', user.role)
+          const token = localStorage.getItem('token')
+          const res = await fetch('/api/auth/refresh-user', { 
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            }
+          })
+          if (res.ok) {
+            const data = await res.json()
+            console.log('Users page: Refreshed user:', data.user, 'New role:', data.user.role)
+            setAuth(data.token, data.user)
+            
+            // If role changed or wasn't super_admin, reload
+            if (user.role !== data.user.role || data.user.role !== 'super_admin') {
+              console.log('Users page: Role changed or not super_admin, reloading...')
+              window.location.reload()
+              return
+            }
+            
+            // Update current user with refreshed data
+            setCurrentUser(data.user)
+            fetchUsers()
+            return
+          } else {
+            console.error('Users page: Refresh failed:', res.status)
+          }
+        } catch (error) {
+          console.error('Users page: Failed to refresh:', error)
+        }
+      }
+      
+      // Check if user is super_admin
+      if (user.role !== 'super_admin') {
+        window.location.href = '/'
+        return
+      }
 
-    setCurrentUser(user)
-    fetchUsers()
+      setCurrentUser(user)
+      fetchUsers()
+    }
+    
+    checkAndRefresh()
   }, [])
 
   const fetchUsers = async () => {
