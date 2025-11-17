@@ -64,9 +64,9 @@ export default function Sidebar() {
           if (res.ok) {
             return res.json()
           }
-          // If 404, route might not be deployed yet - log but don't fail
+          // If 404, route might not be deployed yet - DB fallback will handle access
+          // Silently ignore 404 to avoid console noise
           if (res.status === 404) {
-            console.warn('Refresh endpoint not found (404) - route may not be deployed yet')
             return null
           }
           throw new Error(`Failed to refresh: ${res.status}`)

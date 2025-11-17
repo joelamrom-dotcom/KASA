@@ -96,6 +96,13 @@ export default function UsersPage() {
             setCurrentUser(data.user)
             fetchUsers()
             return
+          } else if (res.status === 404) {
+            // Refresh endpoint not deployed yet - DB fallback will handle access
+            // Continue with current user and fetch users
+            console.log('Users page: Refresh endpoint not available (404), using DB fallback')
+            setCurrentUser(user)
+            fetchUsers()
+            return
           } else {
             console.error('Users page: Refresh failed:', res.status)
           }

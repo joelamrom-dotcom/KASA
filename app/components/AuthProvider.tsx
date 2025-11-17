@@ -49,6 +49,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         }
 
         // Force refresh session for joelamrom@gmail.com to ensure role is up to date
+        // Note: If refresh endpoint returns 404, DB fallback in API routes will handle access
         const user = getUser()
         if (user && user.email === 'joelamrom@gmail.com') {
           try {
@@ -63,9 +64,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
                 window.location.reload()
                 return
               }
+            } else if (res.status === 404) {
+              // Refresh endpoint not deployed yet - DB fallback will handle access
+              // Silently ignore 404 to avoid console noise
             }
           } catch (error) {
-            console.error('AuthProvider: Failed to refresh user session:', error)
+            // Silently ignore errors - DB fallback will handle access
           }
         }
 
