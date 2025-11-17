@@ -46,6 +46,33 @@ export default function Sidebar() {
   const user = getUser()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const [hasCheckedRole, setHasCheckedRole] = useState(false)
+
+  // Auto-refresh session if role might be outdated (only check once)
+  useEffect(() => {
+    if (!hasCheckedRole && user && user.email === 'joelamrom@gmail.com' && user.role !== 'super_admin') {
+      setHasCheckedRole(true)
+      // Auto-refresh the session
+      fetch('/api/auth/refresh-user', { method: 'POST' })
+        .then(res => {
+          if (res.ok) {
+            return res.json()
+          }
+          throw new Error('Failed to refresh')
+        })
+        .then(data => {
+          setAuth(data.token, data.user)
+          if (data.user.role === 'super_admin') {
+            window.location.reload()
+          }
+        })
+        .catch(err => {
+          console.error('Auto-refresh failed:', err)
+        })
+    } else {
+      setHasCheckedRole(true)
+    }
+  }, [user, hasCheckedRole])
 
   // Close dropdown when clicking outside
   useEffect(() => {
