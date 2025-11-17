@@ -69,6 +69,9 @@ export default function UsersPage() {
         return
       }
       
+      // Clear any previous errors
+      setError('')
+      
       // Note: DB fallback in API routes handles access for joelamrom@gmail.com
       // The /api/users endpoint will check DB and grant access if role is super_admin
       // So we can proceed directly to fetch users
@@ -82,27 +85,36 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      setError('')
+      setError('') // Clear error before making request
       const token = localStorage.getItem('token')
+      
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+      
       const response = await fetch('/api/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        cache: 'no-store' // Prevent caching
       })
       
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         if (response.status === 403) {
-          throw new Error('Access denied: Super admin access required')
+          throw new Error(errorData.error || 'Access denied: Super admin access required')
         }
-        throw new Error('Failed to fetch users')
+        throw new Error(errorData.error || 'Failed to fetch users')
       }
       
       const data = await response.json()
       setUsers(Array.isArray(data) ? data : [])
+      setError('') // Clear any previous errors on success
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch users')
-      showToast(err instanceof Error ? err.message : 'Failed to fetch users', 'error')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch users'
+      setError(errorMessage)
+      showToast(errorMessage, 'error')
     } finally {
       setLoading(false)
     }
