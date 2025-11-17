@@ -29,18 +29,28 @@ export async function GET(request: NextRequest) {
     
     console.log('GET /api/users - Token info - userId:', user.userId, 'email:', user.email, 'role:', user.role)
     
-    // First, check if joelamrom@gmail.com exists and is super_admin (special case)
-    const joelamromUser = await User.findOne({ email: 'joelamrom@gmail.com' })
+    // First, check if joelamrom@gmail.com or yoelamrom@gmail.com exists and is super_admin (special case)
+    // Check both variations in case of typo
+    const joelamromUser = await User.findOne({ 
+      $or: [
+        { email: 'joelamrom@gmail.com' },
+        { email: 'yoelamrom@gmail.com' }
+      ]
+    })
+    
     if (joelamromUser) {
-      console.log('GET /api/users - Found joelamrom@gmail.com in DB. Role:', joelamromUser.role)
+      console.log('GET /api/users - Found joelamrom/yoelamrom in DB. Email:', joelamromUser.email, 'Role:', joelamromUser.role)
       
-      // Check if current user is joelamrom@gmail.com (by email or userId)
+      // Check if current user matches (by email or userId)
+      const userEmailLower = user.email?.toLowerCase().trim()
+      const dbEmailLower = joelamromUser.email?.toLowerCase().trim()
       const isJoelamrom = 
-        (user.email && user.email.toLowerCase().trim() === 'joelamrom@gmail.com') ||
+        (userEmailLower === 'joelamrom@gmail.com' || userEmailLower === 'yoelamrom@gmail.com') ||
+        (dbEmailLower === 'joelamrom@gmail.com' || dbEmailLower === 'yoelamrom@gmail.com') ||
         (user.userId && user.userId === joelamromUser._id.toString())
       
       if (isJoelamrom && joelamromUser.role === 'super_admin') {
-        console.log('GET /api/users - ✅ Current user is joelamrom@gmail.com with super_admin role - GRANTING ACCESS')
+        console.log('GET /api/users - ✅ Current user matches joelamrom/yoelamrom with super_admin role - GRANTING ACCESS')
         hasSuperAdminAccess = true
         dbUser = joelamromUser
       }
