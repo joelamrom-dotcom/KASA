@@ -1,6 +1,6 @@
 /**
- * Script to set a user as super_admin
- * Run: node scripts/set-super-admin.js
+ * Script to delete all users except joelamrom@gmail.com
+ * Run: node scripts/delete-all-users-except-joelamrom.js
  */
 
 const mongoose = require('mongoose')
@@ -40,19 +40,19 @@ if (!MONGODB_URI) {
 const UserSchema = new mongoose.Schema({}, { strict: false })
 const User = mongoose.model('User', UserSchema)
 
-async function setSuperAdmin() {
+async function deleteUsersExceptJoelamrom() {
   try {
     console.log('Connecting to database...')
     await mongoose.connect(MONGODB_URI)
     console.log('Connected to database')
     
-    const email = 'joelamrom@gmail.com'
+    const keepEmail = 'joelamrom@gmail.com'
     
-    // Find user by email
-    const user = await User.findOne({ email: email.toLowerCase() })
+    // Find the user to keep
+    const userToKeep = await User.findOne({ email: keepEmail.toLowerCase() })
     
-    if (!user) {
-      console.error(`User with email ${email} not found`)
+    if (!userToKeep) {
+      console.error(`User with email ${keepEmail} not found`)
       console.log('Available users:')
       const allUsers = await User.find({}).select('email firstName lastName role')
       allUsers.forEach(u => {
@@ -61,29 +61,41 @@ async function setSuperAdmin() {
       process.exit(1)
     }
     
-    console.log(`Found user: ${user.email} (${user.firstName} ${user.lastName})`)
-    console.log(`Current role: ${user.role}`)
+    console.log(`\nKeeping user: ${userToKeep.email} (${userToKeep.firstName} ${userToKeep.lastName})`)
+    console.log(`Current role: ${userToKeep.role}`)
     
-    // Update to super_admin using findOneAndUpdate to ensure it persists
-    const updatedUser = await User.findOneAndUpdate(
-      { email: email.toLowerCase() },
-      { role: 'super_admin' },
-      { new: true, runValidators: true }
-    )
+    // Get count of users to delete
+    const usersToDelete = await User.find({ email: { $ne: keepEmail.toLowerCase() } })
+    console.log(`\nFound ${usersToDelete.length} users to delete:`)
+    usersToDelete.forEach(u => {
+      console.log(`  - ${u.email} (${u.firstName} ${u.lastName}) - Role: ${u.role}`)
+    })
     
-    if (!updatedUser) {
-      console.error('Failed to update user')
-      process.exit(1)
+    if (usersToDelete.length === 0) {
+      console.log('\n✅ No users to delete. Only joelamrom@gmail.com exists.')
+      await mongoose.disconnect()
+      console.log('\nDatabase connection closed')
+      return
     }
     
-    console.log('\n✅ Successfully set user as super_admin!')
-    console.log(`\nUser: ${updatedUser.firstName} ${updatedUser.lastName}`)
-    console.log(`Email: ${updatedUser.email}`)
-    console.log(`Role: ${updatedUser.role}`)
+    // Delete all users except joelamrom@gmail.com
+    const result = await User.deleteMany({ email: { $ne: keepEmail.toLowerCase() } })
     
-    // Verify the update
-    const verifyUser = await User.findOne({ email: email.toLowerCase() })
-    console.log(`\nVerification - Role in DB: ${verifyUser.role}`)
+    console.log(`\n✅ Successfully deleted ${result.deletedCount} user(s)!`)
+    
+    // Verify
+    const remainingUsers = await User.find({})
+    console.log(`\nRemaining users: ${remainingUsers.length}`)
+    remainingUsers.forEach(u => {
+      console.log(`  - ${u.email} (${u.firstName} ${u.lastName}) - Role: ${u.role}`)
+    })
+    
+    // Ensure joelamrom is super_admin
+    if (userToKeep.role !== 'super_admin') {
+      userToKeep.role = 'super_admin'
+      await userToKeep.save()
+      console.log('\n✅ Set joelamrom@gmail.com role to super_admin')
+    }
     
     await mongoose.disconnect()
     console.log('\nDatabase connection closed')
@@ -93,5 +105,5 @@ async function setSuperAdmin() {
   }
 }
 
-setSuperAdmin()
+deleteUsersExceptJoelamrom()
 
