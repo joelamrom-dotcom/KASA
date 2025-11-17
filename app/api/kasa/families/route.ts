@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Family, FamilyMember, PaymentPlan } from '@/lib/models'
+import { Family, FamilyMember, PaymentPlan, User } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
 // GET - Get all families (filtered by user)
@@ -17,8 +17,18 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Build query - admin sees all, regular users see only their data
-    const query = isAdmin(user) ? {} : { userId: user.userId }
+    // Build query - admin sees all, regular users see only their data, family users see only their family
+    let query: any = {}
+    if (isAdmin(user)) {
+      // Admin sees all
+      query = {}
+    } else if (user.role === 'family' && user.familyId) {
+      // Family users see only their own family
+      query = { _id: user.familyId }
+    } else {
+      // Regular users see their families
+      query = { userId: user.userId }
+    }
     
     const families = await Family.find(query).sort({ name: 1 })
     
@@ -166,6 +176,48 @@ export async function POST(request: NextRequest) {
       currentPayment: currentPayment || 0,
       openBalance: openBalance || 0
     })
+
+    // Auto-create user account for family if email exists
+    if (email) {
+      try {
+        // Check if user already exists with this email
+        const existingUser = await User.findOne({ email: email.toLowerCase() })
+        
+        if (!existingUser) {
+          // Get phone number (prefer husbandCellPhone, then wifeCellPhone, then phone)
+          const phoneNumber = husbandCellPhone || wifeCellPhone || phone || ''
+          
+          // Create user account for family
+          const familyUser = await User.create({
+            email: email.toLowerCase(),
+            firstName: husbandFirstName || wifeFirstName || name.split(' ')[0] || 'Family',
+            lastName: name.split(' ').slice(1).join(' ') || 'Member',
+            role: 'family',
+            familyId: family._id,
+            phoneNumber: phoneNumber,
+            isActive: true,
+            emailVerified: false,
+            password: null // No password - uses phone authentication
+          })
+          
+          console.log(`✅ Created user account for family ${family.name}: ${familyUser.email}`)
+        } else {
+          // Update existing user to link to family if not already linked
+          if (!existingUser.familyId) {
+            existingUser.familyId = family._id
+            existingUser.role = 'family'
+            if (!existingUser.phoneNumber) {
+              existingUser.phoneNumber = husbandCellPhone || wifeCellPhone || phone || ''
+            }
+            await existingUser.save()
+            console.log(`✅ Linked existing user ${existingUser.email} to family ${family.name}`)
+          }
+        }
+      } catch (error: any) {
+        // Log error but don't fail family creation if user creation fails
+        console.error(`⚠️ Failed to create user account for family ${family.name}:`, error.message)
+      }
+    }
 
     return NextResponse.json(family, { status: 201 })
   } catch (error: any) {

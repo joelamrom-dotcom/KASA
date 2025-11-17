@@ -31,8 +31,11 @@ export async function GET(
       )
     }
     
-    // Check ownership - admin can access all, regular users only their own
-    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+    // Check ownership - admin can access all, regular users only their own, family users their own family
+    const isFamilyOwner = family.userId?.toString() === user.userId
+    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    
+    if (!isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this family' },
         { status: 403 }

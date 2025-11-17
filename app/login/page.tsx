@@ -8,6 +8,7 @@ import { ChartBarIcon } from '@heroicons/react/24/solid'
 
 function LoginForm() {
   const searchParams = useSearchParams()
+  const [loginType, setLoginType] = useState<'admin' | 'family'>('admin')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -16,6 +17,7 @@ function LoginForm() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    phoneNumber: '',
   })
 
   // Check for OAuth errors, signup success, or reset success in URL
@@ -44,12 +46,17 @@ function LoginForm() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const endpoint = loginType === 'family' ? '/api/auth/family-login' : '/api/auth/login'
+      const body = loginType === 'family' 
+        ? { email: formData.email, phoneNumber: formData.phoneNumber }
+        : { email: formData.email, password: formData.password }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
@@ -134,6 +141,42 @@ function LoginForm() {
               </div>
             )}
             
+            {/* Login Type Toggle */}
+            <div className="mb-6">
+              <div className="flex rounded-lg bg-gray-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginType('admin')
+                    setError('')
+                    setFormData({ email: '', password: '', phoneNumber: '' })
+                  }}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                    loginType === 'admin'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Admin Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginType('family')
+                    setError('')
+                    setFormData({ email: '', password: '', phoneNumber: '' })
+                  }}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                    loginType === 'family'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Family Login
+                </button>
+              </div>
+            </div>
+
             <form className="space-y-5" onSubmit={handleSubmit}>
               {/* Email Field */}
               <div>
@@ -167,54 +210,92 @@ function LoginForm() {
                 </div>
               </div>
 
-              {/* Password Field */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    required
-                    className="glass-panel w-full px-4 py-3 rounded-lg border border-gray-200/50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 pr-12 bg-white/50 backdrop-blur-sm"
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
-                </div>
-              </div>
+              {/* Password Field (Admin) or Phone Number Field (Family) */}
+              {loginType === 'admin' ? (
+                <>
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        required
+                        className="glass-panel w-full px-4 py-3 rounded-lg border border-gray-200/50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 pr-12 bg-white/50 backdrop-blur-sm"
+                        placeholder="Enter your password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                        ) : (
+                          <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                    Remember me
+                  {/* Remember Me & Forgot Password */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <input
+                        id="remember-me"
+                        name="remember-me"
+                        type="checkbox"
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                        Remember me
+                      </label>
+                    </div>
+                    <Link href="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                      Forgot Your Password?
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number
                   </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      type="tel"
+                      autoComplete="tel"
+                      required
+                      className="glass-panel w-full pl-10 pr-10 py-3 rounded-lg border border-gray-200/50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/50 backdrop-blur-sm"
+                      placeholder="(555) 123-4567"
+                      value={formData.phoneNumber}
+                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    />
+                    {formData.phoneNumber && (
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => setFormData({ ...formData, phoneNumber: '' })}
+                      >
+                        <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Use any phone number on file for your family account
+                  </p>
                 </div>
-                <Link href="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                  Forgot Your Password?
-                </Link>
-              </div>
+              )}
 
               {/* Log In Button */}
               <button 

@@ -6,7 +6,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 export interface AuthenticatedRequest {
   userId: string
   email: string
-  role: 'super_admin' | 'admin' | 'user' | 'viewer'
+  role: 'super_admin' | 'admin' | 'user' | 'viewer' | 'family'
+  familyId?: string // For family users
 }
 
 /**
@@ -35,7 +36,8 @@ export function getAuthenticatedUser(request: NextRequest): AuthenticatedRequest
     return {
       userId: decoded.userId,
       email: decoded.email,
-      role: decoded.role || 'user'
+      role: decoded.role || 'user',
+      familyId: decoded.familyId
     }
   } catch (error) {
     console.error('Error authenticating user:', error)
@@ -61,6 +63,13 @@ export function requireAuth(request: NextRequest): AuthenticatedRequest {
  */
 export function isAdmin(user: AuthenticatedRequest | null): boolean {
   return user?.role === 'admin' || user?.role === 'super_admin'
+}
+
+/**
+ * Check if user is a family user
+ */
+export function isFamilyUser(user: AuthenticatedRequest | null): boolean {
+  return user?.role === 'family'
 }
 
 /**

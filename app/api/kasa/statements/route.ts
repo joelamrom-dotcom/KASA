@@ -30,9 +30,16 @@ export async function GET(request: NextRequest) {
     
     // Filter by user ownership - admin sees all, regular users only their families' statements
     if (!isAdmin(user)) {
-      // Get user's family IDs
-      const userFamilies = await Family.find({ userId: user.userId }).select('_id')
-      const userFamilyIds = userFamilies.map(f => f._id.toString())
+      let userFamilyIds: string[] = []
+      
+      if (user.role === 'family' && user.familyId) {
+        // Family user - only see their own family's statements
+        userFamilyIds = [user.familyId]
+      } else {
+        // Regular admin user - get their families
+        const userFamilies = await Family.find({ userId: user.userId }).select('_id')
+        userFamilyIds = userFamilies.map(f => f._id.toString())
+      }
       
       // Filter statements to only those belonging to user's families
       statements = statements.filter((statement: any) => {
@@ -83,8 +90,11 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Check ownership
-    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+    // Check ownership - admin, family owner, or family user accessing their own family
+    const isFamilyOwner = family.userId?.toString() === user.userId
+    const isFamilyMember = user.role === 'family' && user.familyId === familyId
+    
+    if (!isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this family' },
         { status: 403 }

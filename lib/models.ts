@@ -278,9 +278,11 @@ const UserSchema = new Schema({
   lastName: { type: String, required: true },
   role: { 
     type: String, 
-    enum: ['super_admin', 'admin', 'user', 'viewer'], 
+    enum: ['super_admin', 'admin', 'user', 'viewer', 'family'], 
     default: 'admin' 
   },
+  familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: false }, // Link to family for family users
+  phoneNumber: { type: String, required: false }, // Phone number for phone-based authentication
   isActive: { type: Boolean, default: true },
   emailVerified: { type: Boolean, default: false },
   emailVerificationToken: String,
@@ -292,6 +294,9 @@ const UserSchema = new Schema({
   googleId: { type: String, unique: true, sparse: true }, // Google user ID (sparse index allows multiple nulls)
   profilePicture: String, // Profile picture URL from Google
 }, { timestamps: true })
+
+// Add index for familyId for better query performance
+UserSchema.index({ familyId: 1 })
 
 // Family Note Schema
 const FamilyNoteSchema = new Schema({

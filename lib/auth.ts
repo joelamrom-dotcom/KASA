@@ -5,9 +5,11 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  role: 'super_admin' | 'admin' | 'user' | 'viewer'
+  role: 'super_admin' | 'admin' | 'user' | 'viewer' | 'family'
   isActive: boolean
   emailVerified: boolean
+  familyId?: string
+  familyName?: string
 }
 
 export function getToken(): string | null {
