@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { YearlyCalculation, Family, Payment } from '@/lib/models'
 import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
-import { calculateYearlyIncome } from '@/lib/calculations'
+import { calculateYearlyIncome, calculateAndSaveYear } from '@/lib/calculations'
 
 // GET - Get yearly calculations (user-scoped)
 export async function GET(request: NextRequest) {
