@@ -70,10 +70,11 @@ export async function GET(request: NextRequest) {
         const calcData = await calculateYearlyIncome(y, 0, user.userId)
         calculations.push({
           year: y,
-          calculatedIncome: calcData.calculatedIncome || 0,
-          calculatedExpenses: calcData.calculatedExpenses || 0,
-          balance: calcData.balance || 0,
-          ...calcData
+          ...calcData,
+          // Ensure these fields exist (they should be in calcData, but provide defaults)
+          calculatedIncome: calcData.calculatedIncome ?? 0,
+          calculatedExpenses: 0, // Not calculated by calculateYearlyIncome
+          balance: 0 // Not calculated by calculateYearlyIncome
         })
       }
       
