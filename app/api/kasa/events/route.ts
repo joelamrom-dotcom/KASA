@@ -3,6 +3,8 @@ import connectDB from '@/lib/database'
 import { LifecycleEventPayment, Family } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Get all lifecycle events with family details (filtered by user)
 export async function GET(request: NextRequest) {
   try {
