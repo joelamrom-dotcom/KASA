@@ -17,6 +17,7 @@ import { showToast } from '@/app/components/Toast'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
 import { TableSkeleton } from '@/app/components/LoadingSkeleton'
 import EmptyState from '@/app/components/EmptyState'
+import TableImportExport from '@/app/components/TableImportExport'
 
 // QWERTY to Hebrew keyboard mapping
 const qwertyToHebrew: { [key: string]: string } = {
@@ -516,17 +517,89 @@ export default function FamiliesPage() {
             </h1>
             <p className="text-gray-600">Manage family members and their information</p>
           </div>
-          <button
-            onClick={() => {
-              resetForm()
-              setEditingFamily(null)
-              setShowModal(true)
-            }}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Add Family
-          </button>
+          <div className="flex items-center gap-3">
+            <TableImportExport
+              data={families}
+              filename="families"
+              headers={[
+                { key: 'name', label: 'Name' },
+                { key: 'hebrewName', label: 'Hebrew Name' },
+                { key: 'weddingDate', label: 'Wedding Date' },
+                { key: 'husbandFirstName', label: 'Husband First Name' },
+                { key: 'husbandHebrewName', label: 'Husband Hebrew Name' },
+                { key: 'wifeFirstName', label: 'Wife First Name' },
+                { key: 'wifeHebrewName', label: 'Wife Hebrew Name' },
+                { key: 'email', label: 'Email' },
+                { key: 'phone', label: 'Phone' },
+                { key: 'address', label: 'Address' },
+                { key: 'city', label: 'City' },
+                { key: 'state', label: 'State' },
+                { key: 'zip', label: 'ZIP' },
+                { key: 'currentPayment', label: 'Current Payment' },
+                { key: 'openBalance', label: 'Open Balance' }
+              ]}
+              onImport={async (importedData) => {
+                // Import families from CSV
+                let successCount = 0
+                let errorCount = 0
+                
+                for (const familyData of importedData) {
+                  try {
+                    // Map CSV data to family format
+                    const familyPayload = {
+                      name: familyData.name || '',
+                      hebrewName: familyData.hebrewName || '',
+                      weddingDate: familyData.weddingDate || new Date().toISOString(),
+                      husbandFirstName: familyData.husbandFirstName || '',
+                      husbandHebrewName: familyData.husbandHebrewName || '',
+                      wifeFirstName: familyData.wifeFirstName || '',
+                      wifeHebrewName: familyData.wifeHebrewName || '',
+                      email: familyData.email || '',
+                      phone: familyData.phone || '',
+                      address: familyData.address || '',
+                      city: familyData.city || '',
+                      state: familyData.state || '',
+                      zip: familyData.zip || '',
+                      paymentPlanId: '', // Will need to be set manually
+                      currentPayment: Number(familyData.currentPayment) || 0
+                    }
+                    
+                    const res = await fetch('/api/kasa/families', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(familyPayload)
+                    })
+                    
+                    if (res.ok) {
+                      successCount++
+                    } else {
+                      errorCount++
+                    }
+                  } catch (error) {
+                    errorCount++
+                  }
+                }
+                
+                if (successCount > 0) {
+                  showToast(`Imported ${successCount} families successfully${errorCount > 0 ? `, ${errorCount} failed` : ''}`, successCount === importedData.length ? 'success' : 'warning')
+                  fetchFamilies()
+                } else {
+                  showToast('Failed to import families', 'error')
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                resetForm()
+                setEditingFamily(null)
+                setShowModal(true)
+              }}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Family
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
