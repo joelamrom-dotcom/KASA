@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       if (mode === 'login') {
         // Coming from login page - user must sign up first
         return NextResponse.redirect(
-          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/signup?error=${encodeURIComponent('No account found with this email. Please sign up first.')}`
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/login?error=${encodeURIComponent('No account found with this email. Please sign up first.')}`
         )
       } else {
         // Coming from signup page - create new user

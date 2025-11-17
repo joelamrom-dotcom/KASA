@@ -13,6 +13,10 @@ import {
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import Pagination from '@/app/components/Pagination'
+import { showToast } from '@/app/components/Toast'
+import ConfirmationDialog from '@/app/components/ConfirmationDialog'
+import { TableSkeleton } from '@/app/components/LoadingSkeleton'
+import EmptyState from '@/app/components/EmptyState'
 
 // QWERTY to Hebrew keyboard mapping
 const qwertyToHebrew: { [key: string]: string } = {
@@ -120,6 +124,12 @@ export default function FamiliesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; familyId: string | null; familyName: string }>({
+    isOpen: false,
+    familyId: null,
+    familyName: ''
+  })
+  const [isDeleting, setIsDeleting] = useState(false)
   const itemsPerPage = 10
   const [formData, setFormData] = useState({
     name: '',
@@ -151,6 +161,7 @@ export default function FamiliesPage() {
 
   const fetchFamilies = async () => {
     try {
+      setLoading(true)
       const res = await fetch('/api/kasa/families')
       const data = await res.json()
       if (Array.isArray(data)) {
@@ -158,10 +169,12 @@ export default function FamiliesPage() {
       } else {
         console.error('API error:', data)
         setFamilies([])
+        showToast('Failed to load families', 'error')
       }
     } catch (error) {
       console.error('Error fetching families:', error)
       setFamilies([])
+      showToast('Error loading families. Please try again.', 'error')
     } finally {
       setLoading(false)
     }
@@ -227,7 +240,7 @@ export default function FamiliesPage() {
     
     // Validate email if provided
     if (formattedData.email && !validateEmail(formattedData.email)) {
-      alert('Please enter a valid email address')
+      showToast('Please enter a valid email address', 'error')
       return
     }
     
@@ -274,15 +287,16 @@ export default function FamiliesPage() {
         setShowModal(false)
         setEditingFamily(null)
         resetForm()
+        showToast(editingFamily ? 'Family updated successfully' : 'Family created successfully', 'success')
         fetchFamilies()
       } else {
         const error = await res.json()
         console.error('Error saving family:', error)
-        alert(`Error saving family: ${error.error || error.details || 'Unknown error'}`)
+        showToast(`Error saving family: ${error.error || error.details || 'Unknown error'}`, 'error')
       }
     } catch (error) {
       console.error('Error saving family:', error)
-      alert('Error saving family. Please check the console for details.')
+      showToast('Error saving family. Please try again.', 'error')
     }
   }
 
@@ -292,7 +306,7 @@ export default function FamiliesPage() {
     // Use paymentPlanId directly (ID-based system)
     if (!family.paymentPlanId) {
       console.error('Family does not have paymentPlanId set')
-      alert('Error: Family is missing payment plan. Please update the family.')
+      showToast('Error: Family is missing payment plan. Please update the family.', 'warning')
       return
     }
     
@@ -321,17 +335,38 @@ export default function FamiliesPage() {
     setShowModal(true)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this family?')) return
+  const handleDeleteClick = (family: Family) => {
+    setDeleteConfirm({
+      isOpen: true,
+      familyId: family._id,
+      familyName: family.name
+    })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.familyId) return
     
+    setIsDeleting(true)
     try {
-      const res = await fetch(`/api/kasa/families/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/kasa/families/${deleteConfirm.familyId}`, { method: 'DELETE' })
       if (res.ok) {
+        showToast(`Family "${deleteConfirm.familyName}" moved to recycle bin`, 'success')
         fetchFamilies()
+      } else {
+        const error = await res.json()
+        showToast(`Error deleting family: ${error.error || 'Unknown error'}`, 'error')
       }
     } catch (error) {
       console.error('Error deleting family:', error)
+      showToast('Error deleting family. Please try again.', 'error')
+    } finally {
+      setIsDeleting(false)
+      setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
     }
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
   }
 
   const resetForm = () => {
@@ -461,7 +496,11 @@ export default function FamiliesPage() {
     return (
       <div className="min-h-screen p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse">Loading...</div>
+          <div className="mb-8">
+            <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-2 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96 animate-pulse"></div>
+          </div>
+          <TableSkeleton rows={10} />
         </div>
       </div>
     )
@@ -614,20 +653,27 @@ export default function FamiliesPage() {
             <tbody className="bg-white/10 divide-y divide-white/20">
               {filteredFamilies.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="text-gray-400 mb-2">
-                      <MagnifyingGlassIcon className="mx-auto h-12 w-12" />
-                    </div>
-                    <p className="text-gray-600 font-medium">
-                      {searchQuery ? `No families found matching "${searchQuery}"` : 'No families found'}
-                    </p>
+                  <td colSpan={6} className="px-6 py-12">
+                    <EmptyState
+                      icon={searchQuery ? 'search' : 'inbox'}
+                      title={searchQuery ? `No families found matching "${searchQuery}"` : 'No families found'}
+                      description={searchQuery ? 'Try adjusting your search terms or clear the search to see all families.' : 'Get started by adding your first family to the system.'}
+                      actionLabel={searchQuery ? undefined : 'Add Family'}
+                      onAction={searchQuery ? undefined : () => {
+                        resetForm()
+                        setEditingFamily(null)
+                        setShowModal(true)
+                      }}
+                    />
                     {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery('')}
-                        className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        Clear search
-                      </button>
+                      <div className="text-center mt-4">
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Clear search
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -670,7 +716,7 @@ export default function FamiliesPage() {
                         <PencilIcon className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => handleDelete(family._id)}
+                        onClick={() => handleDeleteClick(family)}
                         className="text-red-600 hover:text-red-800 transition-colors"
                         title="Delete Family"
                       >
@@ -692,6 +738,18 @@ export default function FamiliesPage() {
             />
           )}
         </div>
+
+        {/* Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={deleteConfirm.isOpen}
+          title="Delete Family"
+          message={`Are you sure you want to delete "${deleteConfirm.familyName}"? This will move the family to the recycle bin.`}
+          confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+          cancelText="Cancel"
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          variant="danger"
+        />
 
         {showModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">

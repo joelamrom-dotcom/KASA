@@ -3,6 +3,7 @@ import './globals.css'
 import './error-handler'
 import AuthProvider from './components/AuthProvider'
 import LayoutContent from './components/LayoutContent'
+import ToastContainer from './components/Toast'
 
 export const metadata: Metadata = {
   title: 'Kasa Family Management',
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
         <AuthProvider>
           <LayoutContent>{children}</LayoutContent>
+          <ToastContainer />
         </AuthProvider>
       </body>
     </html>
