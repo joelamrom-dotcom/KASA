@@ -12,7 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
  * Refresh user session - get updated user info from database
  * This is useful when user's role or other info has been updated
  */
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     await connectDB()
 
@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    console.log('Refreshing user session for:', currentUser.email, 'Current role in token:', currentUser.role)
+
     // Fetch fresh user data from database using the email from token (more reliable)
     const user = await User.findOne({ email: currentUser.email })
     if (!user) {
@@ -33,6 +35,8 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       )
     }
+
+    console.log('User found in DB:', user.email, 'Role in DB:', user.role)
 
     // Create new JWT token with updated role
     const token = jwt.sign(
