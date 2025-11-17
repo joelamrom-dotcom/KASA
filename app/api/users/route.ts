@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     await connectDB()
     
     const user = getAuthenticatedUser(request)
+    console.log('GET /api/users - User from token:', user?.email, 'Role:', user?.role)
+    
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -23,6 +25,7 @@ export async function GET(request: NextRequest) {
     
     // Only super_admin can see all users
     if (!isSuperAdmin(user)) {
+      console.log('GET /api/users - Access denied. User role:', user.role, 'Email:', user.email)
       return NextResponse.json(
         { error: 'Forbidden: Super admin access required' },
         { status: 403 }

@@ -82,7 +82,13 @@ export default function UsersPage() {
     try {
       setLoading(true)
       setError('')
-      const response = await fetch('/api/users')
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
       
       if (!response.ok) {
         if (response.status === 403) {
@@ -127,9 +133,11 @@ export default function UsersPage() {
     if (!editingUserId) return
 
     try {
+      const token = localStorage.getItem('token')
       const response = await fetch(`/api/users/${editingUserId}`, {
         method: 'PUT',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(editForm),
@@ -159,8 +167,12 @@ export default function UsersPage() {
     if (!userToDelete) return
 
     try {
+      const token = localStorage.getItem('token')
       const response = await fetch(`/api/users/${userToDelete._id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       })
 
       if (!response.ok) {
@@ -180,8 +192,12 @@ export default function UsersPage() {
 
   const handleImpersonate = async (user: User) => {
     try {
+      const token = localStorage.getItem('token')
       const response = await fetch(`/api/users/${user._id}/impersonate`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       })
 
       if (!response.ok) {

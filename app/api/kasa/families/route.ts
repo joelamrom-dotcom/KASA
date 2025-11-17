@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     
     // Get authenticated user
     const user = getAuthenticatedUser(request)
+    console.log('GET /api/kasa/families - User from token:', user?.email, 'Role:', user?.role, 'UserId:', user?.userId)
+    
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -22,12 +24,15 @@ export async function GET(request: NextRequest) {
     if (user.role === 'super_admin' || isAdmin(user)) {
       // Super admin and admin see all families
       query = {}
+      console.log('GET /api/kasa/families - Super admin/admin: showing all families')
     } else if (user.role === 'family' && user.familyId) {
       // Family users see only their own family
       query = { _id: user.familyId }
+      console.log('GET /api/kasa/families - Family user: showing family', user.familyId)
     } else {
       // Regular users see their families
       query = { userId: user.userId }
+      console.log('GET /api/kasa/families - Regular user: showing families for userId', user.userId)
     }
     
     const families = await Family.find(query).sort({ name: 1 })
