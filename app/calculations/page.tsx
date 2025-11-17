@@ -100,9 +100,14 @@ export default function CalculationsPage() {
     }
   }
 
-  // Early return for loading state
   if (loading) {
-    return <div className="min-h-screen p-8">Loading...</div>
+    return (
+      <div className="min-h-screen p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-12">Loading calculations...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
