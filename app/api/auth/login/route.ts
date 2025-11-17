@@ -25,14 +25,23 @@ export async function POST(request: NextRequest) {
     // Normalize email for lookup
     const normalizedEmail = email.toLowerCase().trim()
     
-    // Find user by email
+    console.log('LOGIN ATTEMPT - Input email:', email)
+    console.log('LOGIN ATTEMPT - Normalized email:', normalizedEmail)
+    
+    // Find user by email (exact match, case-insensitive)
     const user = await User.findOne({ email: normalizedEmail })
     if (!user) {
+      console.log('LOGIN FAILED - No user found with email:', normalizedEmail)
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
     }
+    
+    console.log('LOGIN SUCCESS - Found user in DB:')
+    console.log('  DB email:', user.email)
+    console.log('  DB role:', user.role)
+    console.log('  DB userId:', user._id)
     
     // Ensure the user's email in DB matches what was provided (case-insensitive)
     // This prevents issues with stale tokens or email mismatches
@@ -41,6 +50,7 @@ export async function POST(request: NextRequest) {
       // Update the email in DB to match the normalized version
       user.email = normalizedEmail
       await user.save()
+      console.log('Updated DB email to:', normalizedEmail)
     }
 
     // Check if account is active
@@ -64,16 +74,23 @@ export async function POST(request: NextRequest) {
     user.lastLogin = new Date()
     await user.save()
 
+    // Normalize email for token (use DB email, normalized)
+    const tokenEmail = user.email.toLowerCase().trim()
+    console.log('CREATING TOKEN - Using email:', tokenEmail)
+    console.log('CREATING TOKEN - Using role:', user.role)
+    
     // Create JWT token
     const token = jwt.sign(
       {
         userId: user._id.toString(),
-        email: user.email,
+        email: tokenEmail, // Use normalized email from DB
         role: user.role,
       },
       JWT_SECRET,
       { expiresIn: '7d' }
     )
+    
+    console.log('TOKEN CREATED - Email in token:', tokenEmail, 'Role:', user.role)
 
     // Return user without password
     const userObj = user.toObject()
