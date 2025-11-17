@@ -19,20 +19,39 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Special handling for joelamrom@gmail.com - ALWAYS check DB role (bypass token)
+    // ALWAYS check DB for current user's role (bypass stale token)
     let userRole = user.role
     let isSuperAdminUser = user.role === 'super_admin'
-    const emailLower = user.email?.toLowerCase()
-    if (emailLower === 'joelamrom@gmail.com') {
-      console.log('GET /api/kasa/families - ALWAYS checking DB role for joelamrom@gmail.com (bypassing token)')
-      const dbUser = await User.findOne({ email: 'joelamrom@gmail.com' })
-      console.log('GET /api/kasa/families - DB user found:', dbUser ? 'yes' : 'no', 'DB role:', dbUser?.role)
-      if (dbUser && dbUser.role === 'super_admin') {
-        console.log('GET /api/kasa/families - ✅ DB confirms super_admin role - GRANTING ACCESS TO ALL FAMILIES')
-        userRole = 'super_admin'
-        isSuperAdminUser = true
-      } else {
-        console.log('GET /api/kasa/families - ❌ DB role is not super_admin')
+    let dbUser = null
+    
+    // Try to find current user in DB by userId first (most reliable)
+    if (user.userId) {
+      try {
+        dbUser = await User.findById(user.userId)
+        if (dbUser && dbUser.role === 'super_admin') {
+          userRole = 'super_admin'
+          isSuperAdminUser = true
+        } else if (dbUser) {
+          userRole = dbUser.role
+        }
+      } catch (err) {
+        // Continue to email lookup
+      }
+    }
+    
+    // If not found by userId, try by email
+    if (!isSuperAdminUser && !dbUser && user.email) {
+      try {
+        const userEmailLower = user.email.toLowerCase().trim()
+        dbUser = await User.findOne({ email: userEmailLower })
+        if (dbUser && dbUser.role === 'super_admin') {
+          userRole = 'super_admin'
+          isSuperAdminUser = true
+        } else if (dbUser) {
+          userRole = dbUser.role
+        }
+      } catch (err) {
+        // Continue - use token role
       }
     }
     

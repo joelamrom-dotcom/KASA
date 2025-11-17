@@ -27,8 +27,42 @@ export async function POST(
       )
     }
     
+    // ALWAYS check DB for current user's role (bypass stale token)
+    let hasSuperAdminAccess = false
+    let dbUser = null
+    
+    // Try to find current user in DB by userId first (most reliable)
+    if (adminUser.userId) {
+      try {
+        dbUser = await User.findById(adminUser.userId)
+        if (dbUser && dbUser.role === 'super_admin') {
+          hasSuperAdminAccess = true
+        }
+      } catch (err) {
+        // Continue to email lookup
+      }
+    }
+    
+    // If not found by userId, try by email
+    if (!hasSuperAdminAccess && !dbUser && adminUser.email) {
+      try {
+        const userEmailLower = adminUser.email.toLowerCase().trim()
+        dbUser = await User.findOne({ email: userEmailLower })
+        if (dbUser && dbUser.role === 'super_admin') {
+          hasSuperAdminAccess = true
+        }
+      } catch (err) {
+        // Continue to fallback
+      }
+    }
+    
+    // Fallback to token role if DB lookup failed
+    if (!hasSuperAdminAccess && !dbUser) {
+      hasSuperAdminAccess = isSuperAdmin(adminUser)
+    }
+    
     // Only super_admin can impersonate users
-    if (!isSuperAdmin(adminUser)) {
+    if (!hasSuperAdminAccess) {
       return NextResponse.json(
         { error: 'Forbidden: Super admin access required' },
         { status: 403 }

@@ -256,15 +256,40 @@ export async function DELETE(
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === params.id
     
-    // Special handling for joelamrom@gmail.com - ALWAYS check DB role (bypass token)
-    let hasSuperAdminAccess = user.role === 'super_admin'
-    const emailLower = user.email?.toLowerCase()
-    if (emailLower === 'joelamrom@gmail.com') {
-      const { User } = await import('@/lib/models')
-      const dbUser = await User.findOne({ email: 'joelamrom@gmail.com' })
-      if (dbUser && dbUser.role === 'super_admin') {
-        hasSuperAdminAccess = true
+    // ALWAYS check DB for current user's role (bypass stale token)
+    let hasSuperAdminAccess = false
+    let dbUser = null
+    
+    // Try to find current user in DB by userId first (most reliable)
+    if (user.userId) {
+      try {
+        const { User } = await import('@/lib/models')
+        dbUser = await User.findById(user.userId)
+        if (dbUser && dbUser.role === 'super_admin') {
+          hasSuperAdminAccess = true
+        }
+      } catch (err) {
+        // Continue to email lookup
       }
+    }
+    
+    // If not found by userId, try by email
+    if (!hasSuperAdminAccess && !dbUser && user.email) {
+      try {
+        const { User } = await import('@/lib/models')
+        const userEmailLower = user.email.toLowerCase().trim()
+        dbUser = await User.findOne({ email: userEmailLower })
+        if (dbUser && dbUser.role === 'super_admin') {
+          hasSuperAdminAccess = true
+        }
+      } catch (err) {
+        // Continue to fallback
+      }
+    }
+    
+    // Fallback to token role if DB lookup failed
+    if (!hasSuperAdminAccess && !dbUser) {
+      hasSuperAdminAccess = user.role === 'super_admin'
     }
     
     if (!hasSuperAdminAccess && !isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
