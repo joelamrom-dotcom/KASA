@@ -131,7 +131,7 @@ export async function PUT(
       }
     }
     
-    // If not found by userId, try by email
+    // If not found by userId, try by email (handles both joelamrom and yoelamrom)
     if (!hasSuperAdminAccess && !dbUser && user.email) {
       try {
         const userEmailLower = user.email.toLowerCase().trim()
@@ -144,7 +144,27 @@ export async function PUT(
             console.log('PUT /api/users/[id] - ✅✅✅ DB confirms super_admin role - GRANTING ACCESS')
           }
         } else {
-          console.log('PUT /api/users/[id] - ❌ User not found by email')
+          console.log('PUT /api/users/[id] - ❌ User not found by email:', userEmailLower)
+          // Also check for joelamrom/yoelamrom variations (in case of typo)
+          const alternateEmail = userEmailLower === 'joelamrom@gmail.com'
+            ? 'yoelamrom@gmail.com'
+            : userEmailLower === 'yoelamrom@gmail.com'
+            ? 'joelamrom@gmail.com'
+            : null
+
+          if (alternateEmail) {
+            console.log('PUT /api/users/[id] - Trying alternate email:', alternateEmail)
+            dbUser = await User.findOne({ email: alternateEmail })
+            if (dbUser) {
+              console.log('PUT /api/users/[id] - ✅ Found user by alternate email, DB role:', dbUser.role)
+              if (dbUser.role === 'super_admin') {
+                hasSuperAdminAccess = true
+                console.log('PUT /api/users/[id] - ✅✅✅ Found alternate email with super_admin role - GRANTING ACCESS')
+              }
+            } else {
+              console.log('PUT /api/users/[id] - ❌ User not found by alternate email either')
+            }
+          }
         }
       } catch (err: any) {
         console.log('PUT /api/users/[id] - ❌ Error finding user by email:', err?.message || err)
@@ -264,13 +284,27 @@ export async function DELETE(
       }
     }
     
-    // If not found by userId, try by email
+    // If not found by userId, try by email (handles both joelamrom and yoelamrom)
     if (!hasSuperAdminAccess && !dbUser && user.email) {
       try {
         const userEmailLower = user.email.toLowerCase().trim()
         dbUser = await User.findOne({ email: userEmailLower })
         if (dbUser && dbUser.role === 'super_admin') {
           hasSuperAdminAccess = true
+        } else if (!dbUser) {
+          // Also check for joelamrom/yoelamrom variations (in case of typo)
+          const alternateEmail = userEmailLower === 'joelamrom@gmail.com'
+            ? 'yoelamrom@gmail.com'
+            : userEmailLower === 'yoelamrom@gmail.com'
+            ? 'joelamrom@gmail.com'
+            : null
+
+          if (alternateEmail) {
+            dbUser = await User.findOne({ email: alternateEmail })
+            if (dbUser && dbUser.role === 'super_admin') {
+              hasSuperAdminAccess = true
+            }
+          }
         }
       } catch (err) {
         // Continue to fallback
