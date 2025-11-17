@@ -109,8 +109,14 @@ export default function UsersPage() {
       }
       
       const data = await response.json()
-      setUsers(Array.isArray(data) ? data : [])
+      const usersList = Array.isArray(data) ? data : []
+      setUsers(usersList)
       setError('') // Clear any previous errors on success
+      
+      // If we successfully loaded users, ensure error is cleared
+      if (usersList.length > 0) {
+        setError('')
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch users'
       setError(errorMessage)
@@ -262,8 +268,8 @@ export default function UsersPage() {
           </div>
         </div>
 
-        {/* Error Message */}
-        {error && (
+        {/* Error Message - Only show if we have an error AND no users loaded */}
+        {error && users.length === 0 && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
           </div>
