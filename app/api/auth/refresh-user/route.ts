@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import { getAuthenticatedUser } from '@/lib/middleware'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 
@@ -13,6 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
  * This is useful when user's role or other info has been updated
  */
 export async function POST(request: NextRequest) {
+  console.log('POST /api/auth/refresh-user - Request received')
   try {
     await connectDB()
 
