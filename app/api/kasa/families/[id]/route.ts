@@ -158,31 +158,31 @@ export async function PUT(
     console.log('PUT /api/kasa/families/[id] - Update data:', JSON.stringify(updateData, null, 2))
     
     // Use $set to explicitly set all fields
-    const family = await Family.findByIdAndUpdate(
+    const updatedFamily = await Family.findByIdAndUpdate(
       params.id,
       { $set: updateData },
       { new: true, runValidators: true }
     )
     
-    if (!family) {
+    if (!updatedFamily) {
       return NextResponse.json(
         { error: 'Family not found' },
         { status: 404 }
       )
     }
 
-    const updatedFamily = family.toObject()
+    const familyObj = updatedFamily.toObject()
     console.log('PUT /api/kasa/families/[id] - Updated family:', JSON.stringify({
-      _id: updatedFamily._id,
-      name: updatedFamily.name,
-      hebrewName: updatedFamily.hebrewName,
-      husbandHebrewName: updatedFamily.husbandHebrewName,
-      husbandFatherHebrewName: updatedFamily.husbandFatherHebrewName,
-      wifeHebrewName: updatedFamily.wifeHebrewName,
-      wifeFatherHebrewName: updatedFamily.wifeFatherHebrewName
+      _id: familyObj._id,
+      name: familyObj.name,
+      hebrewName: familyObj.hebrewName,
+      husbandHebrewName: familyObj.husbandHebrewName,
+      husbandFatherHebrewName: familyObj.husbandFatherHebrewName,
+      wifeHebrewName: familyObj.wifeHebrewName,
+      wifeFatherHebrewName: familyObj.wifeFatherHebrewName
     }, null, 2))
 
-    return NextResponse.json(family)
+    return NextResponse.json(updatedFamily)
   } catch (error: any) {
     console.error('Error updating family:', error)
     return NextResponse.json(

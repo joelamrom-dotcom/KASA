@@ -80,7 +80,6 @@ export default function CalculationsPage() {
     }
   }
 
-
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault()
     try {

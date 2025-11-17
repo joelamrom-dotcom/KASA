@@ -130,7 +130,7 @@ export async function PUT(
       updateData.completedAt = null
     }
 
-    const task = await Task.findByIdAndUpdate(
+    const updatedTask = await Task.findByIdAndUpdate(
       params.id,
       updateData,
       { new: true, runValidators: true }
@@ -139,14 +139,14 @@ export async function PUT(
       .populate('relatedMemberId', 'firstName lastName')
       .lean()
 
-    if (!task) {
+    if (!updatedTask) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(task)
+    return NextResponse.json(updatedTask)
   } catch (error: any) {
     console.error('Error updating task:', error)
     return NextResponse.json(
