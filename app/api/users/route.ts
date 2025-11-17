@@ -77,26 +77,6 @@ export async function GET(request: NextRequest) {
           }
         } else {
           console.log('GET /api/users - ❌ User not found by email:', userEmailLower)
-          // Also check for joelamrom/yoelamrom variations (in case of typo)
-          const alternateEmail = userEmailLower === 'joelamrom@gmail.com' 
-            ? 'yoelamrom@gmail.com' 
-            : userEmailLower === 'yoelamrom@gmail.com' 
-            ? 'joelamrom@gmail.com' 
-            : null
-          
-          if (alternateEmail) {
-            console.log('GET /api/users - Trying alternate email:', alternateEmail)
-            dbUser = await User.findOne({ email: alternateEmail })
-            if (dbUser) {
-              console.log('GET /api/users - ✅ Found user by alternate email')
-              console.log('GET /api/users -   DB email:', dbUser.email)
-              console.log('GET /api/users -   DB role:', dbUser.role)
-              if (dbUser.role === 'super_admin') {
-                console.log('GET /api/users - ✅✅✅ Found alternate email with super_admin role - GRANTING ACCESS')
-                hasSuperAdminAccess = true
-              }
-            }
-          }
         }
       } catch (err: any) {
         console.log('GET /api/users - ❌ Error finding user by email:', err?.message || err)
