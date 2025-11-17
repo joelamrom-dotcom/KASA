@@ -23,25 +23,31 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Special handling for joelamrom@gmail.com - always check DB role
+    // Special handling for joelamrom@gmail.com - ALWAYS check DB role (bypass token)
     let hasSuperAdminAccess = isSuperAdmin(user)
-    if (user.email === 'joelamrom@gmail.com' && !hasSuperAdminAccess) {
-      console.log('GET /api/users - Checking DB role for joelamrom@gmail.com')
+    const emailLower = user.email?.toLowerCase()
+    if (emailLower === 'joelamrom@gmail.com') {
+      console.log('GET /api/users - ALWAYS checking DB role for joelamrom@gmail.com (bypassing token)')
       const dbUser = await User.findOne({ email: 'joelamrom@gmail.com' })
+      console.log('GET /api/users - DB user found:', dbUser ? 'yes' : 'no', 'DB role:', dbUser?.role)
       if (dbUser && dbUser.role === 'super_admin') {
-        console.log('GET /api/users - DB confirms super_admin role for joelamrom@gmail.com')
+        console.log('GET /api/users - ✅ DB confirms super_admin role - GRANTING ACCESS')
         hasSuperAdminAccess = true
+      } else {
+        console.log('GET /api/users - ❌ DB role is not super_admin, denying access')
       }
     }
     
     // Only super_admin can see all users
     if (!hasSuperAdminAccess) {
-      console.log('GET /api/users - Access denied. User role:', user.role, 'Email:', user.email)
+      console.log('GET /api/users - Access denied. Token role:', user.role, 'Email:', user.email, 'HasSuperAdminAccess:', hasSuperAdminAccess)
       return NextResponse.json(
         { error: 'Forbidden: Super admin access required' },
         { status: 403 }
       )
     }
+    
+    console.log('GET /api/users - ✅ Access granted, fetching all users')
     
     // Get all users, excluding passwords
     const users = await User.find({})
