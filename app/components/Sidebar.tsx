@@ -46,47 +46,9 @@ export default function Sidebar() {
   const user = getUser()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  const [hasRefreshed, setHasRefreshed] = useState(false)
 
-  // Auto-refresh session for joelamrom@gmail.com - always refresh to ensure role is up to date
-  useEffect(() => {
-    if (!hasRefreshed && user && user.email === 'joelamrom@gmail.com') {
-      setHasRefreshed(true)
-      // Always refresh the session for joelamrom@gmail.com
-      const token = localStorage.getItem('token')
-      fetch('/api/auth/refresh-user', { 
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
-      })
-        .then(res => {
-          if (res.ok) {
-            return res.json()
-          }
-          // If 404, route might not be deployed yet - DB fallback will handle access
-          // Silently ignore 404 to avoid console noise
-          if (res.status === 404) {
-            return null
-          }
-          throw new Error(`Failed to refresh: ${res.status}`)
-        })
-        .then(data => {
-          if (data) {
-            console.log('Auto-refreshed user:', data.user)
-            setAuth(data.token, data.user)
-            // If role changed, reload the page
-            if (user.role !== data.user.role) {
-              console.log('Role changed from', user.role, 'to', data.user.role, '- reloading page')
-              window.location.reload()
-            }
-          }
-        })
-        .catch(err => {
-          console.error('Auto-refresh failed:', err)
-        })
-    }
-  }, [user, hasRefreshed])
+  // Note: DB fallback in API routes handles access for joelamrom@gmail.com
+  // No need to refresh session - API routes check DB directly
 
   // Close dropdown when clicking outside
   useEffect(() => {

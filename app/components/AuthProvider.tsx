@@ -48,30 +48,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           return
         }
 
-        // Force refresh session for joelamrom@gmail.com to ensure role is up to date
-        // Note: If refresh endpoint returns 404, DB fallback in API routes will handle access
-        const user = getUser()
-        if (user && user.email === 'joelamrom@gmail.com') {
-          try {
-            const res = await fetch('/api/auth/refresh-user', { method: 'POST' })
-            if (res.ok) {
-              const data = await res.json()
-              console.log('AuthProvider: Refreshed user session:', data.user)
-              setAuth(data.token, data.user)
-              // If role changed, reload the page
-              if (user.role !== data.user.role) {
-                console.log('AuthProvider: Role changed from', user.role, 'to', data.user.role, '- reloading page')
-                window.location.reload()
-                return
-              }
-            } else if (res.status === 404) {
-              // Refresh endpoint not deployed yet - DB fallback will handle access
-              // Silently ignore 404 to avoid console noise
-            }
-          } catch (error) {
-            // Silently ignore errors - DB fallback will handle access
-          }
-        }
+        // Note: DB fallback in API routes handles access for joelamrom@gmail.com
+        // No need to refresh session - API routes check DB directly
 
         setIsChecking(false)
       }, 50)
