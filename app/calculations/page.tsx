@@ -108,7 +108,7 @@ export default function CalculationsPage() {
           <div className="text-center py-12">Loading calculations...</div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -378,6 +378,6 @@ export default function CalculationsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }
 
