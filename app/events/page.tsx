@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import TableImportExport from '@/app/components/TableImportExport'
 
 interface LifecycleEvent {
   _id: string
@@ -75,6 +76,20 @@ export default function EventsPage() {
               All Lifecycle Events
             </h1>
             <p className="text-gray-600">View and manage all lifecycle events</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <TableImportExport
+              data={filteredEvents}
+              filename="lifecycle-events"
+              headers={[
+                { key: 'familyName', label: 'Family Name' },
+                { key: 'eventTypeLabel', label: 'Event Type' },
+                { key: 'eventDate', label: 'Event Date' },
+                { key: 'year', label: 'Year' },
+                { key: 'amount', label: 'Amount' },
+                { key: 'notes', label: 'Notes' }
+              ]}
+            />
           </div>
         </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { PlusIcon, CalculatorIcon } from '@heroicons/react/24/outline'
+import TableImportExport from '@/app/components/TableImportExport'
 
 interface YearlyCalculation {
   _id: string
@@ -114,6 +115,19 @@ export default function CalculationsPage() {
             </h1>
             <p className="text-gray-600">View and manage yearly financial calculations</p>
           </div>
+          <div className="flex items-center gap-3">
+            <TableImportExport
+              data={calculations}
+              filename="calculations"
+              headers={[
+                { key: 'year', label: 'Year' },
+                { key: 'totalIncome', label: 'Total Income' },
+                { key: 'calculatedIncome', label: 'Calculated Income' },
+                { key: 'totalExpenses', label: 'Total Expenses' },
+                { key: 'calculatedExpenses', label: 'Calculated Expenses' },
+                { key: 'balance', label: 'Balance' }
+              ]}
+            />
           <button
             onClick={() => setShowModal(true)}
             className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all duration-200 transform hover:scale-105"

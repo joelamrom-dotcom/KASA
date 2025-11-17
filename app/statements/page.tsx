@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { PlusIcon, DocumentTextIcon, PrinterIcon, CalendarIcon, ChevronDownIcon, ChevronUpIcon, DocumentArrowDownIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
 import Pagination from '@/app/components/Pagination'
 import Link from 'next/link'
+import TableImportExport from '@/app/components/TableImportExport'
+import { showToast } from '@/app/components/Toast'
 
 interface Statement {
   _id: string
@@ -396,7 +398,26 @@ export default function StatementsPage() {
             </h1>
             <p className="text-gray-600">View and generate financial statements</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <TableImportExport
+              data={statements.map(stmt => ({
+                ...stmt,
+                familyName: families.find(f => f._id === stmt.familyId)?.name || 'Unknown'
+              }))}
+              filename="statements"
+              headers={[
+                { key: 'statementNumber', label: 'Statement Number' },
+                { key: 'familyName', label: 'Family Name' },
+                { key: 'date', label: 'Date' },
+                { key: 'fromDate', label: 'From Date' },
+                { key: 'toDate', label: 'To Date' },
+                { key: 'openingBalance', label: 'Opening Balance' },
+                { key: 'income', label: 'Income' },
+                { key: 'withdrawals', label: 'Withdrawals' },
+                { key: 'expenses', label: 'Expenses' },
+                { key: 'closingBalance', label: 'Closing Balance' }
+              ]}
+            />
             <button
               onClick={() => setShowEmailModal(true)}
               className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all duration-200 transform hover:scale-105"

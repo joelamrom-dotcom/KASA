@@ -9,6 +9,7 @@ import {
   BoltIcon
 } from '@heroicons/react/24/outline'
 import Pagination from '@/app/components/Pagination'
+import TableImportExport from '@/app/components/TableImportExport'
 
 interface Payment {
   _id: string
@@ -186,9 +187,29 @@ export default function PaymentsPage() {
             </h1>
             <p className="text-gray-600">View and manage all payments across all families</p>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-600">Total Amount</div>
-            <div className="text-3xl font-bold text-green-600">${getTotalAmount().toLocaleString()}</div>
+          <div className="flex items-center gap-4">
+            <TableImportExport
+              data={payments.map(p => ({
+                ...p,
+                familyName: typeof p.familyId === 'object' ? p.familyId.name : 'Unknown',
+                paymentMethodLabel: paymentMethodLabels[p.paymentMethod],
+                typeLabel: p.type.charAt(0).toUpperCase() + p.type.slice(1)
+              }))}
+              filename="payments"
+              headers={[
+                { key: 'familyName', label: 'Family Name' },
+                { key: 'amount', label: 'Amount' },
+                { key: 'paymentDate', label: 'Payment Date' },
+                { key: 'year', label: 'Year' },
+                { key: 'typeLabel', label: 'Type' },
+                { key: 'paymentMethodLabel', label: 'Payment Method' },
+                { key: 'notes', label: 'Notes' }
+              ]}
+            />
+            <div className="text-right">
+              <div className="text-sm text-gray-600">Total Amount</div>
+              <div className="text-3xl font-bold text-green-600">${getTotalAmount().toLocaleString()}</div>
+            </div>
           </div>
         </div>
 
