@@ -112,11 +112,11 @@ export default function CalculationsPage() {
   }
 
   // Check if all calculations are $0
-  const allCalculationsZero = calculations.length > 0 && calculations.every(calc => 
-    (calc.calculatedIncome || 0) === 0 && 
-    (calc.calculatedExpenses || 0) === 0 && 
-    (calc.balance || 0) === 0
-  )
+  const allCalculationsZero = calculations.length > 0 && calculations.every((calc) => {
+    return (calc.calculatedIncome || 0) === 0 && 
+           (calc.calculatedExpenses || 0) === 0 && 
+           (calc.balance || 0) === 0
+  })
 
   return (
     <div className="min-h-screen p-8 bg-gray-50">
