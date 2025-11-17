@@ -183,7 +183,7 @@ export default function CalculationsPage() {
           (calc.calculatedIncome || 0) === 0 && 
           (calc.calculatedExpenses || 0) === 0 && 
           (calc.balance || 0) === 0
-        ) && (
+        ) ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
             <div className="flex items-start gap-3">
               <InformationCircleIcon className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -202,7 +202,7 @@ export default function CalculationsPage() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Year Selector and Summary */}
         {calculations.length > 0 && (
