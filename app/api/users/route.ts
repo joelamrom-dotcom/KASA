@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       console.log('GET /api/users - ⚠️ No userId in token')
     }
     
-    // If not found by userId, try by email (handles both joelamrom and yoelamrom)
+    // If not found by userId, try by email
     if (!hasSuperAdminAccess && !dbUser && user.email) {
       try {
         const userEmailLower = user.email.toLowerCase().trim()

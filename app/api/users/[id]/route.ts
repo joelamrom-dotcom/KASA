@@ -40,7 +40,7 @@ export async function GET(
       }
     }
     
-    // If not found by userId, try by email (handles both joelamrom and yoelamrom)
+    // If not found by userId, try by email
     if (!hasSuperAdminAccess && !dbUser && user.email) {
       try {
         const userEmailLower = user.email.toLowerCase().trim()
