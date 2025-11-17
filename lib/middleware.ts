@@ -6,7 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 export interface AuthenticatedRequest {
   userId: string
   email: string
-  role: 'admin' | 'user' | 'viewer'
+  role: 'super_admin' | 'admin' | 'user' | 'viewer'
 }
 
 /**
@@ -57,9 +57,16 @@ export function requireAuth(request: NextRequest): AuthenticatedRequest {
 }
 
 /**
- * Check if user is admin
+ * Check if user is admin (includes super_admin)
  */
 export function isAdmin(user: AuthenticatedRequest | null): boolean {
-  return user?.role === 'admin'
+  return user?.role === 'admin' || user?.role === 'super_admin'
+}
+
+/**
+ * Check if user is super admin
+ */
+export function isSuperAdmin(user: AuthenticatedRequest | null): boolean {
+  return user?.role === 'super_admin'
 }
 

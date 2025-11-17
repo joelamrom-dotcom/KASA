@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
           firstName: finalFirstName,
           lastName: finalLastName || 'User', // Use 'User' as default if lastName is empty
           password: null, // OAuth users don't have passwords
-          role: 'user',
+          role: 'admin', // New users are admins for their own data
           isActive: true,
           emailVerified: true, // Google emails are verified
           googleId: googleUser.id,

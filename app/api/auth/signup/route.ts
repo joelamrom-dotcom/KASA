@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       password: hashedPassword,
       firstName,
       lastName,
-      role: 'user',
+      role: 'admin', // New users are admins for their own data
       isActive: true,
       emailVerified: false,
     })

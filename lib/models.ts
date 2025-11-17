@@ -278,8 +278,8 @@ const UserSchema = new Schema({
   lastName: { type: String, required: true },
   role: { 
     type: String, 
-    enum: ['admin', 'user', 'viewer'], 
-    default: 'user' 
+    enum: ['super_admin', 'admin', 'user', 'viewer'], 
+    default: 'admin' 
   },
   isActive: { type: Boolean, default: true },
   emailVerified: { type: Boolean, default: false },

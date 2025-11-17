@@ -5,7 +5,7 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  role: 'admin' | 'user' | 'viewer'
+  role: 'super_admin' | 'admin' | 'user' | 'viewer'
   isActive: boolean
   emailVerified: boolean
 }

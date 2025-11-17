@@ -20,7 +20,8 @@ import {
   ClipboardDocumentListIcon,
   ChartPieIcon,
   ArrowUpTrayIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -36,7 +37,8 @@ import {
   ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
   ChartPieIcon as ChartPieIconSolid,
   ArrowUpTrayIcon as ArrowUpTrayIconSolid,
-  TrashIcon as TrashIconSolid
+  TrashIcon as TrashIconSolid,
+  UsersIcon as UsersIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -74,6 +76,8 @@ export default function Sidebar() {
       { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
       { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
+      // Show Users page only for super_admin
+      ...(user?.role === 'super_admin' ? [{ href: '/users', label: 'Users', icon: UsersIcon, iconSolid: UsersIconSolid }] : []),
     ]
 
   return (
