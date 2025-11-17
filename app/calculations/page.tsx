@@ -318,7 +318,7 @@ export default function CalculationsPage() {
               </div>
             </div>
           ))}
-          </div>
+        </div>
         )}
 
         {showModal && (
