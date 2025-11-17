@@ -110,15 +110,24 @@ export async function PUT(
     let hasSuperAdminAccess = false
     let dbUser = null
     
+    console.log('PUT /api/users/[id] - User from token:', user?.email, 'Role:', user?.role, 'UserId:', user?.userId)
+    
     // Try to find current user in DB by userId first (most reliable)
     if (user.userId) {
       try {
+        console.log('PUT /api/users/[id] - Looking up user by userId:', user.userId)
         dbUser = await User.findById(user.userId)
-        if (dbUser && dbUser.role === 'super_admin') {
-          hasSuperAdminAccess = true
+        if (dbUser) {
+          console.log('PUT /api/users/[id] - ✅ Found user by userId, DB role:', dbUser.role)
+          if (dbUser.role === 'super_admin') {
+            hasSuperAdminAccess = true
+            console.log('PUT /api/users/[id] - ✅✅✅ DB confirms super_admin role - GRANTING ACCESS')
+          }
+        } else {
+          console.log('PUT /api/users/[id] - ❌ User not found by userId')
         }
-      } catch (err) {
-        // Continue to email lookup
+      } catch (err: any) {
+        console.log('PUT /api/users/[id] - ❌ Error finding user by userId:', err?.message || err)
       }
     }
     
@@ -126,27 +135,41 @@ export async function PUT(
     if (!hasSuperAdminAccess && !dbUser && user.email) {
       try {
         const userEmailLower = user.email.toLowerCase().trim()
+        console.log('PUT /api/users/[id] - Looking up user by email:', userEmailLower)
         dbUser = await User.findOne({ email: userEmailLower })
-        if (dbUser && dbUser.role === 'super_admin') {
-          hasSuperAdminAccess = true
+        if (dbUser) {
+          console.log('PUT /api/users/[id] - ✅ Found user by email, DB role:', dbUser.role)
+          if (dbUser.role === 'super_admin') {
+            hasSuperAdminAccess = true
+            console.log('PUT /api/users/[id] - ✅✅✅ DB confirms super_admin role - GRANTING ACCESS')
+          }
+        } else {
+          console.log('PUT /api/users/[id] - ❌ User not found by email')
         }
-      } catch (err) {
-        // Continue to fallback
+      } catch (err: any) {
+        console.log('PUT /api/users/[id] - ❌ Error finding user by email:', err?.message || err)
       }
     }
     
     // Fallback to token role if DB lookup failed
     if (!hasSuperAdminAccess && !dbUser) {
+      console.log('PUT /api/users/[id] - ⚠️ User not found in DB, checking token role:', user.role)
       hasSuperAdminAccess = isSuperAdmin(user)
+      console.log('PUT /api/users/[id] - Token-based super_admin check:', hasSuperAdminAccess)
     }
+    
+    console.log('PUT /api/users/[id] - Final decision - hasSuperAdminAccess:', hasSuperAdminAccess)
     
     // Only super_admin can update users
     if (!hasSuperAdminAccess) {
+      console.log('PUT /api/users/[id] - Access denied. Token role:', user.role, 'Email:', user.email, 'HasSuperAdminAccess:', hasSuperAdminAccess)
       return NextResponse.json(
         { error: 'Forbidden: Super admin access required' },
         { status: 403 }
       )
     }
+    
+    console.log('PUT /api/users/[id] - ✅ Access granted, proceeding with update')
     
     const body = await request.json()
     const { firstName, lastName, email, role, isActive } = body
