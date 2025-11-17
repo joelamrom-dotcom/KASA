@@ -53,20 +53,33 @@ export default function Sidebar() {
     if (!hasRefreshed && user && user.email === 'joelamrom@gmail.com') {
       setHasRefreshed(true)
       // Always refresh the session for joelamrom@gmail.com
-      fetch('/api/auth/refresh-user', { method: 'POST' })
+      const token = localStorage.getItem('token')
+      fetch('/api/auth/refresh-user', { 
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      })
         .then(res => {
           if (res.ok) {
             return res.json()
           }
-          throw new Error('Failed to refresh')
+          // If 404, route might not be deployed yet - log but don't fail
+          if (res.status === 404) {
+            console.warn('Refresh endpoint not found (404) - route may not be deployed yet')
+            return null
+          }
+          throw new Error(`Failed to refresh: ${res.status}`)
         })
         .then(data => {
-          console.log('Auto-refreshed user:', data.user)
-          setAuth(data.token, data.user)
-          // If role changed, reload the page
-          if (user.role !== data.user.role) {
-            console.log('Role changed from', user.role, 'to', data.user.role, '- reloading page')
-            window.location.reload()
+          if (data) {
+            console.log('Auto-refreshed user:', data.user)
+            setAuth(data.token, data.user)
+            // If role changed, reload the page
+            if (user.role !== data.user.role) {
+              console.log('Role changed from', user.role, 'to', data.user.role, '- reloading page')
+              window.location.reload()
+            }
           }
         })
         .catch(err => {
