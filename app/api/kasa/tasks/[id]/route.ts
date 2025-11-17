@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Task } from '@/lib/models'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,15 @@ export async function GET(
   try {
     await connectDB()
     
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const task = await Task.findById(params.id)
       .populate('relatedFamilyId', 'name')
       .populate('relatedMemberId', 'firstName lastName')
@@ -21,6 +31,14 @@ export async function GET(
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && task.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this task' },
+        { status: 403 }
       )
     }
     
@@ -41,6 +59,33 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Check if task exists and user has access
+    const task = await Task.findById(params.id)
+    if (!task) {
+      return NextResponse.json(
+        { error: 'Task not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && task.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this task' },
+        { status: 403 }
+      )
+    }
+    
     const body = await request.json()
     const { 
       title, 
