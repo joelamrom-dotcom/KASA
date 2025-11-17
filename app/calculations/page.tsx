@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { PlusIcon, CalculatorIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, CalculatorIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import TableImportExport from '@/app/components/TableImportExport'
+import Link from 'next/link'
 
 interface YearlyCalculation {
   _id: string
@@ -141,6 +142,67 @@ export default function CalculationsPage() {
             Calculate Year
           </button>
         </div>
+
+        {/* Info Banner */}
+        {calculations.length === 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <div className="flex items-start gap-3">
+              <InformationCircleIcon className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">How Calculations Work</h3>
+                <p className="text-blue-800 mb-3">
+                  Yearly calculations are automatically generated based on:
+                </p>
+                <ul className="list-disc list-inside text-blue-800 space-y-1 mb-4">
+                  <li>Families and their assigned payment plans</li>
+                  <li>Family members and their ages (determines which plan they're on)</li>
+                  <li>Lifecycle events (weddings, bar mitzvahs, births) for expense calculations</li>
+                  <li>Payments received during the year</li>
+                </ul>
+                <div className="flex gap-3">
+                  <Link
+                    href="/families"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Add Families
+                  </Link>
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors"
+                  >
+                    Calculate Year Anyway
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State - All calculations are $0 */}
+        {calculations.length > 0 && calculations.every(calc => 
+          (calc.calculatedIncome || 0) === 0 && 
+          (calc.calculatedExpenses || 0) === 0 && 
+          (calc.balance || 0) === 0
+        ) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+            <div className="flex items-start gap-3">
+              <InformationCircleIcon className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-yellow-900 mb-2">No Data Found</h3>
+                <p className="text-yellow-800 mb-3">
+                  All calculations show $0 because there are no families or payments in the system yet. 
+                  Calculations are based on families with payment plans assigned to them.
+                </p>
+                <Link
+                  href="/families"
+                  className="inline-block bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+                >
+                  Add Your First Family
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Year Selector and Summary */}
         {calculations.length > 0 && (
@@ -376,7 +438,6 @@ export default function CalculationsPage() {
           </div>
         )}
       </div>
-    </div>
     </div>
   )
 }
