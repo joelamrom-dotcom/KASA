@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getUser, logout } from '@/lib/auth'
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { getUser, logout, setAuth } from '@/lib/auth'
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useState, useRef, useEffect } from 'react'
 import { 
   HomeIcon,
@@ -156,6 +156,25 @@ export default function Sidebar() {
                       </span>
                     )}
                   </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/auth/refresh-user')
+                        if (res.ok) {
+                          const data = await res.json()
+                          setAuth(data.token, data.user)
+                          setShowUserMenu(false)
+                          window.location.reload()
+                        }
+                      } catch (error) {
+                        console.error('Failed to refresh user:', error)
+                      }
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group"
+                  >
+                    <ArrowPathIcon className="h-5 w-5 text-gray-500 group-hover:text-blue-600" />
+                    <span className="font-medium">Refresh Session</span>
+                  </button>
                   <button
                     onClick={() => {
                       logout()
