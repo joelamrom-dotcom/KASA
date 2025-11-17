@@ -27,7 +27,7 @@ export async function GET(
       .populate('relatedMemberId', 'firstName lastName')
       .lean()
     
-    if (!task) {
+    if (!task || Array.isArray(task)) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
