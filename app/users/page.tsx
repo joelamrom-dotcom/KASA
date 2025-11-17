@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { setAuth } from '@/lib/auth'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
-import Toast from '@/app/components/Toast'
+import { showToast } from '@/app/components/Toast'
 import { TableSkeleton } from '@/app/components/LoadingSkeleton'
 
 interface User {
@@ -60,7 +60,6 @@ export default function UsersPage() {
   })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => {
     const user = getUser()
@@ -96,7 +95,7 @@ export default function UsersPage() {
       setUsers(Array.isArray(data) ? data : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch users')
-      setToast({ message: err instanceof Error ? err.message : 'Failed to fetch users', type: 'error' })
+      showToast(err instanceof Error ? err.message : 'Failed to fetch users', 'error')
     } finally {
       setLoading(false)
     }
@@ -144,10 +143,10 @@ export default function UsersPage() {
       const updatedUser = await response.json()
       setUsers(users.map(u => u._id === editingUserId ? updatedUser : u))
       setEditingUserId(null)
-      setToast({ message: 'User updated successfully', type: 'success' })
+      showToast('User updated successfully', 'success')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update user')
-      setToast({ message: err instanceof Error ? err.message : 'Failed to update user', type: 'error' })
+      showToast(err instanceof Error ? err.message : 'Failed to update user', 'error')
     }
   }
 
@@ -172,10 +171,10 @@ export default function UsersPage() {
       setUsers(users.filter(u => u._id !== userToDelete._id))
       setShowDeleteDialog(false)
       setUserToDelete(null)
-      setToast({ message: 'User deleted successfully', type: 'success' })
+      showToast('User deleted successfully', 'success')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete user')
-      setToast({ message: err instanceof Error ? err.message : 'Failed to delete user', type: 'error' })
+      showToast(err instanceof Error ? err.message : 'Failed to delete user', 'error')
     }
   }
 
@@ -199,7 +198,7 @@ export default function UsersPage() {
       window.location.href = '/'
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to impersonate user')
-      setToast({ message: err instanceof Error ? err.message : 'Failed to impersonate user', type: 'error' })
+      showToast(err instanceof Error ? err.message : 'Failed to impersonate user', 'error')
     }
   }
 
@@ -432,14 +431,6 @@ export default function UsersPage() {
         variant="danger"
       />
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
     </div>
   )
 }
