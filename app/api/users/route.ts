@@ -27,36 +27,56 @@ export async function GET(request: NextRequest) {
     let hasSuperAdminAccess = false
     let dbUser = null
     
+    console.log('GET /api/users - ========== START ROLE CHECK ==========')
     console.log('GET /api/users - Token info - userId:', user.userId, 'email:', user.email, 'role:', user.role)
     
     // Try to find current user in DB by userId first (most reliable)
     if (user.userId) {
       try {
+        console.log('GET /api/users - Looking up user by userId:', user.userId)
         dbUser = await User.findById(user.userId)
         if (dbUser) {
-          console.log('GET /api/users - Found user by userId:', dbUser.email, 'DB role:', dbUser.role)
+          console.log('GET /api/users - ✅ Found user by userId')
+          console.log('GET /api/users -   DB email:', dbUser.email)
+          console.log('GET /api/users -   DB role:', dbUser.role)
+          console.log('GET /api/users -   DB role type:', typeof dbUser.role)
+          console.log('GET /api/users -   Is super_admin?', dbUser.role === 'super_admin')
           if (dbUser.role === 'super_admin') {
-            console.log('GET /api/users - ✅ DB confirms super_admin role - GRANTING ACCESS')
+            console.log('GET /api/users - ✅✅✅ DB confirms super_admin role - GRANTING ACCESS')
             hasSuperAdminAccess = true
+          } else {
+            console.log('GET /api/users - ❌ DB role is NOT super_admin, it is:', dbUser.role)
           }
+        } else {
+          console.log('GET /api/users - ❌ User not found by userId')
         }
-      } catch (err) {
-        console.log('GET /api/users - Error finding user by userId:', err)
+      } catch (err: any) {
+        console.log('GET /api/users - ❌ Error finding user by userId:', err?.message || err)
       }
+    } else {
+      console.log('GET /api/users - ⚠️ No userId in token')
     }
     
     // If not found by userId, try by email (handles both joelamrom and yoelamrom)
     if (!hasSuperAdminAccess && !dbUser && user.email) {
       try {
         const userEmailLower = user.email.toLowerCase().trim()
+        console.log('GET /api/users - Looking up user by email:', userEmailLower)
         dbUser = await User.findOne({ email: userEmailLower })
         if (dbUser) {
-          console.log('GET /api/users - Found user by email:', dbUser.email, 'DB role:', dbUser.role)
+          console.log('GET /api/users - ✅ Found user by email')
+          console.log('GET /api/users -   DB email:', dbUser.email)
+          console.log('GET /api/users -   DB role:', dbUser.role)
+          console.log('GET /api/users -   DB role type:', typeof dbUser.role)
+          console.log('GET /api/users -   Is super_admin?', dbUser.role === 'super_admin')
           if (dbUser.role === 'super_admin') {
-            console.log('GET /api/users - ✅ DB confirms super_admin role - GRANTING ACCESS')
+            console.log('GET /api/users - ✅✅✅ DB confirms super_admin role - GRANTING ACCESS')
             hasSuperAdminAccess = true
+          } else {
+            console.log('GET /api/users - ❌ DB role is NOT super_admin, it is:', dbUser.role)
           }
         } else {
+          console.log('GET /api/users - ❌ User not found by email:', userEmailLower)
           // Also check for joelamrom/yoelamrom variations (in case of typo)
           const alternateEmail = userEmailLower === 'joelamrom@gmail.com' 
             ? 'yoelamrom@gmail.com' 
@@ -65,15 +85,21 @@ export async function GET(request: NextRequest) {
             : null
           
           if (alternateEmail) {
+            console.log('GET /api/users - Trying alternate email:', alternateEmail)
             dbUser = await User.findOne({ email: alternateEmail })
-            if (dbUser && dbUser.role === 'super_admin') {
-              console.log('GET /api/users - ✅ Found alternate email with super_admin role - GRANTING ACCESS')
-              hasSuperAdminAccess = true
+            if (dbUser) {
+              console.log('GET /api/users - ✅ Found user by alternate email')
+              console.log('GET /api/users -   DB email:', dbUser.email)
+              console.log('GET /api/users -   DB role:', dbUser.role)
+              if (dbUser.role === 'super_admin') {
+                console.log('GET /api/users - ✅✅✅ Found alternate email with super_admin role - GRANTING ACCESS')
+                hasSuperAdminAccess = true
+              }
             }
           }
         }
-      } catch (err) {
-        console.log('GET /api/users - Error finding user by email:', err)
+      } catch (err: any) {
+        console.log('GET /api/users - ❌ Error finding user by email:', err?.message || err)
       }
     }
     
@@ -81,7 +107,11 @@ export async function GET(request: NextRequest) {
     if (!hasSuperAdminAccess && !dbUser) {
       console.log('GET /api/users - ⚠️ User not found in DB, checking token role:', user.role)
       hasSuperAdminAccess = isSuperAdmin(user)
+      console.log('GET /api/users - Token-based super_admin check:', hasSuperAdminAccess)
     }
+    
+    console.log('GET /api/users - ========== END ROLE CHECK ==========')
+    console.log('GET /api/users - Final decision - hasSuperAdminAccess:', hasSuperAdminAccess)
     
     // Only super_admin can see all users
     if (!hasSuperAdminAccess) {
