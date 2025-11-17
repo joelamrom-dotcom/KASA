@@ -9,8 +9,10 @@ import {
   CheckIcon,
   XMarkIcon,
   ShieldCheckIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
+import { setAuth } from '@/lib/auth'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
 import Toast from '@/app/components/Toast'
 import LoadingSkeleton from '@/app/components/LoadingSkeleton'
@@ -174,6 +176,30 @@ export default function UsersPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete user')
       setToast({ message: err instanceof Error ? err.message : 'Failed to delete user', type: 'error' })
+    }
+  }
+
+  const handleImpersonate = async (user: User) => {
+    try {
+      const response = await fetch(`/api/users/${user._id}/impersonate`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to impersonate user')
+      }
+
+      const data = await response.json()
+      
+      // Set the new token and user data
+      setAuth(data.token, data.user)
+      
+      // Redirect to dashboard
+      window.location.href = '/'
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to impersonate user')
+      setToast({ message: err instanceof Error ? err.message : 'Failed to impersonate user', type: 'error' })
     }
   }
 
@@ -357,6 +383,13 @@ export default function UsersPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleImpersonate(user)}
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Login as User"
+                          >
+                            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                          </button>
                           <button
                             onClick={() => handleEdit(user)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
