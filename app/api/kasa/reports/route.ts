@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Report } from '@/lib/models'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
 export const dynamic = 'force-dynamic'
 
-// GET - Get all reports
+// GET - Get all reports (filtered by user)
 export async function GET(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - admin sees all, regular users see only their reports
+    const query = isAdmin(user) ? {} : { userId: user.userId }
 
-    const reports = await Report.find({})
+    const reports = await Report.find(query)
       .sort({ createdAt: -1 })
       .lean()
 
@@ -30,6 +43,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
     const body = await request.json()
     const { title, question, answer, reportType, metadata, tags, notes } = body
@@ -42,6 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     const report = await Report.create({
+      userId: user.userId, // Associate report with user
       title,
       question,
       answer,
