@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import { PlusIcon, CalculatorIcon } from '@heroicons/react/24/outline'
 import TableImportExport from '@/app/components/TableImportExport'
 
