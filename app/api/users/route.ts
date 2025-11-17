@@ -23,8 +23,19 @@ export async function GET(request: NextRequest) {
       )
     }
     
+    // Special handling for joelamrom@gmail.com - always check DB role
+    let hasSuperAdminAccess = isSuperAdmin(user)
+    if (user.email === 'joelamrom@gmail.com' && !hasSuperAdminAccess) {
+      console.log('GET /api/users - Checking DB role for joelamrom@gmail.com')
+      const dbUser = await User.findOne({ email: 'joelamrom@gmail.com' })
+      if (dbUser && dbUser.role === 'super_admin') {
+        console.log('GET /api/users - DB confirms super_admin role for joelamrom@gmail.com')
+        hasSuperAdminAccess = true
+      }
+    }
+    
     // Only super_admin can see all users
-    if (!isSuperAdmin(user)) {
+    if (!hasSuperAdminAccess) {
       console.log('GET /api/users - Access denied. User role:', user.role, 'Email:', user.email)
       return NextResponse.json(
         { error: 'Forbidden: Super admin access required' },

@@ -19,9 +19,22 @@ export async function GET(request: NextRequest) {
       )
     }
     
+    // Special handling for joelamrom@gmail.com - always check DB role
+    let userRole = user.role
+    let isSuperAdminUser = user.role === 'super_admin'
+    if (user.email === 'joelamrom@gmail.com' && !isSuperAdminUser) {
+      console.log('GET /api/kasa/families - Checking DB role for joelamrom@gmail.com')
+      const dbUser = await User.findOne({ email: 'joelamrom@gmail.com' })
+      if (dbUser && dbUser.role === 'super_admin') {
+        console.log('GET /api/kasa/families - DB confirms super_admin role for joelamrom@gmail.com')
+        userRole = 'super_admin'
+        isSuperAdminUser = true
+      }
+    }
+    
     // Build query - super_admin sees all, admin sees all, regular users see only their data, family users see only their family
     let query: any = {}
-    if (user.role === 'super_admin' || isAdmin(user)) {
+    if (isSuperAdminUser || isAdmin(user)) {
       // Super admin and admin see all families
       query = {}
       console.log('GET /api/kasa/families - Super admin/admin: showing all families')
