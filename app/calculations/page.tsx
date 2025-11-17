@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { PlusIcon, CalculatorIcon } from '@heroicons/react/24/outline'
 import TableImportExport from '@/app/components/TableImportExport'
 
@@ -80,7 +80,7 @@ export default function CalculationsPage() {
     }
   }
 
-  const handleCalculate = async (e: React.FormEvent) => {
+  const handleCalculate = async (e: FormEvent) => {
     e.preventDefault()
     try {
       const res = await fetch('/api/kasa/calculations', {
