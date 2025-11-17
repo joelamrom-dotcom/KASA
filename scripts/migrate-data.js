@@ -1,12 +1,39 @@
 /**
  * Migration script to assign all existing data to joelamrom@gmail.com
  * Run this script once: node scripts/migrate-data.js
+ * 
+ * Make sure to set MONGODB_URI environment variable:
+ * Windows: $env:MONGODB_URI="your-connection-string"
+ * Linux/Mac: export MONGODB_URI="your-connection-string"
  */
 
 const mongoose = require('mongoose')
-require('dotenv').config({ path: '.env.local' })
+const fs = require('fs')
+const path = require('path')
 
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL
+// Try to load .env.local file manually
+try {
+  const envPath = path.join(__dirname, '..', '.env.local')
+  if (fs.existsSync(envPath)) {
+    const envFile = fs.readFileSync(envPath, 'utf8')
+    envFile.split('\n').forEach(line => {
+      const match = line.match(/^([^=:#]+)=(.*)$/)
+      if (match) {
+        const key = match[1].trim()
+        const value = match[2].trim().replace(/^["']|["']$/g, '')
+        if (!process.env[key]) {
+          process.env[key] = value
+        }
+      }
+    })
+  }
+} catch (error) {
+  console.log('Could not load .env.local, using environment variables')
+}
+
+// Default MongoDB URI (same as in lib/database.ts)
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL || 
+  'mongodb+srv://joelamrom:ssSTmBrRHh8FeZFh@cluster0joel.bwr2yp0.mongodb.net/kasa-family-db?retryWrites=true&w=majority&appName=Cluster0Joel'
 
 if (!MONGODB_URI) {
   console.error('MONGODB_URI not found in environment variables')
