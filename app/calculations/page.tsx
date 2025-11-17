@@ -100,6 +100,7 @@ export default function CalculationsPage() {
     }
   }
 
+  // Early return for loading state
   if (loading) {
     return <div className="min-h-screen p-8">Loading...</div>
   }
