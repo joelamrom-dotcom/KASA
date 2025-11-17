@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { PlusIcon, CalculatorIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import TableImportExport from '@/app/components/TableImportExport'
 import Link from 'next/link'
@@ -102,14 +102,15 @@ export default function CalculationsPage() {
   }
 
   // Check if all calculations are $0
-  const allCalculationsZero = useMemo(() => {
-    if (calculations.length === 0) return false
-    return calculations.every((calc) => {
-      return (calc.calculatedIncome || 0) === 0 && 
-             (calc.calculatedExpenses || 0) === 0 && 
-             (calc.balance || 0) === 0
+  let allCalculationsZero = false
+  if (calculations.length > 0) {
+    allCalculationsZero = calculations.every((calc) => {
+      const income = calc.calculatedIncome || 0
+      const expenses = calc.calculatedExpenses || 0
+      const balance = calc.balance || 0
+      return income === 0 && expenses === 0 && balance === 0
     })
-  }, [calculations])
+  }
 
   if (loading) {
     return (
