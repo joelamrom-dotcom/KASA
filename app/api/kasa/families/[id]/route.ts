@@ -197,12 +197,29 @@ export async function DELETE(
   try {
     await connectDB()
     
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const family = await Family.findById(params.id)
     
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
         { status: 404 }
+      )
+    }
+    
+    // Check ownership
+    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
       )
     }
 

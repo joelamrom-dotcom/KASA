@@ -164,14 +164,33 @@ export async function DELETE(
   try {
     await connectDB()
     
-    const task = await Task.findByIdAndDelete(params.id)
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     
+    // Check if task exists and user has access
+    const task = await Task.findById(params.id)
     if (!task) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
       )
     }
+    
+    // Check ownership
+    if (!isAdmin(user) && task.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this task' },
+        { status: 403 }
+      )
+    }
+    
+    await Task.findByIdAndDelete(params.id)
     
     return NextResponse.json({ message: 'Task deleted successfully' })
   } catch (error: any) {
