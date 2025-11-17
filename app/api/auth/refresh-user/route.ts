@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch fresh user data from database
-    const user = await User.findById(currentUser.userId)
+    // Fetch fresh user data from database using the email from token (more reliable)
+    const user = await User.findOne({ email: currentUser.email })
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },

@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Build query - admin sees all, regular users see only their data, family users see only their family
+    // Build query - super_admin sees all, admin sees all, regular users see only their data, family users see only their family
     let query: any = {}
-    if (isAdmin(user)) {
-      // Admin sees all
+    if (user.role === 'super_admin' || isAdmin(user)) {
+      // Super admin and admin see all families
       query = {}
     } else if (user.role === 'family' && user.familyId) {
       // Family users see only their own family
