@@ -101,17 +101,6 @@ export default function CalculationsPage() {
     }
   }
 
-  // Check if all calculations are $0
-  let allCalculationsZero = false
-  if (calculations.length > 0) {
-    allCalculationsZero = calculations.every((calc) => {
-      const income = calc.calculatedIncome || 0
-      const expenses = calc.calculatedExpenses || 0
-      const balance = calc.balance || 0
-      return income === 0 && expenses === 0 && balance === 0
-    })
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen p-8">
@@ -190,7 +179,12 @@ export default function CalculationsPage() {
         )}
 
         {/* Empty State - All calculations are $0 */}
-        {allCalculationsZero && (
+        {calculations.length > 0 && calculations.every((calc) => {
+          const income = calc.calculatedIncome || 0
+          const expenses = calc.calculatedExpenses || 0
+          const balance = calc.balance || 0
+          return income === 0 && expenses === 0 && balance === 0
+        }) && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
             <div className="flex items-start gap-3">
               <InformationCircleIcon className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
