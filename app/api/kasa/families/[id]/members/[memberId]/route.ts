@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { FamilyMember } from '@/lib/models'
+import { FamilyMember, Family } from '@/lib/models'
 import { convertToHebrewDate, calculateBarMitzvahDate, hasReachedBarMitzvahAge } from '@/lib/hebrew-date'
 import { LifecycleEventPayment } from '@/lib/models'
+import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 import mongoose from 'mongoose'
 
 // PUT - Update a member
@@ -232,6 +233,46 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Check if family exists and user has access
+    const family = await Family.findById(params.id)
+    if (!family) {
+      return NextResponse.json(
+        { error: 'Family not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check ownership - admin, super_admin, family owner, or family user accessing their own family
+    const isFamilyOwner = family.userId?.toString() === user.userId
+    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    
+    // Special handling for joelamrom@gmail.com - ALWAYS check DB role (bypass token)
+    let hasSuperAdminAccess = user.role === 'super_admin'
+    const emailLower = user.email?.toLowerCase()
+    if (emailLower === 'joelamrom@gmail.com') {
+      const { User } = await import('@/lib/models')
+      const dbUser = await User.findOne({ email: 'joelamrom@gmail.com' })
+      if (dbUser && dbUser.role === 'super_admin') {
+        hasSuperAdminAccess = true
+      }
+    }
+    
+    if (!hasSuperAdminAccess && !isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have access to this family' },
+        { status: 403 }
+      )
+    }
     
     const member = await FamilyMember.findOne({
       _id: params.memberId,
