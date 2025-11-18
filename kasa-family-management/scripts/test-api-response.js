@@ -31,7 +31,11 @@ const Family = mongoose.models.Family || mongoose.model('Family', FamilySchema)
 
 async function testAPIResponse() {
   // Use the same database as the API (cloud MongoDB Atlas)
-  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://joelamrom:ssSTmBrRHh8FeZFh@cluster0joel.bwr2yp0.mongodb.net/kasa-family-db?retryWrites=true&w=majority&appName=Cluster0Joel'
+  const MONGODB_URI = process.env.MONGODB_URI
+  if (!MONGODB_URI) {
+    console.error('Error: MONGODB_URI environment variable is required')
+    process.exit(1)
+  }
   
   try {
     console.log('Connecting to MongoDB...')

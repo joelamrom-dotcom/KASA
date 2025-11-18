@@ -29,12 +29,11 @@ try {
   console.log('Could not load .env.local, using environment variables')
 }
 
-// Default MongoDB URI
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL || 
-  'mongodb+srv://joelamrom:ssSTmBrRHh8FeZFh@cluster0joel.bwr2yp0.mongodb.net/kasa-family-db?retryWrites=true&w=majority&appName=Cluster0Joel'
+// MongoDB URI from environment variable (REQUIRED)
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL
 
 if (!MONGODB_URI) {
-  console.error('MONGODB_URI not found in environment variables')
+  console.error('Error: MONGODB_URI environment variable is required')
   process.exit(1)
 }
 

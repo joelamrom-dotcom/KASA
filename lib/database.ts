@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 
-// Default to cloud MongoDB Atlas, can be overridden with MONGODB_URI env variable
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://joelamrom:ssSTmBrRHh8FeZFh@cluster0joel.bwr2yp0.mongodb.net/kasa-family-db?retryWrites=true&w=majority&appName=Cluster0Joel'
+// MongoDB connection string from environment variable (REQUIRED)
+const MONGODB_URI = process.env.MONGODB_URI
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local')

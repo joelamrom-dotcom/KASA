@@ -8,7 +8,11 @@ require('dotenv').config({ path: '.env.local' })
 async function fixZeidyPlan() {
   try {
     // Connect to MongoDB
-    const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://joelamrom:ssSTmBrRHh8FeZFh@cluster0joel.bwr2yp0.mongodb.net/kasa-family-db?retryWrites=true&w=majority&appName=Cluster0Joel'
+    const MONGODB_URI = process.env.MONGODB_URI
+  if (!MONGODB_URI) {
+    console.error('Error: MONGODB_URI environment variable is required')
+    process.exit(1)
+  }
     await mongoose.connect(MONGODB_URI)
     console.log('Connected to MongoDB\n')
 

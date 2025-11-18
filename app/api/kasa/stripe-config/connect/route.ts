@@ -89,6 +89,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Helper function to check if Connect is enabled by attempting to retrieve account list
+async function isConnectEnabled(): Promise<boolean> {
+  if (!stripe) {
+    return false
+  }
+  
+  try {
+    // Try to list accounts - if Connect is enabled, this will work (even if empty)
+    // If Connect is not enabled, this will throw an error
+    await stripe.accounts.list({ limit: 1 })
+    return true
+  } catch (error: any) {
+    // If we get a Connect-related error, Connect is not enabled
+    if (error.message?.toLowerCase().includes('connect') && 
+        (error.message?.toLowerCase().includes('signed up') || 
+         error.message?.toLowerCase().includes('enabled'))) {
+      return false
+    }
+    // Other errors might be network issues, so we'll try anyway
+    return true
+  }
+}
+
 // Helper function to get or create Stripe Connect account
 async function getOrCreateStripeAccount(userId: string): Promise<string> {
   if (!stripe) {
@@ -103,9 +126,16 @@ async function getOrCreateStripeAccount(userId: string): Promise<string> {
     return existingConfig.stripeAccountId
   }
   
+  // Check if Connect is enabled before attempting to create account
+  const connectEnabled = await isConnectEnabled()
+  if (!connectEnabled) {
+    throw new Error('You can only create new accounts if you\'ve signed up for Connect')
+  }
+  
   try {
     // Create new Stripe Connect Express account (can be created via API)
     // Express accounts are faster to onboard and can be created programmatically
+    // Once Connect is enabled, you can create accounts entirely via API keys
     const account = await stripe.accounts.create({
       type: 'express', // Express accounts can be created via API
       country: 'US', // Default, can be made configurable
