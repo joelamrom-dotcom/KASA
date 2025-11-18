@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     }
     
     // Build query - each user sees only their own settings
-    // Explicitly require userId to exist and match exactly
+    // Simple equality - MongoDB only matches if userId field exists and equals exactly
     const query: any = { 
       isActive: true, 
-      userId: { $exists: true, $eq: user.userId }
+      userId: user.userId
     }
     
     console.log(`Cycle config GET - Query for userId: ${user.userId}, email: ${user.email}`)
@@ -90,10 +90,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query - each user sees only their own settings
-    // Explicitly require userId to exist and match exactly
+    // Simple equality - MongoDB only matches if userId field exists and equals exactly
     const query: any = { 
       isActive: true, 
-      userId: { $exists: true, $eq: user.userId }
+      userId: user.userId
     }
 
     // Check if config already exists for this user
