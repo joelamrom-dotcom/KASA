@@ -41,13 +41,27 @@ async function getAdminUserId(userId: string): Promise<string | null> {
 }
 
 // Get Stripe instance for a user (uses their admin's connected Stripe account)
-export async function getUserStripe(userId: string): Promise<Stripe | null> {
+// If familyId is provided, uses the family's admin (family.userId)
+export async function getUserStripe(userId: string, familyId?: string): Promise<Stripe | null> {
   await connectDB()
   
-  // Get admin userId (user's own if admin, or their admin's if regular user)
-  const adminUserId = await getAdminUserId(userId)
+  let adminUserId: string | null = null
+  
+  // If familyId is provided, use the family's userId (which is the admin)
+  if (familyId) {
+    const family = await Family.findById(familyId)
+    if (family && family.userId) {
+      adminUserId = family.userId.toString()
+    }
+  }
+  
+  // If no admin found through family, find admin through user
   if (!adminUserId) {
-    console.error(`No admin found for user ${userId}`)
+    adminUserId = await getAdminUserId(userId)
+  }
+  
+  if (!adminUserId) {
+    console.error(`No admin found for user ${userId}${familyId ? ` (family ${familyId})` : ''}`)
     return null
   }
   
@@ -76,11 +90,25 @@ export async function getUserStripe(userId: string): Promise<Stripe | null> {
 }
 
 // Get Stripe account ID for a user (uses their admin's account)
-export async function getUserStripeAccountId(userId: string): Promise<string | null> {
+// If familyId is provided, uses the family's admin (family.userId)
+export async function getUserStripeAccountId(userId: string, familyId?: string): Promise<string | null> {
   await connectDB()
   
-  // Get admin userId (user's own if admin, or their admin's if regular user)
-  const adminUserId = await getAdminUserId(userId)
+  let adminUserId: string | null = null
+  
+  // If familyId is provided, use the family's userId (which is the admin)
+  if (familyId) {
+    const family = await Family.findById(familyId)
+    if (family && family.userId) {
+      adminUserId = family.userId.toString()
+    }
+  }
+  
+  // If no admin found through family, find admin through user
+  if (!adminUserId) {
+    adminUserId = await getAdminUserId(userId)
+  }
+  
   if (!adminUserId) {
     return null
   }
