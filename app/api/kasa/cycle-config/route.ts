@@ -94,14 +94,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query - each user sees only their own settings
-    // Explicitly exclude configs without userId (old configs from before user scoping)
+    // Convert userId to ObjectId for proper comparison
+    const mongoose = require('mongoose')
+    const userObjectId = new mongoose.Types.ObjectId(user.userId)
+    
     const query: any = { 
       isActive: true,
-      $and: [
-        { userId: { $exists: true } },
-        { userId: { $ne: null } },
-        { userId: user.userId }
-      ]
+      userId: userObjectId // Direct match - MongoDB will exclude null/undefined automatically
     }
 
     // Check if config already exists for this user
@@ -125,7 +124,7 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // Deactivate all existing configs for this user (if any)
-      const deactivateQuery: any = { userId: user.userId }
+      const deactivateQuery: any = { userId: userObjectId }
       await CycleConfig.updateMany(deactivateQuery, { isActive: false })
 
       // Create new active config
