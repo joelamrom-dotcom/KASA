@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     }
     
     // Build query - each user sees only their own settings
-    // Simple equality - MongoDB only matches if userId field exists and equals exactly
+    // Explicitly exclude configs without userId (old configs from before user scoping)
     const query: any = { 
       isActive: true, 
-      userId: user.userId
+      userId: { $exists: true, $ne: null, $eq: user.userId }
     }
     
     console.log(`Cycle config GET - Query for userId: ${user.userId}, email: ${user.email}`)
