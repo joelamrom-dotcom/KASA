@@ -215,22 +215,29 @@ export default function SettingsPage() {
     try {
       setCycleLoading(true)
       const res = await fetch('/api/kasa/cycle-config')
+      console.log('🔄 Cycle config fetch - Status:', res.status, res.statusText)
       if (res.ok) {
         const config = await res.json()
+        console.log('🔄 Cycle config fetch - Found config:', config)
         setCycleConfig(config)
         setCycleFormData({
           cycleStartMonth: config.cycleStartMonth || 9,
           cycleStartDay: config.cycleStartDay || 1,
           description: config.description || 'Membership cycle start date'
         })
+        console.log('🔄 Cycle config fetch - Set formData with saved values')
       } else {
         // No config exists for this user - clear everything
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        console.log('🔄 Cycle config fetch - No config found (404):', errorData)
         setCycleConfig(null)
+        // Keep defaults but they're just placeholders, not saved values
         setCycleFormData({
           cycleStartMonth: 9, // Default form values (not saved)
           cycleStartDay: 1,
           description: 'Membership cycle start date'
         })
+        console.log('🔄 Cycle config fetch - Set formData to defaults (not saved)')
       }
     } catch (error) {
       console.error('Error fetching cycle config:', error)
@@ -1798,14 +1805,24 @@ export default function SettingsPage() {
             )}
 
             <form onSubmit={handleSaveCycleConfig} className="space-y-4">
+              {!cycleConfig && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-700">
+                    <strong>Note:</strong> The values below are default placeholders. They will only be saved when you click "Save Configuration".
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700">
                   Cycle Start Month *
                 </label>
                 <select
                   value={cycleFormData.cycleStartMonth}
-                  onChange={(e) => setCycleFormData({ ...cycleFormData, cycleStartMonth: parseInt(e.target.value) })}
-                  className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  onChange={(e) => {
+                    console.log('🔄 Cycle month onChange - New value:', e.target.value)
+                    setCycleFormData({ ...cycleFormData, cycleStartMonth: parseInt(e.target.value) })
+                  }}
+                  className={`w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${!cycleConfig ? 'border-yellow-300 bg-yellow-50' : ''}`}
                   required
                 >
                   <option value={1}>January</option>
@@ -1835,8 +1852,11 @@ export default function SettingsPage() {
                   min="1"
                   max="31"
                   value={cycleFormData.cycleStartDay}
-                  onChange={(e) => setCycleFormData({ ...cycleFormData, cycleStartDay: parseInt(e.target.value) || 1 })}
-                  className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  onChange={(e) => {
+                    console.log('🔄 Cycle day onChange - New value:', e.target.value)
+                    setCycleFormData({ ...cycleFormData, cycleStartDay: parseInt(e.target.value) || 1 })
+                  }}
+                  className={`w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${!cycleConfig ? 'border-yellow-300 bg-yellow-50' : ''}`}
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
