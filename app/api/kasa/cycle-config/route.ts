@@ -17,9 +17,20 @@ export async function GET(request: NextRequest) {
     }
     
     // Build query - each user sees only their own settings
+    // Explicitly require userId to avoid matching old configs without userId
     const query: any = { isActive: true, userId: user.userId }
     
     const config = await CycleConfig.findOne(query)
+    
+    // If no config found, check if there are any old configs without userId that might interfere
+    // This shouldn't happen, but we want to be explicit
+    if (!config) {
+      // Double-check: ensure we're not accidentally matching configs without userId
+      const oldConfigs = await CycleConfig.find({ isActive: true, userId: { $exists: false } })
+      if (oldConfigs.length > 0) {
+        console.warn(`Found ${oldConfigs.length} old cycle config(s) without userId - these will be ignored`)
+      }
+    }
     
     if (!config) {
       // Return default if no config exists

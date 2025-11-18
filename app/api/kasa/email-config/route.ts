@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { EmailConfig } from '@/lib/models'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // GET - Get email configuration
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectDB()
-    const config = await EmailConfig.findOne({ isActive: true })
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - each user sees only their own settings
+    const query: any = { isActive: true, userId: user.userId }
+    const config = await EmailConfig.findOne(query)
     
     if (!config) {
       return NextResponse.json({ error: 'Email configuration not found' }, { status: 404 })
@@ -31,6 +43,15 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     const { email, password, fromName } = body
 
@@ -41,8 +62,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if config already exists
-    const existingConfig = await EmailConfig.findOne({ isActive: true })
+    // Build query - each user sees only their own settings
+    const query: any = { isActive: true, userId: user.userId }
+    
+    // Check if config already exists for this user
+    const existingConfig = await EmailConfig.findOne(query)
 
     if (existingConfig) {
       // Update existing config
@@ -75,11 +99,13 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Deactivate all existing configs (if any)
-      await EmailConfig.updateMany({}, { isActive: false })
+      // Deactivate all existing configs for this user (if any)
+      const deactivateQuery: any = { userId: user.userId }
+      await EmailConfig.updateMany(deactivateQuery, { isActive: false })
 
       // Create new active config
       const config = await EmailConfig.create({
+        userId: user.userId, // All users (including super_admins) have their own settings
         email,
         password,
         fromName: fromName || 'Kasa Family Management',

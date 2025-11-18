@@ -189,11 +189,14 @@ const StatementSchema = new Schema({
 
 // Email Configuration Schema
 const EmailConfigSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this email config (optional for backward compatibility)
   email: { type: String, required: true },
   password: { type: String, required: true }, // Encrypted or stored securely
   fromName: { type: String, default: 'Kasa Family Management' },
   isActive: { type: Boolean, default: true },
 }, { timestamps: true })
+
+EmailConfigSchema.index({ userId: 1, isActive: 1 }) // Index for faster queries
 
 // Cycle Configuration Schema (Membership Year Configuration)
 const CycleConfigSchema = new Schema({
