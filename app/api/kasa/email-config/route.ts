@@ -19,8 +19,12 @@ export async function GET(request: NextRequest) {
     // Build query - each user sees only their own settings
     // Explicitly exclude configs without userId (old configs from before user scoping)
     const query: any = { 
-      isActive: true, 
-      userId: { $exists: true, $ne: null, $eq: user.userId }
+      isActive: true,
+      $and: [
+        { userId: { $exists: true } },
+        { userId: { $ne: null } },
+        { userId: user.userId }
+      ]
     }
     
     console.log(`Email config GET - Query for userId: ${user.userId}, email: ${user.email}`)
@@ -76,8 +80,12 @@ export async function POST(request: NextRequest) {
     // Build query - each user sees only their own settings
     // Explicitly exclude configs without userId (old configs from before user scoping)
     const query: any = { 
-      isActive: true, 
-      userId: { $exists: true, $ne: null, $eq: user.userId }
+      isActive: true,
+      $and: [
+        { userId: { $exists: true } },
+        { userId: { $ne: null } },
+        { userId: user.userId }
+      ]
     }
     
     // Check if config already exists for this user
