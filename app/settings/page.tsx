@@ -90,12 +90,55 @@ export default function SettingsPage() {
   })
 
   useEffect(() => {
+    // Fetch user role first to determine which tabs to show
+    const fetchUserRole = async () => {
+      // First, try to get role from localStorage user object (fastest)
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const userData = JSON.parse(userStr)
+          if (userData.role) {
+            setUserRole(userData.role)
+            console.log('📋 User role from localStorage:', userData.role)
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing localStorage user:', e)
+      }
+      
+      // Then fetch from API to get latest role
+      try {
+        const userRes = await fetch('/api/users/me')
+        if (userRes.ok) {
+          const userData = await userRes.json()
+          setUserRole(userData.role)
+          console.log('📋 User role from API:', userData.role)
+        } else {
+          // Fallback: try to get role from token
+          try {
+            const token = localStorage.getItem('token')
+            if (token) {
+              const payload = JSON.parse(atob(token.split('.')[1]))
+              if (payload.role) {
+                setUserRole(payload.role)
+                console.log('📋 User role from token:', payload.role)
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing token:', e)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error)
+      }
+    }
+    
+    fetchUserRole()
     fetchEmailConfig()
     fetchEventTypes()
     fetchPlans()
     fetchKevittelData()
     fetchCycleConfig()
-    fetchStripeConfig()
   }, [])
 
   // Refresh Kevittel data when switching to the Kevittel tab
@@ -221,18 +264,11 @@ export default function SettingsPage() {
     try {
       setStripeLoading(true)
       
-      // Check user role first
-      const userRes = await fetch('/api/users/me')
-      if (userRes.ok) {
-        const userData = await userRes.json()
-        setUserRole(userData.role)
-        
-        // Only fetch Stripe config if user is admin or super_admin
-        if (userData.role !== 'admin' && userData.role !== 'super_admin') {
-          setStripeConfig(null)
-          setStripeLoading(false)
-          return
-        }
+      // Only fetch Stripe config if user is admin or super_admin
+      if (userRole !== 'admin' && userRole !== 'super_admin') {
+        setStripeConfig(null)
+        setStripeLoading(false)
+        return
       }
       
       const res = await fetch('/api/kasa/stripe-config')
@@ -253,6 +289,13 @@ export default function SettingsPage() {
       setStripeLoading(false)
     }
   }
+  
+  // Refetch Stripe config when userRole changes
+  useEffect(() => {
+    if (userRole === 'admin' || userRole === 'super_admin') {
+      fetchStripeConfig()
+    }
+  }, [userRole])
 
   const handleConnectStripe = async () => {
     try {
