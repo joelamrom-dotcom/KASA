@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
 import { PlusIcon, CalculatorIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import TableImportExport from '@/app/components/TableImportExport'
 import Link from 'next/link'
@@ -122,7 +122,7 @@ export default function CalculationsPage() {
   }
 
   return (
-    <>
+    <Fragment>
       <div className="min-h-screen p-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
@@ -446,7 +446,7 @@ export default function CalculationsPage() {
         )}
       </div>
     </div>
-    </>
+    </Fragment>
   )
 }
 
