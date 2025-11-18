@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
     }
     
     // Build query - each user sees only their own settings
-    const query = { userId: user.userId }
+    // Convert userId to ObjectId for proper MongoDB comparison
+    const mongoose = require('mongoose')
+    const userObjectId = new mongoose.Types.ObjectId(user.userId)
+    const query = { userId: userObjectId }
     
     // Sort by planNumber to ensure consistent order (Plan 1, Plan 2, Plan 3, Plan 4)
     const plans = await PaymentPlan.find(query).sort({ planNumber: 1 })
@@ -99,10 +102,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Convert userId to ObjectId for proper MongoDB comparison
+    const mongoose = require('mongoose')
+    const userObjectId = new mongoose.Types.ObjectId(user.userId)
+    
     // If planNumber not provided, auto-assign based on existing plans for this user
     let finalPlanNumber = planNumber
     if (!finalPlanNumber) {
-      const query = { userId: user.userId }
+      const query = { userId: userObjectId }
       const existingPlans = await PaymentPlan.find(query).sort({ planNumber: 1 })
       if (existingPlans.length > 0) {
         const maxPlanNumber = Math.max(...existingPlans.map(p => p.planNumber || 0))
@@ -113,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     const plan = await PaymentPlan.create({
-      userId: user.userId, // All users (including super_admins) have their own settings
+      userId: userObjectId, // All users (including super_admins) have their own settings
       name,
       yearlyPrice,
       planNumber: finalPlanNumber
