@@ -350,8 +350,8 @@ export const Statement = mongoose.models.Statement || mongoose.model('Statement'
 const StripeConfigSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true }, // One Stripe account per user
   stripeAccountId: { type: String, required: true }, // Stripe Connect account ID
-  accessToken: { type: String, required: true }, // OAuth access token (encrypted)
-  refreshToken: { type: String }, // OAuth refresh token (encrypted)
+  accessToken: { type: String }, // OAuth access token (optional - not needed for Standard Connect accounts)
+  refreshToken: { type: String }, // OAuth refresh token (optional - not needed for Standard Connect accounts)
   stripePublishableKey: { type: String }, // Account's publishable key
   accountEmail: { type: String }, // Account email from Stripe
   accountName: { type: String }, // Account name/display name
