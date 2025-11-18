@@ -74,10 +74,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query - each user sees only their own settings
-    // Simple equality - MongoDB only matches if userId field exists and equals exactly
+    // Explicitly exclude configs without userId (old configs from before user scoping)
     const query: any = { 
       isActive: true, 
-      userId: user.userId
+      userId: { $exists: true, $ne: null, $eq: user.userId }
     }
     
     // Check if config already exists for this user
