@@ -809,10 +809,11 @@ export default function SettingsPage() {
                 <input
                   type="email"
                   required
-                  value={emailFormData.email}
+                  value={emailFormData.email || ''}
                   onChange={(e) => setEmailFormData({ ...emailFormData, email: e.target.value })}
                   placeholder="your-email@gmail.com"
-                  autoComplete="off"
+                  autoComplete="new-password"
+                  data-form-type="other"
                   className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">
