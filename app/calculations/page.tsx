@@ -60,6 +60,16 @@ export default function CalculationsPage() {
     extraExpense: 0
   })
 
+  const allZero = useMemo(() => {
+    if (calculations.length === 0) return false
+    return calculations.every((calc) => {
+      const income = calc.calculatedIncome || 0
+      const expenses = calc.calculatedExpenses || 0
+      const balance = calc.balance || 0
+      return income === 0 && expenses === 0 && balance === 0
+    })
+  }, [calculations])
+
   useEffect(() => {
     fetchCalculations()
   }, [])
@@ -100,16 +110,6 @@ export default function CalculationsPage() {
       console.error('Error calculating:', error)
     }
   }
-
-  const allZero = useMemo(() => {
-    if (calculations.length === 0) return false
-    return calculations.every((calc) => {
-      const income = calc.calculatedIncome || 0
-      const expenses = calc.calculatedExpenses || 0
-      const balance = calc.balance || 0
-      return income === 0 && expenses === 0 && balance === 0
-    })
-  }, [calculations])
 
   if (loading) {
     return (
