@@ -76,27 +76,40 @@ async function getOrCreateStripeAccount(userId: string): Promise<string> {
     throw new Error('Stripe not initialized')
   }
   
-  // Check if user already has a Stripe account
-  const existingConfig = await StripeConfig.findOne({ userId, isActive: true })
+  await connectDB()
+  
+  // Check if user already has a Stripe account (including inactive ones)
+  const existingConfig = await StripeConfig.findOne({ userId })
   if (existingConfig) {
     return existingConfig.stripeAccountId
   }
   
-  // Create new Stripe Connect account
-  const account = await stripe.accounts.create({
-    type: 'standard', // or 'express' for faster onboarding
-    country: 'US', // Default, can be made configurable
-    email: undefined, // Will be collected during onboarding
-  })
-  
-  // Save account ID (we'll save tokens after OAuth callback)
-  await StripeConfig.create({
-    userId,
-    stripeAccountId: account.id,
-    accessToken: '', // Will be set after OAuth
-    isActive: false, // Not active until OAuth completes
-  })
-  
-  return account.id
+  try {
+    // Create new Stripe Connect account
+    const account = await stripe.accounts.create({
+      type: 'standard', // or 'express' for faster onboarding
+      country: 'US', // Default, can be made configurable
+      email: undefined, // Will be collected during onboarding
+    })
+    
+    // Save account ID (we'll save tokens after OAuth callback)
+    await StripeConfig.create({
+      userId,
+      stripeAccountId: account.id,
+      accessToken: '', // Will be set after OAuth
+      isActive: false, // Not active until OAuth completes
+    })
+    
+    return account.id
+  } catch (error: any) {
+    console.error('Error creating Stripe Connect account:', error)
+    console.error('Stripe error details:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode
+    })
+    throw error
+  }
 }
 

@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
       // Update existing config
       await StripeConfig.findByIdAndUpdate(config._id, {
         stripeAccountId: accountId,
-        stripePublishableKey: account.settings?.payouts?.schedule?.delay_days ? undefined : undefined, // We'll get this from account
         accountEmail: account.email,
         accountName: account.business_profile?.name || account.settings?.dashboard?.display_name || account.email,
         isActive: account.charges_enabled && account.payouts_enabled,
@@ -53,7 +52,6 @@ export async function GET(request: NextRequest) {
         userId: user.userId,
         stripeAccountId: accountId,
         accessToken: '', // OAuth tokens are handled by Stripe Connect
-        stripePublishableKey: undefined, // Not available in standard accounts
         accountEmail: account.email,
         accountName: account.business_profile?.name || account.settings?.dashboard?.display_name || account.email,
         isActive: account.charges_enabled && account.payouts_enabled,
