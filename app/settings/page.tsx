@@ -108,7 +108,13 @@ export default function SettingsPage() {
           fromName: config.fromName || 'Kasa Family Management'
         })
       } else {
+        // No config exists for this user - clear everything
         setEmailConfig(null)
+        setEmailFormData({
+          email: '',
+          password: '',
+          fromName: 'Kasa Family Management'
+        })
       }
     } catch (error) {
       console.error('Error fetching email config:', error)
@@ -207,7 +213,13 @@ export default function SettingsPage() {
           description: config.description || 'Membership cycle start date'
         })
       } else {
+        // No config exists for this user - clear everything
         setCycleConfig(null)
+        setCycleFormData({
+          cycleStartMonth: 9, // Default form values (not saved)
+          cycleStartDay: 1,
+          description: 'Membership cycle start date'
+        })
       }
     } catch (error) {
       console.error('Error fetching cycle config:', error)

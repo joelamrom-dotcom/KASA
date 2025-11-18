@@ -32,13 +32,9 @@ export async function GET(request: NextRequest) {
     console.log(`Cycle config GET - All active configs:`, allActiveConfigs.map(c => ({ id: c._id, userId: c.userId, month: c.cycleStartMonth, day: c.cycleStartDay })))
     
     if (!config) {
-      // Return default if no config exists
-      return NextResponse.json({
-        cycleStartMonth: 9, // September
-        cycleStartDay: 1,
-        description: 'Membership cycle start date',
-        isActive: true
-      })
+      // Return null/empty to indicate no config exists for this user
+      // Don't return defaults - each user must create their own config
+      return NextResponse.json({ error: 'Cycle configuration not found' }, { status: 404 })
     }
 
     return NextResponse.json({
