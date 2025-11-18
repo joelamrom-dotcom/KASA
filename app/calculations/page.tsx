@@ -153,6 +153,7 @@ export default function CalculationsPage() {
             <CalculatorIcon className="h-5 w-5" />
             Calculate Year
           </button>
+          </div>
         </div>
 
         {/* Info Banner */}
