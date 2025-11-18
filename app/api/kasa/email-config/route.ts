@@ -17,8 +17,19 @@ export async function GET(request: NextRequest) {
     }
     
     // Build query - each user sees only their own settings
-    const query: any = { isActive: true, userId: user.userId }
+    // Explicitly require userId to exist and match exactly
+    const query: any = { 
+      isActive: true, 
+      userId: { $exists: true, $eq: user.userId }
+    }
+    
+    console.log(`Email config GET - Query for userId: ${user.userId}, email: ${user.email}`)
     const config = await EmailConfig.findOne(query)
+    console.log(`Email config GET - Found config:`, config ? { id: config._id, userId: config.userId, email: config.email } : 'none')
+    
+    // Debug: Check for any configs that might be interfering
+    const allActiveConfigs = await EmailConfig.find({ isActive: true })
+    console.log(`Email config GET - All active configs:`, allActiveConfigs.map(c => ({ id: c._id, userId: c.userId, email: c.email })))
     
     if (!config) {
       return NextResponse.json({ error: 'Email configuration not found' }, { status: 404 })
@@ -63,7 +74,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query - each user sees only their own settings
-    const query: any = { isActive: true, userId: user.userId }
+    // Explicitly require userId to exist and match exactly
+    const query: any = { 
+      isActive: true, 
+      userId: { $exists: true, $eq: user.userId }
+    }
     
     // Check if config already exists for this user
     const existingConfig = await EmailConfig.findOne(query)

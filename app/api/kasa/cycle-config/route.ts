@@ -17,20 +17,19 @@ export async function GET(request: NextRequest) {
     }
     
     // Build query - each user sees only their own settings
-    // Explicitly require userId to avoid matching old configs without userId
-    const query: any = { isActive: true, userId: user.userId }
-    
-    const config = await CycleConfig.findOne(query)
-    
-    // If no config found, check if there are any old configs without userId that might interfere
-    // This shouldn't happen, but we want to be explicit
-    if (!config) {
-      // Double-check: ensure we're not accidentally matching configs without userId
-      const oldConfigs = await CycleConfig.find({ isActive: true, userId: { $exists: false } })
-      if (oldConfigs.length > 0) {
-        console.warn(`Found ${oldConfigs.length} old cycle config(s) without userId - these will be ignored`)
-      }
+    // Explicitly require userId to exist and match exactly
+    const query: any = { 
+      isActive: true, 
+      userId: { $exists: true, $eq: user.userId }
     }
+    
+    console.log(`Cycle config GET - Query for userId: ${user.userId}, email: ${user.email}`)
+    const config = await CycleConfig.findOne(query)
+    console.log(`Cycle config GET - Found config:`, config ? { id: config._id, userId: config.userId, month: config.cycleStartMonth, day: config.cycleStartDay } : 'none')
+    
+    // Debug: Check for any configs that might be interfering
+    const allActiveConfigs = await CycleConfig.find({ isActive: true })
+    console.log(`Cycle config GET - All active configs:`, allActiveConfigs.map(c => ({ id: c._id, userId: c.userId, month: c.cycleStartMonth, day: c.cycleStartDay })))
     
     if (!config) {
       // Return default if no config exists
@@ -95,7 +94,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query - each user sees only their own settings
-    const query: any = { isActive: true, userId: user.userId }
+    // Explicitly require userId to exist and match exactly
+    const query: any = { 
+      isActive: true, 
+      userId: { $exists: true, $eq: user.userId }
+    }
 
     // Check if config already exists for this user
     const existingConfig = await CycleConfig.findOne(query)
