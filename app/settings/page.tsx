@@ -271,7 +271,21 @@ export default function SettingsPage() {
         return
       }
       
-      const res = await fetch('/api/kasa/stripe-config')
+      // Get token from localStorage
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('💳 No token found in localStorage')
+        setStripeConfig(null)
+        setStripeLoading(false)
+        return
+      }
+      
+      const res = await fetch('/api/kasa/stripe-config', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
       console.log('💳 Stripe config fetch - Status:', res.status, res.statusText)
       if (res.ok) {
         const config = await res.json()
@@ -299,8 +313,18 @@ export default function SettingsPage() {
 
   const handleConnectStripe = async () => {
     try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setMessage({ type: 'error', text: 'No authentication token found. Please log in again.' })
+        return
+      }
+      
       const res = await fetch('/api/kasa/stripe-config/connect', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       })
       const data = await res.json()
       if (res.ok && data.url) {
