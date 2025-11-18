@@ -345,8 +345,18 @@ export default function SettingsPage() {
     }
 
     try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setMessage({ type: 'error', text: 'No authentication token found. Please log in again.' })
+        return
+      }
+      
       const res = await fetch('/api/kasa/stripe-config/disconnect', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       })
       const data = await res.json()
       if (res.ok) {
