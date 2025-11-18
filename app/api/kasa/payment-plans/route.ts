@@ -1,20 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { PaymentPlan, Family } from '@/lib/models'
+import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
 
 // GET - Get all payment plans with family counts
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - filter by userId unless super_admin
+    const query = isSuperAdmin(user) ? {} : { userId: user.userId }
+    
     // Sort by planNumber to ensure consistent order (Plan 1, Plan 2, Plan 3, Plan 4)
-    const plans = await PaymentPlan.find({}).sort({ planNumber: 1 })
+    const plans = await PaymentPlan.find(query).sort({ planNumber: 1 })
     
     // Get family counts for each plan
     const plansWithFamilies = await Promise.all(
       plans.map(async (plan, index) => {
         try {
-          // Find families by paymentPlanId (ID-based system)
-          const families = await Family.find({ paymentPlanId: plan._id })
+          // Find families by paymentPlanId (ID-based system) and userId
+          const familyQuery: any = { paymentPlanId: plan._id }
+          if (!isSuperAdmin(user)) {
+            familyQuery.userId = user.userId
+          }
+          const families = await Family.find(familyQuery)
           const planObj = plan.toObject ? plan.toObject() : plan
           return {
             _id: planObj._id?.toString() || planObj._id,
@@ -66,6 +83,15 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     const { name, yearlyPrice, planNumber } = body
 
@@ -76,10 +102,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If planNumber not provided, auto-assign based on existing plans
+    // If planNumber not provided, auto-assign based on existing plans for this user
     let finalPlanNumber = planNumber
     if (!finalPlanNumber) {
-      const existingPlans = await PaymentPlan.find({}).sort({ planNumber: 1 })
+      const query = isSuperAdmin(user) ? {} : { userId: user.userId }
+      const existingPlans = await PaymentPlan.find(query).sort({ planNumber: 1 })
       if (existingPlans.length > 0) {
         const maxPlanNumber = Math.max(...existingPlans.map(p => p.planNumber || 0))
         finalPlanNumber = maxPlanNumber + 1
@@ -89,6 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     const plan = await PaymentPlan.create({
+      userId: isSuperAdmin(user) ? undefined : user.userId, // Only set userId for non-super-admins
       name,
       yearlyPrice,
       planNumber: finalPlanNumber

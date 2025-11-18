@@ -2,11 +2,14 @@ import mongoose, { Schema } from 'mongoose'
 
 // Payment Plan Schema
 const PaymentPlanSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this payment plan (optional for backward compatibility)
   name: { type: String, required: true },
-  planNumber: { type: Number, required: true, unique: true },
+  planNumber: { type: Number, required: true }, // Removed unique constraint - will be unique per user
   yearlyPrice: { type: Number, required: true },
   description: String,
 }, { timestamps: true })
+
+PaymentPlanSchema.index({ userId: 1, planNumber: 1 }, { unique: true, sparse: true }) // Unique planNumber per user
 
 // Family Schema
 const FamilySchema = new Schema({
@@ -116,10 +119,13 @@ const WithdrawalSchema = new Schema({
 
 // Lifecycle Event Schema (Event Types)
 const LifecycleEventSchema = new Schema({
-  type: { type: String, required: true, unique: true, lowercase: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this event type (optional for backward compatibility)
+  type: { type: String, required: true, lowercase: true }, // Removed unique constraint - will be unique per user
   name: { type: String, required: true },
   amount: { type: Number, required: true },
 }, { timestamps: true })
+
+LifecycleEventSchema.index({ userId: 1, type: 1 }, { unique: true, sparse: true }) // Unique type per user
 
 // Lifecycle Event Payment Schema
 const LifecycleEventPaymentSchema = new Schema({
@@ -191,11 +197,14 @@ const EmailConfigSchema = new Schema({
 
 // Cycle Configuration Schema (Membership Year Configuration)
 const CycleConfigSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this cycle config (optional for backward compatibility)
   cycleStartMonth: { type: Number, required: true, min: 1, max: 12 }, // 1-12 (January-December)
   cycleStartDay: { type: Number, required: true, min: 1, max: 31 }, // Day of month
   description: { type: String, default: 'Membership cycle start date' },
   isActive: { type: Boolean, default: true },
 }, { timestamps: true })
+
+CycleConfigSchema.index({ userId: 1, isActive: 1 }) // Index for faster queries
 
 // Saved Payment Method Schema (Cards on File)
 const SavedPaymentMethodSchema = new Schema({

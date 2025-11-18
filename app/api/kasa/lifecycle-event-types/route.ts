@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { LifecycleEvent } from '@/lib/models'
+import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
 
 // GET - Get all lifecycle event types
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectDB()
-    const eventTypes = await LifecycleEvent.find({}).sort({ name: 1 })
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - filter by userId unless super_admin
+    const query = isSuperAdmin(user) ? {} : { userId: user.userId }
+    const eventTypes = await LifecycleEvent.find(query).sort({ name: 1 })
     return NextResponse.json(eventTypes)
   } catch (error: any) {
     console.error('Error fetching lifecycle event types:', error)
@@ -21,6 +33,15 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     const { type, name, amount } = body
 
@@ -31,8 +52,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if type already exists
-    const existing = await LifecycleEvent.findOne({ type })
+    // Check if type already exists for this user
+    const query = isSuperAdmin(user) ? { type } : { userId: user.userId, type }
+    const existing = await LifecycleEvent.findOne(query)
     if (existing) {
       return NextResponse.json(
         { error: 'Event type already exists' },
@@ -41,6 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const eventType = await LifecycleEvent.create({
+      userId: isSuperAdmin(user) ? undefined : user.userId, // Only set userId for non-super-admins
       type,
       name,
       amount: parseFloat(amount)

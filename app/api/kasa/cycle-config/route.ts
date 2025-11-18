@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { CycleConfig } from '@/lib/models'
+import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
 
 // GET - Get cycle configuration
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectDB()
-    const config = await CycleConfig.findOne({ isActive: true })
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - filter by userId unless super_admin
+    const query: any = { isActive: true }
+    if (!isSuperAdmin(user)) {
+      query.userId = user.userId
+    }
+    
+    const config = await CycleConfig.findOne(query)
     
     if (!config) {
       // Return default if no config exists
@@ -37,6 +53,15 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     const { cycleStartMonth, cycleStartDay, description } = body
 
@@ -61,8 +86,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if config already exists
-    const existingConfig = await CycleConfig.findOne({ isActive: true })
+    // Build query - filter by userId unless super_admin
+    const query: any = { isActive: true }
+    if (!isSuperAdmin(user)) {
+      query.userId = user.userId
+    }
+
+    // Check if config already exists for this user
+    const existingConfig = await CycleConfig.findOne(query)
 
     if (existingConfig) {
       // Update existing config
@@ -81,11 +112,16 @@ export async function POST(request: NextRequest) {
         isActive: updatedConfig!.isActive
       })
     } else {
-      // Deactivate all existing configs (if any)
-      await CycleConfig.updateMany({}, { isActive: false })
+      // Deactivate all existing configs for this user (if any)
+      const deactivateQuery: any = {}
+      if (!isSuperAdmin(user)) {
+        deactivateQuery.userId = user.userId
+      }
+      await CycleConfig.updateMany(deactivateQuery, { isActive: false })
 
       // Create new active config
       const config = await CycleConfig.create({
+        userId: isSuperAdmin(user) ? undefined : user.userId, // Only set userId for non-super-admins
         cycleStartMonth,
         cycleStartDay,
         description: description || 'Membership cycle start date',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { PaymentPlan } from '@/lib/models'
+import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
 
 // GET - Get payment plan by ID
 export async function GET(
@@ -9,7 +10,22 @@ export async function GET(
 ) {
   try {
     await connectDB()
-    const plan = await PaymentPlan.findById(params.id)
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - filter by userId unless super_admin
+    const query: any = { _id: params.id }
+    if (!isSuperAdmin(user)) {
+      query.userId = user.userId
+    }
+    
+    const plan = await PaymentPlan.findOne(query)
     
     if (!plan) {
       return NextResponse.json(
@@ -35,10 +51,25 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     
-    const plan = await PaymentPlan.findByIdAndUpdate(
-      params.id,
+    // Build query - filter by userId unless super_admin
+    const query: any = { _id: params.id }
+    if (!isSuperAdmin(user)) {
+      query.userId = user.userId
+    }
+    
+    const plan = await PaymentPlan.findOneAndUpdate(
+      query,
       body,
       { new: true, runValidators: true }
     )
@@ -68,7 +99,21 @@ export async function DELETE(
   try {
     await connectDB()
     
-    const plan = await PaymentPlan.findByIdAndDelete(params.id)
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - filter by userId unless super_admin
+    const query: any = { _id: params.id }
+    if (!isSuperAdmin(user)) {
+      query.userId = user.userId
+    }
+    
+    const plan = await PaymentPlan.findOneAndDelete(query)
     
     if (!plan) {
       return NextResponse.json(

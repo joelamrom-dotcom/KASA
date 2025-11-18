@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { LifecycleEvent } from '@/lib/models'
+import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
 
 // GET - Get a specific lifecycle event type
 export async function GET(
@@ -9,7 +10,22 @@ export async function GET(
 ) {
   try {
     await connectDB()
-    const eventType = await LifecycleEvent.findById(params.id)
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - filter by userId unless super_admin
+    const query: any = { _id: params.id }
+    if (!isSuperAdmin(user)) {
+      query.userId = user.userId
+    }
+    
+    const eventType = await LifecycleEvent.findOne(query)
     
     if (!eventType) {
       return NextResponse.json(
@@ -35,6 +51,15 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     const { name, amount } = body
 
@@ -45,8 +70,14 @@ export async function PUT(
       )
     }
 
-    const eventType = await LifecycleEvent.findByIdAndUpdate(
-      params.id,
+    // Build query - filter by userId unless super_admin
+    const query: any = { _id: params.id }
+    if (!isSuperAdmin(user)) {
+      query.userId = user.userId
+    }
+
+    const eventType = await LifecycleEvent.findOneAndUpdate(
+      query,
       {
         name,
         amount: parseFloat(amount)
@@ -79,7 +110,21 @@ export async function DELETE(
   try {
     await connectDB()
     
-    const eventType = await LifecycleEvent.findByIdAndDelete(params.id)
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Build query - filter by userId unless super_admin
+    const query: any = { _id: params.id }
+    if (!isSuperAdmin(user)) {
+      query.userId = user.userId
+    }
+    
+    const eventType = await LifecycleEvent.findOneAndDelete(query)
     
     if (!eventType) {
       return NextResponse.json(
