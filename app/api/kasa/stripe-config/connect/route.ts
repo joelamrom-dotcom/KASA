@@ -51,8 +51,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: accountLink.url })
   } catch (error: any) {
     console.error('Error initiating Stripe connection:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Error details:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode
+    })
     return NextResponse.json(
-      { error: 'Failed to initiate Stripe connection', details: error.message },
+      { 
+        error: 'Failed to initiate Stripe connection', 
+        details: error.message,
+        type: error.type,
+        code: error.code
+      },
       { status: 500 }
     )
   }
