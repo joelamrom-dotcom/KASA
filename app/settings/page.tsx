@@ -1872,7 +1872,7 @@ export default function SettingsPage() {
                   type="text"
                   value={cycleFormData.description}
                   onChange={(e) => setCycleFormData({ ...cycleFormData, description: e.target.value })}
-                  className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className={`w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${!cycleConfig ? 'border-yellow-300 bg-yellow-50' : ''}`}
                   placeholder="Membership cycle start date"
                 />
                 <p className="text-xs text-gray-500 mt-1">
