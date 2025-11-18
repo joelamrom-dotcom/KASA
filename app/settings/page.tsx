@@ -1730,7 +1730,7 @@ export default function SettingsPage() {
               <p className="text-sm text-gray-600">Configure the membership year start date</p>
             </div>
 
-            {cycleConfig && (
+            {cycleConfig ? (
               <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-green-800">
                   <strong>✓ Cycle configuration is active:</strong> Membership year starts on{' '}
@@ -1742,7 +1742,16 @@ export default function SettingsPage() {
                 <p className="text-sm text-green-700 mt-1">
                   Balances will be increased annually based on this date.
                 </p>
-            </div>
+              </div>
+            ) : (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800">
+                  <strong>⚠ No cycle configuration found.</strong> Please set up your cycle configuration below.
+                </p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Each user must configure their own cycle settings. This configuration is separate from other users.
+                </p>
+              </div>
             )}
 
             <form onSubmit={handleSaveCycleConfig} className="space-y-4">
