@@ -108,7 +108,13 @@ export default function SettingsPage() {
       
       // Then fetch from API to get latest role
       try {
-        const userRes = await fetch('/api/users/me')
+        const token = localStorage.getItem('token')
+        const userRes = await fetch('/api/users/me', {
+          headers: token ? {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } : {}
+        })
         if (userRes.ok) {
           const userData = await userRes.json()
           setUserRole(userData.role)
@@ -116,7 +122,6 @@ export default function SettingsPage() {
         } else {
           // Fallback: try to get role from token
           try {
-            const token = localStorage.getItem('token')
             if (token) {
               const payload = JSON.parse(atob(token.split('.')[1]))
               if (payload.role) {
