@@ -162,6 +162,17 @@ export async function PUT(
         member.paymentPlanAssigned = true
         await member.save()
         console.log(`Auto-assigned Plan 3 (Bucher Plan) to ${firstName} ${lastName} (male, turned 13 in Hebrew calendar)`)
+        
+        // Auto-create Stripe Customer for the member (male turned 13) if not already created
+        if (!member.stripeCustomerId) {
+          try {
+            const { createStripeCustomerForMember } = await import('@/lib/stripe-customer-helpers')
+            await createStripeCustomerForMember(member._id.toString())
+          } catch (stripeError: any) {
+            // Log error but don't fail member update if Stripe customer creation fails
+            console.error(`⚠️ Failed to create Stripe Customer for member ${firstName} ${lastName}:`, stripeError.message)
+          }
+        }
       } catch (planError: any) {
         console.error('Error auto-assigning payment plan:', planError)
         // Don't fail the update if plan assignment fails

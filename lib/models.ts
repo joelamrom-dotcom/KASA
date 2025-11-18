@@ -37,6 +37,7 @@ const FamilySchema = new Schema({
   currentPayment: { type: Number, default: 0 }, // Keep for backward compatibility
   openBalance: { type: Number, default: 0 }, // Deprecated - no longer used in UI, kept for backward compatibility
   parentFamilyId: { type: Schema.Types.ObjectId, ref: 'Family' }, // Reference to parent family (for families created from members)
+  stripeCustomerId: String, // Stripe Customer ID for this family
 }, { timestamps: true })
 
 // Add index for userId for better query performance
@@ -70,6 +71,7 @@ const FamilyMemberSchema = new Schema({
   paymentPlan: Number, // Keep for backward compatibility
   paymentPlanId: { type: Schema.Types.ObjectId, ref: 'PaymentPlan' }, // Reference to PaymentPlan by ID
   paymentPlanAssigned: { type: Boolean, default: false },
+  stripeCustomerId: String, // Stripe Customer ID (created when male turns 13)
   notes: String,
 }, { timestamps: true })
 

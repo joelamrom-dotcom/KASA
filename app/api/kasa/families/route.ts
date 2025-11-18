@@ -218,6 +218,15 @@ export async function POST(request: NextRequest) {
       openBalance: openBalance || 0
     })
 
+    // Auto-create Stripe Customer for the family
+    try {
+      const { createStripeCustomerForFamily } = await import('@/lib/stripe-customer-helpers')
+      await createStripeCustomerForFamily(family._id.toString())
+    } catch (stripeError: any) {
+      // Log error but don't fail family creation if Stripe customer creation fails
+      console.error(`⚠️ Failed to create Stripe Customer for family ${family.name}:`, stripeError.message)
+    }
+
     // Auto-create user account for family if email exists
     if (email) {
       try {
