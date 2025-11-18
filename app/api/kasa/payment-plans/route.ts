@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { PaymentPlan, Family } from '@/lib/models'
-import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // GET - Get all payment plans with family counts
 export async function GET(request: NextRequest) {
@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Build query - filter by userId unless super_admin
-    const query = isSuperAdmin(user) ? {} : { userId: user.userId }
+    // Build query - each user sees only their own settings
+    const query = { userId: user.userId }
     
     // Sort by planNumber to ensure consistent order (Plan 1, Plan 2, Plan 3, Plan 4)
     const plans = await PaymentPlan.find(query).sort({ planNumber: 1 })
@@ -27,10 +27,7 @@ export async function GET(request: NextRequest) {
       plans.map(async (plan, index) => {
         try {
           // Find families by paymentPlanId (ID-based system) and userId
-          const familyQuery: any = { paymentPlanId: plan._id }
-          if (!isSuperAdmin(user)) {
-            familyQuery.userId = user.userId
-          }
+          const familyQuery: any = { paymentPlanId: plan._id, userId: user.userId }
           const families = await Family.find(familyQuery)
           const planObj = plan.toObject ? plan.toObject() : plan
           return {
@@ -105,7 +102,7 @@ export async function POST(request: NextRequest) {
     // If planNumber not provided, auto-assign based on existing plans for this user
     let finalPlanNumber = planNumber
     if (!finalPlanNumber) {
-      const query = isSuperAdmin(user) ? {} : { userId: user.userId }
+      const query = { userId: user.userId }
       const existingPlans = await PaymentPlan.find(query).sort({ planNumber: 1 })
       if (existingPlans.length > 0) {
         const maxPlanNumber = Math.max(...existingPlans.map(p => p.planNumber || 0))
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     const plan = await PaymentPlan.create({
-      userId: isSuperAdmin(user) ? undefined : user.userId, // Only set userId for non-super-admins
+      userId: user.userId, // All users (including super_admins) have their own settings
       name,
       yearlyPrice,
       planNumber: finalPlanNumber

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { LifecycleEvent } from '@/lib/models'
-import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // GET - Get a specific lifecycle event type
 export async function GET(
@@ -19,11 +19,8 @@ export async function GET(
       )
     }
     
-    // Build query - filter by userId unless super_admin
-    const query: any = { _id: params.id }
-    if (!isSuperAdmin(user)) {
-      query.userId = user.userId
-    }
+    // Build query - each user sees only their own settings
+    const query: any = { _id: params.id, userId: user.userId }
     
     const eventType = await LifecycleEvent.findOne(query)
     
@@ -70,11 +67,8 @@ export async function PUT(
       )
     }
 
-    // Build query - filter by userId unless super_admin
-    const query: any = { _id: params.id }
-    if (!isSuperAdmin(user)) {
-      query.userId = user.userId
-    }
+    // Build query - each user sees only their own settings
+    const query: any = { _id: params.id, userId: user.userId }
 
     const eventType = await LifecycleEvent.findOneAndUpdate(
       query,
@@ -118,11 +112,8 @@ export async function DELETE(
       )
     }
     
-    // Build query - filter by userId unless super_admin
-    const query: any = { _id: params.id }
-    if (!isSuperAdmin(user)) {
-      query.userId = user.userId
-    }
+    // Build query - each user sees only their own settings
+    const query: any = { _id: params.id, userId: user.userId }
     
     const eventType = await LifecycleEvent.findOneAndDelete(query)
     

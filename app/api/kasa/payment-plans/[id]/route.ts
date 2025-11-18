@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { PaymentPlan } from '@/lib/models'
-import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // GET - Get payment plan by ID
 export async function GET(
@@ -19,11 +19,8 @@ export async function GET(
       )
     }
     
-    // Build query - filter by userId unless super_admin
-    const query: any = { _id: params.id }
-    if (!isSuperAdmin(user)) {
-      query.userId = user.userId
-    }
+    // Build query - each user sees only their own settings
+    const query: any = { _id: params.id, userId: user.userId }
     
     const plan = await PaymentPlan.findOne(query)
     
@@ -62,11 +59,8 @@ export async function PUT(
     
     const body = await request.json()
     
-    // Build query - filter by userId unless super_admin
-    const query: any = { _id: params.id }
-    if (!isSuperAdmin(user)) {
-      query.userId = user.userId
-    }
+    // Build query - each user sees only their own settings
+    const query: any = { _id: params.id, userId: user.userId }
     
     const plan = await PaymentPlan.findOneAndUpdate(
       query,
@@ -107,11 +101,8 @@ export async function DELETE(
       )
     }
     
-    // Build query - filter by userId unless super_admin
-    const query: any = { _id: params.id }
-    if (!isSuperAdmin(user)) {
-      query.userId = user.userId
-    }
+    // Build query - each user sees only their own settings
+    const query: any = { _id: params.id, userId: user.userId }
     
     const plan = await PaymentPlan.findOneAndDelete(query)
     

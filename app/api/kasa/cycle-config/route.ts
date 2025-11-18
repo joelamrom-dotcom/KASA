@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { CycleConfig } from '@/lib/models'
-import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // GET - Get cycle configuration
 export async function GET(request: NextRequest) {
@@ -16,11 +16,8 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Build query - filter by userId unless super_admin
-    const query: any = { isActive: true }
-    if (!isSuperAdmin(user)) {
-      query.userId = user.userId
-    }
+    // Build query - each user sees only their own settings
+    const query: any = { isActive: true, userId: user.userId }
     
     const config = await CycleConfig.findOne(query)
     
@@ -86,11 +83,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build query - filter by userId unless super_admin
-    const query: any = { isActive: true }
-    if (!isSuperAdmin(user)) {
-      query.userId = user.userId
-    }
+    // Build query - each user sees only their own settings
+    const query: any = { isActive: true, userId: user.userId }
 
     // Check if config already exists for this user
     const existingConfig = await CycleConfig.findOne(query)
@@ -113,15 +107,12 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // Deactivate all existing configs for this user (if any)
-      const deactivateQuery: any = {}
-      if (!isSuperAdmin(user)) {
-        deactivateQuery.userId = user.userId
-      }
+      const deactivateQuery: any = { userId: user.userId }
       await CycleConfig.updateMany(deactivateQuery, { isActive: false })
 
       // Create new active config
       const config = await CycleConfig.create({
-        userId: isSuperAdmin(user) ? undefined : user.userId, // Only set userId for non-super-admins
+        userId: user.userId, // All users (including super_admins) have their own settings
         cycleStartMonth,
         cycleStartDay,
         description: description || 'Membership cycle start date',

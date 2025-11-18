@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { LifecycleEvent } from '@/lib/models'
-import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // GET - Get all lifecycle event types
 export async function GET(request: NextRequest) {
@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Build query - filter by userId unless super_admin
-    const query = isSuperAdmin(user) ? {} : { userId: user.userId }
+    // Build query - each user sees only their own settings
+    const query = { userId: user.userId }
     const eventTypes = await LifecycleEvent.find(query).sort({ name: 1 })
     return NextResponse.json(eventTypes)
   } catch (error: any) {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if type already exists for this user
-    const query = isSuperAdmin(user) ? { type } : { userId: user.userId, type }
+    const query = { userId: user.userId, type }
     const existing = await LifecycleEvent.findOne(query)
     if (existing) {
       return NextResponse.json(
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const eventType = await LifecycleEvent.create({
-      userId: isSuperAdmin(user) ? undefined : user.userId, // Only set userId for non-super-admins
+      userId: user.userId, // All users (including super_admins) have their own settings
       type,
       name,
       amount: parseFloat(amount)
