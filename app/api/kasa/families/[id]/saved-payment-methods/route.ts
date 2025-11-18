@@ -1,25 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { SavedPaymentMethod, Family } from '@/lib/models'
-import Stripe from 'stripe'
-import https from 'https'
-
-// Create HTTPS agent that handles SSL certificates properly
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: process.env.NODE_ENV === 'production',
-})
-
-// Initialize Stripe only when API key is available (lazy initialization)
-function getStripe() {
-  const apiKey = process.env.STRIPE_SECRET_KEY
-  if (!apiKey) {
-    throw new Error('STRIPE_SECRET_KEY is not configured')
-  }
-  return new Stripe(apiKey, {
-    apiVersion: '2025-10-29.clover',
-    httpAgent: httpsAgent,
-  })
-}
+import { getUserStripe, getUserStripeAccountId } from '@/lib/stripe-helpers'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // GET - Get all saved payment methods for a family
 export async function GET(
@@ -51,6 +34,26 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Get user's Stripe account
+    const stripe = await getUserStripe(user.userId)
+    const accountId = await getUserStripeAccountId(user.userId)
+    
+    if (!stripe || !accountId) {
+      return NextResponse.json(
+        { error: 'Stripe account not connected. Please connect your Stripe account in Settings.' },
+        { status: 400 }
+      )
+    }
+    
     const body = await request.json()
     const { paymentMethodId, setAsDefault } = body
 
@@ -61,9 +64,10 @@ export async function POST(
       )
     }
 
-    // Retrieve payment method from Stripe
-    const stripe = getStripe()
-    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId)
+    // Retrieve payment method from Stripe (using user's connected account)
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId, {
+      stripeAccount: accountId
+    })
 
     if (!paymentMethod.card) {
       return NextResponse.json(

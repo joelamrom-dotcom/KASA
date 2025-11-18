@@ -1,39 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { RecurringPayment, SavedPaymentMethod, Payment } from '@/lib/models'
+import { RecurringPayment, SavedPaymentMethod, Payment, Family } from '@/lib/models'
 import { createPaymentDeclinedTask } from '@/lib/task-helpers'
-import Stripe from 'stripe'
-import https from 'https'
-
-// Create HTTPS agent that handles SSL certificates properly
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: process.env.NODE_ENV === 'production',
-})
-
-// Initialize Stripe only when API key is available (lazy initialization)
-function getStripe() {
-  const apiKey = process.env.STRIPE_SECRET_KEY
-  if (!apiKey) {
-    throw new Error('STRIPE_SECRET_KEY is not configured')
-  }
-  return new Stripe(apiKey, {
-    apiVersion: '2025-10-29.clover',
-    httpAgent: httpsAgent,
-  })
-}
+import { getUserStripe, getUserStripeAccountId } from '@/lib/stripe-helpers'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // POST - Process all due recurring payments
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
     
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Get user's Stripe account
+    const stripe = await getUserStripe(user.userId)
+    const accountId = await getUserStripeAccountId(user.userId)
+    
+    if (!stripe || !accountId) {
+      return NextResponse.json(
+        { error: 'Stripe account not connected. Please connect your Stripe account in Settings.' },
+        { status: 400 }
+      )
+    }
+    
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Find all active recurring payments that are due
+    // Find all active recurring payments that are due for this user's families
+    const userFamilies = await Family.find({ userId: user.userId }).select('_id').lean()
+    const userFamilyIds = userFamilies.map(f => f._id)
+    
     const duePayments = await RecurringPayment.find({
       isActive: true,
-      nextPaymentDate: { $lte: today }
+      nextPaymentDate: { $lte: today },
+      familyId: { $in: userFamilyIds } // Only process payments for user's families
     }).populate('familyId', 'name email')
       .populate('savedPaymentMethodId')
 
@@ -67,8 +73,7 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Charge the saved payment method
-        const stripe = getStripe()
+        // Charge the saved payment method using user's Stripe account
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(recurringPayment.amount * 100), // Convert to cents
           currency: 'usd',
@@ -79,6 +84,8 @@ export async function POST(request: NextRequest) {
             familyId: family?._id?.toString() || '',
             recurringPaymentId: recurringPayment._id.toString()
           }
+        }, {
+          stripeAccount: accountId // Use connected account
         })
 
         if (paymentIntent.status !== 'succeeded') {

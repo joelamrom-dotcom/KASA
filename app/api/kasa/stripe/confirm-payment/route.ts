@@ -2,33 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Payment, SavedPaymentMethod, RecurringPayment, Family } from '@/lib/models'
 import { createPaymentDeclinedTask } from '@/lib/task-helpers'
-import Stripe from 'stripe'
-import https from 'https'
-
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error('STRIPE_SECRET_KEY is not set in environment variables')
-}
-
-// Create HTTPS agent that handles SSL certificates properly
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: process.env.NODE_ENV === 'production',
-})
-
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  httpAgent: httpsAgent,
-}) : null
+import { getUserStripe, getUserStripeAccountId } from '@/lib/stripe-helpers'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 export async function POST(request: NextRequest) {
   try {
-    if (!stripe) {
-      console.error('Stripe is not initialized - STRIPE_SECRET_KEY missing')
+    await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
       return NextResponse.json(
-        { error: 'Stripe is not configured. Please check server environment variables.' },
-        { status: 500 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
-
-    await connectDB()
+    
+    // Get user's Stripe account
+    const stripe = await getUserStripe(user.userId)
+    const accountId = await getUserStripeAccountId(user.userId)
+    
+    if (!stripe || !accountId) {
+      return NextResponse.json(
+        { error: 'Stripe account not connected. Please connect your Stripe account in Settings.' },
+        { status: 400 }
+      )
+    }
+    
     const body = await request.json()
     const { paymentIntentId, familyId, paymentDate, year, type, notes, paymentFrequency, savedPaymentMethodId, memberId } = body
 
@@ -39,8 +38,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Retrieve the payment intent from Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+    // Retrieve the payment intent from Stripe (using user's connected account)
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      stripeAccount: accountId
+    })
 
     if (paymentIntent.status !== 'succeeded') {
       const errorMsg = `Payment not succeeded. Status: ${paymentIntent.status}`
@@ -66,7 +67,10 @@ export async function POST(request: NextRequest) {
 
     if (paymentIntent.payment_method) {
       const paymentMethod = await stripe.paymentMethods.retrieve(
-        paymentIntent.payment_method as string
+        paymentIntent.payment_method as string,
+        {
+          stripeAccount: accountId
+        }
       )
       
       if (paymentMethod.card) {

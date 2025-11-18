@@ -344,8 +344,25 @@ export const LifecycleEvent = mongoose.models.LifecycleEvent || mongoose.model('
 export const LifecycleEventPayment = mongoose.models.LifecycleEventPayment || mongoose.model('LifecycleEventPayment', LifecycleEventPaymentSchema)
 export const YearlyCalculation = mongoose.models.YearlyCalculation || mongoose.model('YearlyCalculation', YearlyCalculationSchema)
 export const Statement = mongoose.models.Statement || mongoose.model('Statement', StatementSchema)
+// Stripe Configuration Schema (User's Stripe Connect Account)
+const StripeConfigSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true }, // One Stripe account per user
+  stripeAccountId: { type: String, required: true }, // Stripe Connect account ID
+  accessToken: { type: String, required: true }, // OAuth access token (encrypted)
+  refreshToken: { type: String }, // OAuth refresh token (encrypted)
+  stripePublishableKey: { type: String }, // Account's publishable key
+  accountEmail: { type: String }, // Account email from Stripe
+  accountName: { type: String }, // Account name/display name
+  isActive: { type: Boolean, default: true },
+  connectedAt: { type: Date, default: Date.now },
+  lastSyncedAt: { type: Date },
+}, { timestamps: true })
+
+StripeConfigSchema.index({ userId: 1 }, { unique: true })
+
 export const EmailConfig = mongoose.models.EmailConfig || mongoose.model('EmailConfig', EmailConfigSchema)
 export const CycleConfig = mongoose.models.CycleConfig || mongoose.model('CycleConfig', CycleConfigSchema)
+export const StripeConfig = mongoose.models.StripeConfig || mongoose.model('StripeConfig', StripeConfigSchema)
 export const SavedPaymentMethod = mongoose.models.SavedPaymentMethod || mongoose.model('SavedPaymentMethod', SavedPaymentMethodSchema)
 export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.model('RecurringPayment', RecurringPaymentSchema)
 export const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema)

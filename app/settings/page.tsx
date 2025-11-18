@@ -26,10 +26,15 @@ interface PaymentPlan {
   families?: Family[]
 }
 
-type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle'
+type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('email')
+  
+  // Stripe Configuration state
+  const [stripeConfig, setStripeConfig] = useState<any>(null)
+  const [stripeLoading, setStripeLoading] = useState(true)
+  const [userRole, setUserRole] = useState<string | null>(null)
   
   // Email Configuration state
   const [loading, setLoading] = useState(true)
@@ -90,6 +95,7 @@ export default function SettingsPage() {
     fetchPlans()
     fetchKevittelData()
     fetchCycleConfig()
+    fetchStripeConfig()
   }, [])
 
   // Refresh Kevittel data when switching to the Kevittel tab
@@ -207,6 +213,84 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: 'Error sending test email' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Stripe Configuration functions
+  const fetchStripeConfig = async () => {
+    try {
+      setStripeLoading(true)
+      
+      // Check user role first
+      const userRes = await fetch('/api/users/me')
+      if (userRes.ok) {
+        const userData = await userRes.json()
+        setUserRole(userData.role)
+        
+        // Only fetch Stripe config if user is admin or super_admin
+        if (userData.role !== 'admin' && userData.role !== 'super_admin') {
+          setStripeConfig(null)
+          setStripeLoading(false)
+          return
+        }
+      }
+      
+      const res = await fetch('/api/kasa/stripe-config')
+      console.log('💳 Stripe config fetch - Status:', res.status, res.statusText)
+      if (res.ok) {
+        const config = await res.json()
+        console.log('💳 Stripe config fetch - Found config:', config)
+        setStripeConfig(config)
+      } else {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        console.log('💳 Stripe config fetch - No config found:', errorData)
+        setStripeConfig(null)
+      }
+    } catch (error) {
+      console.error('Error fetching Stripe config:', error)
+      setStripeConfig(null)
+    } finally {
+      setStripeLoading(false)
+    }
+  }
+
+  const handleConnectStripe = async () => {
+    try {
+      const res = await fetch('/api/kasa/stripe-config/connect', {
+        method: 'POST'
+      })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        // Redirect to Stripe OAuth
+        window.location.href = data.url
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to initiate Stripe connection' })
+      }
+    } catch (error: any) {
+      console.error('Error connecting Stripe:', error)
+      setMessage({ type: 'error', text: 'Error connecting Stripe account' })
+    }
+  }
+
+  const handleDisconnectStripe = async () => {
+    if (!confirm('Are you sure you want to disconnect your Stripe account? This will prevent processing payments.')) {
+      return
+    }
+
+    try {
+      const res = await fetch('/api/kasa/stripe-config/disconnect', {
+        method: 'POST'
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setStripeConfig(null)
+        setMessage({ type: 'success', text: 'Stripe account disconnected successfully' })
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to disconnect Stripe account' })
+      }
+    } catch (error: any) {
+      console.error('Error disconnecting Stripe:', error)
+      setMessage({ type: 'error', text: 'Error disconnecting Stripe account' })
     }
   }
 
@@ -682,7 +766,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading || eventTypesLoading || plansLoading || kevittelLoading || cycleLoading) {
+  if (loading || eventTypesLoading || plansLoading || kevittelLoading || cycleLoading || stripeLoading) {
     return (
       <main className="min-h-screen p-8 bg-gray-50">
         <div className="max-w-6xl mx-auto">
@@ -771,6 +855,21 @@ export default function SettingsPage() {
                   Cycle
                 </div>
               </button>
+              {(userRole === 'admin' || userRole === 'super_admin') && (
+                <button
+                  onClick={() => setActiveTab('stripe')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'stripe'
+                      ? 'border-indigo-600 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CreditCardIcon className="h-5 w-5" />
+                    Stripe Connection
+                  </div>
+                </button>
+              )}
             </nav>
           </div>
         </div>
@@ -1739,6 +1838,63 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Stripe Configuration Tab */}
+        {activeTab === 'stripe' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Stripe Connection</h2>
+              <p className="text-sm text-gray-600">Connect your Stripe account to process payments</p>
+            </div>
+
+            {stripeConfig ? (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-800">
+                  <strong>✓ Stripe account connected:</strong> {stripeConfig.accountName || stripeConfig.accountEmail || stripeConfig.stripeAccountId}
+                </p>
+                <p className="text-xs text-green-700 mt-1">
+                  Your Stripe account is connected and ready to process payments. All payments will be processed through your Stripe account.
+                </p>
+                <div className="mt-4">
+                  <button
+                    onClick={handleDisconnectStripe}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Disconnect Stripe Account
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800">
+                  <strong>⚠ No Stripe account connected.</strong> Please connect your Stripe account to process payments.
+                </p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Each user must connect their own Stripe account. This allows you to process payments through your own Stripe account.
+                </p>
+                <div className="mt-4">
+                  <button
+                    onClick={handleConnectStripe}
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                  >
+                    Connect Stripe Account
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">How it works</h3>
+              <ul className="list-disc list-inside text-blue-800 space-y-1 text-sm">
+                <li>Connect your Stripe account using OAuth</li>
+                <li>All payments will be processed through your connected Stripe account</li>
+                <li>You'll receive payments directly to your Stripe account</li>
+                <li>Each user has their own separate Stripe connection</li>
+                <li>You can disconnect and reconnect your account at any time</li>
+              </ul>
             </div>
           </div>
         )}

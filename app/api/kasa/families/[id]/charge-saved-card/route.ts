@@ -2,25 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { SavedPaymentMethod, Payment, Family, RecurringPayment } from '@/lib/models'
 import { createPaymentDeclinedTask } from '@/lib/task-helpers'
-import Stripe from 'stripe'
-import https from 'https'
-
-// Create HTTPS agent that handles SSL certificates properly
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: process.env.NODE_ENV === 'production',
-})
-
-// Initialize Stripe only when API key is available (lazy initialization)
-function getStripe() {
-  const apiKey = process.env.STRIPE_SECRET_KEY
-  if (!apiKey) {
-    throw new Error('STRIPE_SECRET_KEY is not configured')
-  }
-  return new Stripe(apiKey, {
-    apiVersion: '2025-10-29.clover',
-    httpAgent: httpsAgent,
-  })
-}
+import { getUserStripe, getUserStripeAccountId } from '@/lib/stripe-helpers'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // POST - Charge a saved payment method
 export async function POST(
@@ -32,6 +15,26 @@ export async function POST(
   
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Get user's Stripe account
+    const stripe = await getUserStripe(user.userId)
+    const accountId = await getUserStripeAccountId(user.userId)
+    
+    if (!stripe || !accountId) {
+      return NextResponse.json(
+        { error: 'Stripe account not connected. Please connect your Stripe account in Settings.' },
+        { status: 400 }
+      )
+    }
+    
     const body = await request.json()
     const { savedPaymentMethodId, amount: bodyAmount, paymentDate, year, type, notes, saveForFuture, memberId: bodyMemberId } = body
     amount = bodyAmount || 0
@@ -54,8 +57,7 @@ export async function POST(
       )
     }
 
-    // Create payment intent with saved payment method
-    const stripe = getStripe()
+    // Create payment intent with saved payment method (using user's connected account)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: 'usd',
@@ -66,6 +68,8 @@ export async function POST(
         familyId: params.id,
         savedPaymentMethodId: savedPaymentMethodId
       }
+    }, {
+      stripeAccount: accountId
     })
 
     if (paymentIntent.status !== 'succeeded') {
