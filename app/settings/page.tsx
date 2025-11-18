@@ -828,36 +828,7 @@ export default function SettingsPage() {
                   type="email"
                   required
                   value={emailFormData.email || ''}
-                  onChange={(e) => {
-                    console.log('📧 Email input onChange - New value:', e.target.value, 'State was:', emailFormData.email)
-                    // If no config exists and value appears, it's likely autofill
-                    if (!emailConfig && e.target.value && e.target.value !== emailFormData.email) {
-                      console.log('📧 AUTOFILL DETECTED in onChange! Clearing...')
-                      // Clear it immediately
-                      setTimeout(() => {
-                        e.target.value = ''
-                        setEmailFormData({ ...emailFormData, email: '' })
-                      }, 0)
-                    } else {
-                      setEmailFormData({ ...emailFormData, email: e.target.value })
-                    }
-                  }}
-                  onFocus={(e) => {
-                    console.log('📧 Email input onFocus - Current value:', e.target.value, 'State value:', emailFormData.email)
-                    console.log('📧 Email input onFocus - Are they different?', e.target.value !== emailFormData.email ? 'YES - AUTOFILL DETECTED!' : 'No - values match')
-                    // If browser autofilled, clear it
-                    if (e.target.value !== emailFormData.email && !emailConfig) {
-                      console.log('📧 Clearing autofilled value on focus')
-                      e.target.value = ''
-                      setEmailFormData({ ...emailFormData, email: '' })
-                    }
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLInputElement
-                    if (!emailConfig && target.value && target.value !== emailFormData.email) {
-                      console.log('📧 AUTOFILL DETECTED in onInput! Value:', target.value)
-                    }
-                  }}
+                  onChange={(e) => setEmailFormData({ ...emailFormData, email: e.target.value })}
                   placeholder="your-email@gmail.com"
                   autoComplete="off"
                   data-lpignore="true"
