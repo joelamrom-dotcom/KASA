@@ -821,7 +821,20 @@ export default function SettingsPage() {
                   type="email"
                   required
                   value={emailFormData.email || ''}
-                  onChange={(e) => setEmailFormData({ ...emailFormData, email: e.target.value })}
+                  onChange={(e) => {
+                    console.log('📧 Email input onChange - New value:', e.target.value)
+                    setEmailFormData({ ...emailFormData, email: e.target.value })
+                  }}
+                  onFocus={(e) => {
+                    console.log('📧 Email input onFocus - Current value:', e.target.value, 'State value:', emailFormData.email)
+                    console.log('📧 Email input onFocus - Are they different?', e.target.value !== emailFormData.email ? 'YES - AUTOFILL DETECTED!' : 'No - values match')
+                    // If browser autofilled, clear it
+                    if (e.target.value !== emailFormData.email && !emailConfig) {
+                      console.log('📧 Clearing autofilled value')
+                      e.target.value = ''
+                      setEmailFormData({ ...emailFormData, email: '' })
+                    }
+                  }}
                   placeholder="your-email@gmail.com"
                   autoComplete="new-password"
                   data-form-type="other"
