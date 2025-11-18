@@ -85,9 +85,10 @@ async function getOrCreateStripeAccount(userId: string): Promise<string> {
   }
   
   try {
-    // Create new Stripe Connect account
+    // Create new Stripe Connect Express account (can be created via API)
+    // Express accounts are faster to onboard and can be created programmatically
     const account = await stripe.accounts.create({
-      type: 'standard', // or 'express' for faster onboarding
+      type: 'express', // Express accounts can be created via API
       country: 'US', // Default, can be made configurable
       email: undefined, // Will be collected during onboarding
     })

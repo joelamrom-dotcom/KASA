@@ -18,22 +18,22 @@ export async function GET(request: NextRequest) {
     
     // Build query - each user sees only their own settings
     // Explicitly exclude configs without userId (old configs from before user scoping)
+    // Convert userId to ObjectId for proper comparison
+    const mongoose = require('mongoose')
+    const userObjectId = new mongoose.Types.ObjectId(user.userId)
+    
     const query: any = { 
       isActive: true,
-      $and: [
-        { userId: { $exists: true } },
-        { userId: { $ne: null } },
-        { userId: user.userId }
-      ]
+      userId: userObjectId // Direct match - MongoDB will exclude null/undefined automatically
     }
     
-    console.log(`Cycle config GET - Query for userId: ${user.userId}, email: ${user.email}`)
+    console.log(`Cycle config GET - Query for userId: ${user.userId} (ObjectId: ${userObjectId}), email: ${user.email}`)
     const config = await CycleConfig.findOne(query)
-    console.log(`Cycle config GET - Found config:`, config ? { id: config._id, userId: config.userId, month: config.cycleStartMonth, day: config.cycleStartDay } : 'none')
+    console.log(`Cycle config GET - Found config:`, config ? { id: config._id, userId: config.userId?.toString(), month: config.cycleStartMonth, day: config.cycleStartDay } : 'none')
     
-    // Debug: Check for any configs that might be interfering
+    // Debug: Check for any configs that might be interfering (including those without userId)
     const allActiveConfigs = await CycleConfig.find({ isActive: true })
-    console.log(`Cycle config GET - All active configs:`, allActiveConfigs.map(c => ({ id: c._id, userId: c.userId, month: c.cycleStartMonth, day: c.cycleStartDay })))
+    console.log(`Cycle config GET - All active configs:`, allActiveConfigs.map(c => ({ id: c._id, userId: c.userId?.toString() || 'undefined', month: c.cycleStartMonth, day: c.cycleStartDay })))
     
     if (!config) {
       // Return null/empty to indicate no config exists for this user
