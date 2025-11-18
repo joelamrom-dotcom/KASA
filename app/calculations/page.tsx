@@ -61,7 +61,9 @@ export default function CalculationsPage() {
   })
 
   const allZero = useMemo(() => {
-    if (calculations.length === 0) return false
+    if (calculations.length === 0) {
+      return false
+    }
     return calculations.every((calc) => {
       const income = calc.calculatedIncome || 0
       const expenses = calc.calculatedExpenses || 0
