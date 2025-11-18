@@ -40,6 +40,11 @@ export default function SettingsPage() {
     password: '',
     fromName: 'Kasa Family Management'
   })
+  
+  // Debug: Log emailFormData changes
+  useEffect(() => {
+    console.log('📧 Email formData changed:', { email: emailFormData.email, fromName: emailFormData.fromName })
+  }, [emailFormData.email, emailFormData.fromName])
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   
   // Event Types state
@@ -99,22 +104,28 @@ export default function SettingsPage() {
   const fetchEmailConfig = async () => {
     try {
       const res = await fetch('/api/kasa/email-config')
+      console.log('📧 Email config fetch - Status:', res.status, res.statusText)
       if (res.ok) {
         const config = await res.json()
+        console.log('📧 Email config fetch - Found config:', config)
         setEmailConfig(config)
         setEmailFormData({
           email: config.email || '',
           password: '',
           fromName: config.fromName || 'Kasa Family Management'
         })
+        console.log('📧 Email config fetch - Set formData.email to:', config.email || '(empty)')
       } else {
         // No config exists for this user - clear everything
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        console.log('📧 Email config fetch - No config found (404):', errorData)
         setEmailConfig(null)
         setEmailFormData({
           email: '',
           password: '',
           fromName: 'Kasa Family Management'
         })
+        console.log('📧 Email config fetch - Cleared formData.email to empty string')
       }
     } catch (error) {
       console.error('Error fetching email config:', error)
