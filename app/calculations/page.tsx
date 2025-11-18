@@ -123,7 +123,7 @@ export default function CalculationsPage() {
 
   return (
     <div className="min-h-screen p-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
