@@ -781,13 +781,22 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {emailConfig && (
+            {emailConfig ? (
               <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-green-800">
                   <strong>✓ Email configuration is active:</strong> {emailConfig.email}
                 </p>
                 <p className="text-xs text-green-700 mt-1">
                   Your email settings are saved and will be used automatically for sending statements.
+                </p>
+              </div>
+            ) : (
+              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>⚠ No email configuration found.</strong> Please set up your email configuration below.
+                </p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Each user must configure their own email settings. This configuration is separate from other users.
                 </p>
               </div>
             )}
@@ -803,6 +812,7 @@ export default function SettingsPage() {
                   value={emailFormData.email}
                   onChange={(e) => setEmailFormData({ ...emailFormData, email: e.target.value })}
                   placeholder="your-email@gmail.com"
+                  autoComplete="off"
                   className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">
