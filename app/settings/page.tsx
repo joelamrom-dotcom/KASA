@@ -336,7 +336,15 @@ export default function SettingsPage() {
         // Redirect to Stripe OAuth
         window.location.href = data.url
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to initiate Stripe connection' })
+        // Display detailed error message
+        let errorText = data.error || 'Failed to initiate Stripe connection'
+        if (data.details) {
+          errorText += `: ${data.details}`
+        }
+        if (data.helpUrl) {
+          errorText += ` Visit ${data.helpUrl} to enable Connect.`
+        }
+        setMessage({ type: 'error', text: errorText })
       }
     } catch (error: any) {
       console.error('Error connecting Stripe:', error)

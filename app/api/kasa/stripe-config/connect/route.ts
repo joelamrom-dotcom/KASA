@@ -58,6 +58,25 @@ export async function POST(request: NextRequest) {
       code: error.code,
       statusCode: error.statusCode
     })
+    
+    // Check if the error is about Connect not being enabled
+    const isConnectNotEnabled = error.message?.toLowerCase().includes('connect') && 
+                                 (error.message?.toLowerCase().includes('signed up') || 
+                                  error.message?.toLowerCase().includes('enabled'))
+    
+    if (isConnectNotEnabled) {
+      return NextResponse.json(
+        { 
+          error: 'Stripe Connect is not enabled on your platform account',
+          details: 'To use Stripe Connect, you need to enable it in your Stripe Dashboard. Go to Settings > Connect > Overview and click "Get started" to enable Connect for your account.',
+          type: error.type,
+          code: error.code,
+          helpUrl: 'https://dashboard.stripe.com/settings/connect'
+        },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         error: 'Failed to initiate Stripe connection', 
@@ -110,6 +129,18 @@ async function getOrCreateStripeAccount(userId: string): Promise<string> {
       code: error.code,
       statusCode: error.statusCode
     })
+    
+    // Re-throw with more context if it's a Connect-related error
+    if (error.message?.toLowerCase().includes('connect') && 
+        (error.message?.toLowerCase().includes('signed up') || 
+         error.message?.toLowerCase().includes('enabled'))) {
+      const enhancedError = new Error(error.message)
+      ;(enhancedError as any).type = error.type
+      ;(enhancedError as any).code = error.code
+      ;(enhancedError as any).statusCode = error.statusCode
+      throw enhancedError
+    }
+    
     throw error
   }
 }
