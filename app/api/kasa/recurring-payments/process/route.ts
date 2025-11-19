@@ -190,15 +190,22 @@ export async function POST(request: NextRequest) {
             recurringPayment.nextPaymentDate = nextPaymentDate
             await recurringPayment.save()
 
-            // Send payment confirmation email (if enabled in settings)
-            try {
-              if (family && family.email && family.userId) {
-                // Check if payment emails are enabled for this admin
+            // Get automation settings for this admin (used by both email and SMS)
+            let automationSettings = null
+            if (family && family.userId) {
+              try {
                 const { AutomationSettings } = await import('@/lib/models')
                 const mongoose = require('mongoose')
                 const adminObjectId = new mongoose.Types.ObjectId(family.userId)
-                const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
-                
+                automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
+              } catch (settingsError: any) {
+                console.error(`⚠️ Failed to fetch automation settings:`, settingsError.message)
+              }
+            }
+
+            // Send payment confirmation email (if enabled in settings)
+            try {
+              if (family && family.email && family.userId) {
                 const shouldSendEmail = automationSettings?.enablePaymentEmails !== false // Default to true if not set
                 
                 if (shouldSendEmail) {
