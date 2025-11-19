@@ -145,7 +145,9 @@ export default function FamilyDetailPage() {
     city: '',
     state: '',
     zip: '',
-    paymentPlanId: ''
+    paymentPlanId: '',
+    receiveEmails: true,
+    receiveSMS: true
   })
   
   // Check URL params for tab navigation
@@ -2068,7 +2070,9 @@ export default function FamilyDetailPage() {
                           city: data.family.city || '',
                           state: data.family.state || '',
                           zip: data.family.zip || '',
-                          paymentPlanId: data.family.paymentPlanId?.toString() || ''
+                          paymentPlanId: data.family.paymentPlanId?.toString() || '',
+                          receiveEmails: data.family.receiveEmails !== false,
+                          receiveSMS: data.family.receiveSMS !== false
                         })
                         setShowInfoModal(true)
                       }
@@ -3968,6 +3972,40 @@ export default function FamilyDetailPage() {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Communication Preferences */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Communication Preferences</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-3 p-4 border border-gray-300 rounded-xl">
+                      <input
+                        type="checkbox"
+                        id="receiveEmails"
+                        checked={infoForm.receiveEmails}
+                        onChange={(e) => setInfoForm({ ...infoForm, receiveEmails: e.target.checked })}
+                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="receiveEmails" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Receive Email Notifications
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-3 p-4 border border-gray-300 rounded-xl">
+                      <input
+                        type="checkbox"
+                        id="receiveSMS"
+                        checked={infoForm.receiveSMS}
+                        onChange={(e) => setInfoForm({ ...infoForm, receiveSMS: e.target.checked })}
+                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="receiveSMS" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Receive SMS Notifications
+                      </label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Uncheck these options if the family prefers not to receive email or SMS notifications
+                  </p>
                 </div>
 
                 <div className="flex gap-4 justify-end pt-4">

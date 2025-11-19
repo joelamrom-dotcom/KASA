@@ -194,8 +194,9 @@ export async function POST(request: NextRequest) {
     try {
       if (family && family.email && family.userId) {
         const shouldSendEmail = automationSettings?.enablePaymentEmails !== false // Default to true if not set
+        const familyWantsEmails = family.receiveEmails !== false // Default to true if not set
         
-        if (shouldSendEmail) {
+        if (shouldSendEmail && familyWantsEmails) {
           const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
           
           // Format payment method for display
@@ -215,7 +216,11 @@ export async function POST(request: NextRequest) {
           )
           console.log(`✅ Payment confirmation email sent to ${family.email}`)
         } else {
-          console.log(`ℹ️ Payment confirmation email skipped - disabled in automation settings for admin ${family.userId}`)
+          if (!shouldSendEmail) {
+            console.log(`ℹ️ Payment confirmation email skipped - disabled in automation settings for admin ${family.userId}`)
+          } else if (!familyWantsEmails) {
+            console.log(`ℹ️ Payment confirmation email skipped - family has opted out of emails`)
+          }
         }
       }
     } catch (emailError: any) {
@@ -225,7 +230,9 @@ export async function POST(request: NextRequest) {
 
     // Send payment confirmation SMS (if enabled in settings)
     try {
-      if (family && family.userId && automationSettings?.enablePaymentSMS === true) {
+      const shouldSendSMS = automationSettings?.enablePaymentSMS === true
+      const familyWantsSMS = family?.receiveSMS !== false // Default to true if not set
+      if (family && family.userId && shouldSendSMS && familyWantsSMS) {
           // Get phone number from family
           const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
           
@@ -257,7 +264,8 @@ export async function POST(request: NextRequest) {
     // Send thank you email (separate from confirmation)
     try {
       if (family && family.email && family.userId) {
-        if (automationSettings?.enablePaymentEmails !== false) {
+        const shouldSendThankYouEmail = automationSettings?.enablePaymentEmails !== false && family.receiveEmails !== false
+        if (shouldSendThankYouEmail) {
           const { sendPaymentThankYouEmail } = await import('@/lib/email-helpers')
           await sendPaymentThankYouEmail(
             family.email,
@@ -274,7 +282,8 @@ export async function POST(request: NextRequest) {
 
     // Send thank you SMS (separate from confirmation)
     try {
-      if (family && family.userId && automationSettings?.enablePaymentSMS === true) {
+      const shouldSendThankYouSMS = automationSettings?.enablePaymentSMS === true && family?.receiveSMS !== false
+      if (family && family.userId && shouldSendThankYouSMS) {
         const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
         if (phoneNumber) {
           const { sendPaymentThankYouSMS } = await import('@/lib/sms-helpers')

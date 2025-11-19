@@ -191,8 +191,9 @@ export async function POST(
         const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
         const shouldSendEmail = automationSettings?.enablePaymentEmails !== false // Default to true if not set
+        const familyWantsEmails = family.receiveEmails !== false // Default to true if not set
         
-        if (shouldSendEmail) {
+        if (shouldSendEmail && familyWantsEmails) {
           const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
           
           // Format payment method for display
@@ -216,7 +217,11 @@ export async function POST(
           )
           console.log(`✅ Payment confirmation email sent to ${family.email}`)
         } else {
-          console.log(`ℹ️ Payment confirmation email skipped - disabled in automation settings for admin ${family.userId}`)
+          if (!shouldSendEmail) {
+            console.log(`ℹ️ Payment confirmation email skipped - disabled in automation settings for admin ${family.userId}`)
+          } else if (!familyWantsEmails) {
+            console.log(`ℹ️ Payment confirmation email skipped - family has opted out of emails`)
+          }
         }
       }
     } catch (emailError: any) {
@@ -233,8 +238,9 @@ export async function POST(
         const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
         const shouldSendSMS = automationSettings?.enablePaymentSMS === true
+        const familyWantsSMS = family.receiveSMS !== false // Default to true if not set
         
-        if (shouldSendSMS) {
+        if (shouldSendSMS && familyWantsSMS) {
           // Get phone number from family (prefer husbandCellPhone, then wifeCellPhone, then phone)
           const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
           
@@ -276,8 +282,9 @@ export async function POST(
         const adminObjectId = new mongoose.Types.ObjectId(family.userId)
         const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
-        // Send thank you if payment emails are enabled
-        if (automationSettings?.enablePaymentEmails !== false) {
+        // Send thank you if payment emails are enabled and family wants emails
+        const shouldSendThankYouEmail = automationSettings?.enablePaymentEmails !== false && family.receiveEmails !== false
+        if (shouldSendThankYouEmail) {
           const { sendPaymentThankYouEmail } = await import('@/lib/email-helpers')
           await sendPaymentThankYouEmail(
             family.email,
@@ -300,7 +307,8 @@ export async function POST(
         const adminObjectId = new mongoose.Types.ObjectId(family.userId)
         const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
-        if (automationSettings?.enablePaymentSMS === true) {
+        const shouldSendThankYouSMS = automationSettings?.enablePaymentSMS === true && family.receiveSMS !== false
+        if (shouldSendThankYouSMS) {
           const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
           if (phoneNumber) {
             const { sendPaymentThankYouSMS } = await import('@/lib/sms-helpers')

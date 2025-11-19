@@ -100,8 +100,9 @@ export async function POST(request: NextRequest) {
             // Only send if today matches the reminder date and payment hasn't been processed yet
             if (reminderDate.getTime() === today.getTime() && nextPaymentDate >= today) {
               try {
-                // Send email reminder
-                if (family.email) {
+                // Send email reminder (check if family wants emails)
+                const familyWantsEmails = family.receiveEmails !== false // Default to true if not set
+                if (family.email && familyWantsEmails) {
                   const { sendPaymentReminderEmail } = await import('@/lib/email-helpers')
                   await sendPaymentReminderEmail(
                     family.email,
@@ -113,9 +114,10 @@ export async function POST(request: NextRequest) {
                   )
                 }
 
-                // Send SMS reminder
+                // Send SMS reminder (check if family wants SMS)
+                const familyWantsSMS = family.receiveSMS !== false // Default to true if not set
                 const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
-                if (phoneNumber && admin.automationSettings?.enablePaymentSMS) {
+                if (phoneNumber && admin.automationSettings?.enablePaymentSMS && familyWantsSMS) {
                   const { sendPaymentReminderSMS } = await import('@/lib/sms-helpers')
                   await sendPaymentReminderSMS(
                     phoneNumber,

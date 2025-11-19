@@ -215,7 +215,9 @@ export async function POST(request: NextRequest) {
       zip: zip || undefined,
       paymentPlanId: paymentPlanId, // Only store ID, no currentPlan
       currentPayment: currentPayment || 0,
-      openBalance: openBalance || 0
+      openBalance: openBalance || 0,
+      receiveEmails: body.receiveEmails !== false, // Default to true
+      receiveSMS: body.receiveSMS !== false // Default to true
     })
 
     // Auto-create Stripe Customer for the family
@@ -284,8 +286,9 @@ export async function POST(request: NextRequest) {
         const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
         const shouldSendEmail = automationSettings?.enableFamilyWelcomeEmails !== false // Default to true if not set
+        const familyWantsEmails = family.receiveEmails !== false // Default to true if not set
         
-        if (shouldSendEmail) {
+        if (shouldSendEmail && familyWantsEmails) {
           const { sendFamilyWelcomeEmail } = await import('@/lib/email-helpers')
           
           // Get base URL from request or environment
@@ -304,7 +307,11 @@ export async function POST(request: NextRequest) {
           )
           console.log(`✅ Welcome email sent to ${email}`)
         } else {
-          console.log(`ℹ️ Welcome email skipped - disabled in automation settings for admin ${user.userId}`)
+          if (!shouldSendEmail) {
+            console.log(`ℹ️ Welcome email skipped - disabled in automation settings for admin ${user.userId}`)
+          } else if (!familyWantsEmails) {
+            console.log(`ℹ️ Welcome email skipped - family has opted out of emails`)
+          }
         }
       } catch (emailError: any) {
         // Log error but don't fail family creation if email sending fails
@@ -321,8 +328,9 @@ export async function POST(request: NextRequest) {
         const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
         const shouldSendSMS = automationSettings?.enableFamilyWelcomeSMS === true
+        const familyWantsSMS = family.receiveSMS !== false // Default to true if not set
         
-        if (shouldSendSMS) {
+        if (shouldSendSMS && familyWantsSMS) {
           const { sendFamilyWelcomeSMS } = await import('@/lib/sms-helpers')
           
           // Get base URL from request or environment
@@ -340,6 +348,12 @@ export async function POST(request: NextRequest) {
             user.userId
           )
           console.log(`✅ Welcome SMS sent to ${phoneNumber}`)
+        } else {
+          if (!shouldSendSMS) {
+            console.log(`ℹ️ Welcome SMS skipped - disabled in automation settings for admin ${user.userId}`)
+          } else if (!familyWantsSMS) {
+            console.log(`ℹ️ Welcome SMS skipped - family has opted out of SMS`)
+          }
         }
       } catch (smsError: any) {
         // Log error but don't fail family creation if SMS sending fails

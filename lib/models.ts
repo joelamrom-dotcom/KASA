@@ -38,6 +38,9 @@ const FamilySchema = new Schema({
   openBalance: { type: Number, default: 0 }, // Deprecated - no longer used in UI, kept for backward compatibility
   parentFamilyId: { type: Schema.Types.ObjectId, ref: 'Family' }, // Reference to parent family (for families created from members)
   stripeCustomerId: String, // Stripe Customer ID for this family
+  // Communication Preferences
+  receiveEmails: { type: Boolean, default: true }, // Opt-in for email notifications
+  receiveSMS: { type: Boolean, default: true }, // Opt-in for SMS notifications
 }, { timestamps: true })
 
 // Add index for userId for better query performance
@@ -73,6 +76,9 @@ const FamilyMemberSchema = new Schema({
   paymentPlanAssigned: { type: Boolean, default: false },
   stripeCustomerId: String, // Stripe Customer ID (created when male turns 13)
   notes: String,
+  // Communication Preferences
+  receiveEmails: { type: Boolean, default: true }, // Opt-in for email notifications
+  receiveSMS: { type: Boolean, default: true }, // Opt-in for SMS notifications
 }, { timestamps: true })
 
 // Payment Schema

@@ -128,6 +128,8 @@ export async function PUT(
     if ('state' in body) updateData.state = body.state
     if ('zip' in body) updateData.zip = body.zip
     if ('currentPayment' in body) updateData.currentPayment = body.currentPayment || 0
+    if ('receiveEmails' in body) updateData.receiveEmails = body.receiveEmails !== false
+    if ('receiveSMS' in body) updateData.receiveSMS = body.receiveSMS !== false
     
     // Convert weddingDate to Date object if provided
     if ('weddingDate' in body && body.weddingDate) {
