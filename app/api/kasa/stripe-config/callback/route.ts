@@ -4,6 +4,8 @@ import { StripeConfig } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 import Stripe from 'stripe'
 
+export const dynamic = 'force-dynamic'
+
 // Initialize Stripe with platform account
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, {

@@ -3,6 +3,8 @@ import connectDB from '@/lib/database'
 import { StripeConfig } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Get Stripe configuration for current user (admin/super_admin only)
 export async function GET(request: NextRequest) {
   try {

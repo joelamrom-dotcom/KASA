@@ -3,6 +3,8 @@ import connectDB from '@/lib/database'
 import { StripeConfig } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 
+export const dynamic = 'force-dynamic'
+
 // POST - Disconnect Stripe account
 export async function POST(request: NextRequest) {
   try {
