@@ -249,7 +249,6 @@ export async function POST(request: NextRequest) {
             console.log(`✅ Payment confirmation SMS sent to ${phoneNumber}`)
           }
         }
-      }
     } catch (smsError: any) {
       // Log error but don't fail payment creation if SMS sending fails
       console.error(`⚠️ Failed to send payment confirmation SMS:`, smsError.message)
