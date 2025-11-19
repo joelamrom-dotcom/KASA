@@ -50,12 +50,15 @@ export async function POST(request: NextRequest) {
       
       // Filter to only admins with automation enabled
       for (const admin of allAdmins) {
+        const adminId = admin._id as any
+        if (!adminId) continue
+        
         const automationSettings = await AutomationSettings.findOne({ 
-          userId: admin._id,
+          userId: adminId,
           enableMonthlyPayments: true 
         })
         if (automationSettings) {
-          adminUsers.push({ _id: admin._id, userId: admin._id.toString() })
+          adminUsers.push({ _id: adminId, userId: adminId.toString() })
         }
       }
     }
