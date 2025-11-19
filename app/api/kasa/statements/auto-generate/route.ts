@@ -1,9 +1,34 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { generateMonthlyStatements } from '@/lib/scheduler'
+import connectDB from '@/lib/database'
+import { AutomationSettings } from '@/lib/models'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // POST - Auto-generate monthly statements (can be called by cron job)
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    await connectDB()
+    
+    // Check if automation is enabled (if user is authenticated)
+    try {
+      const user = getAuthenticatedUser(request)
+      if (user) {
+        const mongoose = require('mongoose')
+        const userObjectId = new mongoose.Types.ObjectId(user.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: userObjectId })
+        
+        if (automationSettings && !automationSettings.enableStatementGeneration) {
+          return NextResponse.json({
+            success: false,
+            message: 'Statement generation automation is disabled for this account',
+            generated: 0
+          })
+        }
+      }
+    } catch (authError) {
+      // If no auth, continue (cron jobs may not have auth)
+    }
+    
     const result = await generateMonthlyStatements()
     return NextResponse.json(result, { status: 201 })
   } catch (error: any) {

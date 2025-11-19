@@ -1,14 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Family, Statement, Payment, Withdrawal, LifecycleEventPayment, EmailConfig } from '@/lib/models'
+import { Family, Statement, Payment, Withdrawal, LifecycleEventPayment, EmailConfig, AutomationSettings } from '@/lib/models'
 import { calculateFamilyBalance } from '@/lib/calculations'
 import { generateStatementPDF, StatementTransaction } from '@/lib/email-utils'
 import nodemailer from 'nodemailer'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // POST - Automatically send monthly statements via email (called on 1st of each month)
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Check if automation is enabled (if user is authenticated)
+    try {
+      const user = getAuthenticatedUser(request)
+      if (user) {
+        const mongoose = require('mongoose')
+        const userObjectId = new mongoose.Types.ObjectId(user.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: userObjectId })
+        
+        if (automationSettings && !automationSettings.enableStatementEmails) {
+          return NextResponse.json({
+            success: false,
+            message: 'Statement email automation is disabled for this account',
+            sent: 0,
+            failed: 0
+          })
+        }
+      }
+    } catch (authError) {
+      // If no auth, continue (cron jobs may not have auth)
+    }
     
     // Get email configuration from database
     const emailConfigDoc = await EmailConfig.findOne({ isActive: true })

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Task, EmailConfig } from '@/lib/models'
+import { Task, EmailConfig, AutomationSettings } from '@/lib/models'
 import nodemailer from 'nodemailer'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,27 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Check if automation is enabled (if user is authenticated)
+    try {
+      const user = getAuthenticatedUser(request)
+      if (user) {
+        const mongoose = require('mongoose')
+        const userObjectId = new mongoose.Types.ObjectId(user.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: userObjectId })
+        
+        if (automationSettings && !automationSettings.enableTaskEmails) {
+          return NextResponse.json({
+            success: false,
+            message: 'Task email automation is disabled for this account',
+            sent: 0,
+            failed: 0
+          })
+        }
+      }
+    } catch (authError) {
+      // If no auth, continue (cron jobs may not have auth)
+    }
     
     // Get email configuration
     const emailConfig = await EmailConfig.findOne({ isActive: true })

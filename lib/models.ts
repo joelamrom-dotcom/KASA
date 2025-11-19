@@ -362,9 +362,39 @@ const StripeConfigSchema = new Schema({
 
 StripeConfigSchema.index({ userId: 1 }, { unique: true })
 
+// Automation Settings Schema (User-specific automation controls)
+const AutomationSettingsSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  // Monthly Recurring Payments
+  enableMonthlyPayments: { type: Boolean, default: true },
+  monthlyPaymentsSchedule: { type: String, default: '0 2 * * *' }, // Daily at 2 AM
+  
+  // Monthly Statement Generation
+  enableStatementGeneration: { type: Boolean, default: true },
+  statementGenerationSchedule: { type: String, default: '0 2 1 * *' }, // 1st of month at 2 AM
+  
+  // Monthly Statement Email Sending
+  enableStatementEmails: { type: Boolean, default: true },
+  statementEmailsSchedule: { type: String, default: '0 3 1 * *' }, // 1st of month at 3 AM
+  
+  // Wedding Date Conversion
+  enableWeddingConversion: { type: Boolean, default: true },
+  weddingConversionSchedule: { type: String, default: '0 1 * * *' }, // Daily at 1 AM
+  
+  // Task Due Date Emails
+  enableTaskEmails: { type: Boolean, default: true },
+  taskEmailsSchedule: { type: String, default: '0 9 * * *' }, // Daily at 9 AM
+  
+  isActive: { type: Boolean, default: true },
+  lastUpdated: { type: Date, default: Date.now },
+}, { timestamps: true })
+
+AutomationSettingsSchema.index({ userId: 1 }, { unique: true })
+
 export const EmailConfig = mongoose.models.EmailConfig || mongoose.model('EmailConfig', EmailConfigSchema)
 export const CycleConfig = mongoose.models.CycleConfig || mongoose.model('CycleConfig', CycleConfigSchema)
 export const StripeConfig = mongoose.models.StripeConfig || mongoose.model('StripeConfig', StripeConfigSchema)
+export const AutomationSettings = mongoose.models.AutomationSettings || mongoose.model('AutomationSettings', AutomationSettingsSchema)
 export const SavedPaymentMethod = mongoose.models.SavedPaymentMethod || mongoose.model('SavedPaymentMethod', SavedPaymentMethodSchema)
 export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.model('RecurringPayment', RecurringPaymentSchema)
 export const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema)

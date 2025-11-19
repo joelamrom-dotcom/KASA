@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { RecurringPayment, SavedPaymentMethod, Payment, Family } from '@/lib/models'
+import { RecurringPayment, SavedPaymentMethod, Payment, Family, AutomationSettings } from '@/lib/models'
 import { createPaymentDeclinedTask } from '@/lib/task-helpers'
 import { getUserStripe, getUserStripeAccountId } from '@/lib/stripe-helpers'
 import { getAuthenticatedUser } from '@/lib/middleware'
@@ -16,6 +16,21 @@ export async function POST(request: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       )
+    }
+    
+    // Check if automation is enabled for this user
+    const mongoose = require('mongoose')
+    const userObjectId = new mongoose.Types.ObjectId(user.userId)
+    const automationSettings = await AutomationSettings.findOne({ userId: userObjectId })
+    
+    if (automationSettings && !automationSettings.enableMonthlyPayments) {
+      return NextResponse.json({
+        success: false,
+        message: 'Monthly payments automation is disabled for this account',
+        processed: 0,
+        skipped: 0,
+        failed: 0
+      })
     }
     
     // Get user's Stripe account

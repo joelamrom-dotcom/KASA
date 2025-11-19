@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
 
@@ -26,7 +26,7 @@ interface PaymentPlan {
   families?: Family[]
 }
 
-type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe'
+type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('email')
@@ -89,6 +89,18 @@ export default function SettingsPage() {
     description: 'Membership cycle start date'
   })
 
+  // Automation Settings state
+  const [automationSettings, setAutomationSettings] = useState<any>(null)
+  const [automationLoading, setAutomationLoading] = useState(true)
+  const [automationSaving, setAutomationSaving] = useState(false)
+  const [automationFormData, setAutomationFormData] = useState({
+    enableMonthlyPayments: true,
+    enableStatementGeneration: true,
+    enableStatementEmails: true,
+    enableWeddingConversion: true,
+    enableTaskEmails: true,
+  })
+
   useEffect(() => {
     // Fetch user role first to determine which tabs to show
     const fetchUserRole = async () => {
@@ -144,6 +156,7 @@ export default function SettingsPage() {
     fetchPlans()
     fetchKevittelData()
     fetchCycleConfig()
+    fetchAutomationSettings()
   }, [])
 
   // Refresh Kevittel data when switching to the Kevittel tab
@@ -418,6 +431,70 @@ export default function SettingsPage() {
       setCycleConfig(null)
     } finally {
       setCycleLoading(false)
+    }
+  }
+
+  const fetchAutomationSettings = async () => {
+    try {
+      setAutomationLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/automation-settings', {
+        headers: token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : {}
+      })
+      if (res.ok) {
+        const settings = await res.json()
+        setAutomationSettings(settings)
+        setAutomationFormData({
+          enableMonthlyPayments: settings.enableMonthlyPayments ?? true,
+          enableStatementGeneration: settings.enableStatementGeneration ?? true,
+          enableStatementEmails: settings.enableStatementEmails ?? true,
+          enableWeddingConversion: settings.enableWeddingConversion ?? true,
+          enableTaskEmails: settings.enableTaskEmails ?? true,
+        })
+      } else {
+        // Create default settings
+        setAutomationSettings(null)
+      }
+    } catch (error) {
+      console.error('Error fetching automation settings:', error)
+      setAutomationSettings(null)
+    } finally {
+      setAutomationLoading(false)
+    }
+  }
+
+  const handleSaveAutomationSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAutomationSaving(true)
+    setMessage(null)
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/automation-settings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(automationFormData)
+      })
+
+      const result = await res.json()
+
+      if (res.ok) {
+        setAutomationSettings(result)
+        setMessage({ 
+          type: 'success', 
+          text: 'Automation settings saved successfully!' 
+        })
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to save automation settings' })
+      }
+    } catch (error: any) {
+      console.error('Error saving automation settings:', error)
+      setMessage({ type: 'error', text: 'Error saving automation settings' })
+    } finally {
+      setAutomationSaving(false)
     }
   }
 
@@ -946,19 +1023,34 @@ export default function SettingsPage() {
                 </div>
               </button>
               {(userRole === 'admin' || userRole === 'super_admin') && (
-                <button
-                  onClick={() => setActiveTab('stripe')}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'stripe'
-                      ? 'border-indigo-600 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <CreditCardIcon className="h-5 w-5" />
-                    Stripe Connection
-                  </div>
-                </button>
+                <>
+                  <button
+                    onClick={() => setActiveTab('stripe')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'stripe'
+                        ? 'border-indigo-600 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <CreditCardIcon className="h-5 w-5" />
+                      Stripe Connection
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('automations')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'automations'
+                        ? 'border-purple-600 text-purple-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Cog6ToothIcon className="h-5 w-5" />
+                      Automations
+                    </div>
+                  </button>
+                </>
               )}
             </nav>
           </div>
@@ -2117,6 +2209,136 @@ export default function SettingsPage() {
                 </div>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Automation Settings Tab */}
+        {activeTab === 'automations' && (userRole === 'admin' || userRole === 'super_admin') && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Automation Settings</h2>
+              <p className="text-sm text-gray-600">Control which automations run automatically for your account</p>
+            </div>
+
+            {automationLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Loading automation settings...</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveAutomationSettings} className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-blue-800">
+                    <strong>How it works:</strong> When enabled, these automations will run automatically via cron jobs. 
+                    Each admin can control which automations are active for their account. Disabled automations can still be triggered manually.
+                  </p>
+                </div>
+
+                {/* Monthly Payments Automation */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-800">Monthly Recurring Payments</h3>
+                      <p className="text-sm text-gray-600">Automatically charge saved cards for monthly payments (runs daily at 2 AM)</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={automationFormData.enableMonthlyPayments}
+                        onChange={(e) => setAutomationFormData({ ...automationFormData, enableMonthlyPayments: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Statement Generation Automation */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-800">Monthly Statement Generation</h3>
+                      <p className="text-sm text-gray-600">Automatically generate PDF statements for all families (runs on 1st of month at 2 AM)</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={automationFormData.enableStatementGeneration}
+                        onChange={(e) => setAutomationFormData({ ...automationFormData, enableStatementGeneration: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Statement Email Automation */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-800">Monthly Statement Emails</h3>
+                      <p className="text-sm text-gray-600">Automatically send PDF statements via email to families (runs on 1st of month at 3 AM)</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={automationFormData.enableStatementEmails}
+                        onChange={(e) => setAutomationFormData({ ...automationFormData, enableStatementEmails: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Wedding Conversion Automation */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-800">Wedding Date Conversion</h3>
+                      <p className="text-sm text-gray-600">Automatically convert members to families on their wedding date (runs daily at 1 AM)</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={automationFormData.enableWeddingConversion}
+                        onChange={(e) => setAutomationFormData({ ...automationFormData, enableWeddingConversion: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Task Email Automation */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-800">Task Due Date Emails</h3>
+                      <p className="text-sm text-gray-600">Automatically send email reminders for tasks due today (runs daily at 9 AM)</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={automationFormData.enableTaskEmails}
+                        onChange={(e) => setAutomationFormData({ ...automationFormData, enableTaskEmails: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <button
+                    type="submit"
+                    disabled={automationSaving}
+                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {automationSaving ? 'Saving...' : 'Save Automation Settings'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
       </div>

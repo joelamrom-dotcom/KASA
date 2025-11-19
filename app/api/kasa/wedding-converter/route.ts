@@ -1,9 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { convertMembersOnWeddingDate } from '@/lib/wedding-converter'
+import connectDB from '@/lib/database'
+import { AutomationSettings } from '@/lib/models'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // POST - Manually trigger wedding date conversions (for testing or manual runs)
 export async function POST(request: NextRequest) {
   try {
+    await connectDB()
+    
+    // Check if automation is enabled (if user is authenticated)
+    try {
+      const user = getAuthenticatedUser(request)
+      if (user) {
+        const mongoose = require('mongoose')
+        const userObjectId = new mongoose.Types.ObjectId(user.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: userObjectId })
+        
+        if (automationSettings && !automationSettings.enableWeddingConversion) {
+          return NextResponse.json({
+            success: false,
+            message: 'Wedding conversion automation is disabled for this account',
+            converted: 0,
+            members: []
+          })
+        }
+      }
+    } catch (authError) {
+      // If no auth, continue (cron jobs may not have auth)
+    }
+    
     const result = await convertMembersOnWeddingDate()
     return NextResponse.json({
       message: 'Wedding date conversion completed',
