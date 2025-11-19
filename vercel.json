@@ -15,24 +15,12 @@
   },
   "crons": [
     {
-      "path": "/api/kasa/recurring-payments/process",
+      "path": "/api/kasa/automations/daily",
       "schedule": "0 2 * * *"
     },
     {
-      "path": "/api/kasa/statements/auto-generate",
+      "path": "/api/kasa/automations/monthly",
       "schedule": "0 2 1 * *"
-    },
-    {
-      "path": "/api/kasa/statements/send-monthly-emails",
-      "schedule": "0 3 1 * *"
-    },
-    {
-      "path": "/api/kasa/wedding-converter",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/kasa/tasks/send-due-date-emails",
-      "schedule": "0 9 * * *"
     }
   ]
 }
