@@ -11,14 +11,23 @@ export function formatPhoneNumber(phone: string): string {
 }
 
 /**
- * Get carrier email gateway for a phone number
- * Common US carrier gateways
+ * Get all common US carrier email gateways
+ * We'll try all of them to increase delivery success
  */
-function getCarrierGateway(phoneNumber: string, defaultGateway: string = 'txt.att.net'): string {
-  // For now, use default gateway
-  // In the future, you could add logic to detect carrier based on phone number prefix
-  // or ask users to specify their carrier
-  return defaultGateway
+function getAllCarrierGateways(): string[] {
+  return [
+    'txt.att.net',           // AT&T
+    'vtext.com',             // Verizon
+    'tmomail.net',           // T-Mobile
+    'messaging.sprintpcs.com', // Sprint
+    'email.uscc.net',        // US Cellular
+    'mymetropcs.com',        // MetroPCS
+    'msg.fi.google.com',     // Google Fi
+    'text.republicwireless.com', // Republic Wireless
+    'sms.cricketwireless.net',  // Cricket
+    'vzwpix.com',            // Verizon (alternative)
+    'pm.sprint.com',         // Sprint (alternative)
+  ]
 }
 
 /**
@@ -82,11 +91,8 @@ export async function sendSMS(
       return { success: false, error: 'Invalid phone number format' }
     }
     
-    // Get carrier gateway
-    const carrierGateway = smsConfig.defaultGateway || 'txt.att.net'
-    
-    // Create email address for SMS
-    const emailAddress = `${formattedPhone}@${carrierGateway}`
+    // Get all carrier gateways to try
+    const gateways = getAllCarrierGateways()
     
     // Create email transporter
     const transporter = nodemailer.createTransport({
@@ -97,15 +103,20 @@ export async function sendSMS(
       }
     })
     
-    // Send email (which will be converted to SMS by carrier)
+    // Try sending to all carrier gateways
+    // We'll send to all of them as BCC to increase delivery chances
+    const emailAddresses = gateways.map(gateway => `${formattedPhone}@${gateway}`)
+    
+    // Send email to all gateways (using BCC so recipients don't see each other)
     const info = await transporter.sendMail({
       from: `${emailConfig.fromName || 'Kasa'} <${emailConfig.email}>`,
-      to: emailAddress,
+      to: emailAddresses[0], // Primary recipient
+      bcc: emailAddresses.slice(1), // All other gateways as BCC
       subject: smsConfig.emailSubject || 'SMS',
       text: message // Plain text only (SMS doesn't support HTML)
     })
     
-    console.log(`✅ SMS sent successfully to ${phoneNumber} via ${emailAddress}:`, info.messageId)
+    console.log(`✅ SMS sent successfully to ${phoneNumber} via ${emailAddresses.length} carrier gateways:`, info.messageId)
     return { success: true, messageId: info.messageId }
   } catch (error: any) {
     console.error('Error sending SMS:', error)
