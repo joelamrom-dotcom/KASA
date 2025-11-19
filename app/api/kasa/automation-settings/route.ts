@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
         enableStatementEmails: true,
         enableWeddingConversion: true,
         enableTaskEmails: true,
+        enableFamilyWelcomeEmails: true,
+        enablePaymentEmails: true,
       })
     }
     
@@ -44,6 +46,8 @@ export async function GET(request: NextRequest) {
       weddingConversionSchedule: settings.weddingConversionSchedule,
       enableTaskEmails: settings.enableTaskEmails,
       taskEmailsSchedule: settings.taskEmailsSchedule,
+      enableFamilyWelcomeEmails: settings.enableFamilyWelcomeEmails ?? true,
+      enablePaymentEmails: settings.enablePaymentEmails ?? true,
       isActive: settings.isActive,
     })
   } catch (error: any) {
@@ -80,6 +84,8 @@ export async function POST(request: NextRequest) {
       weddingConversionSchedule,
       enableTaskEmails,
       taskEmailsSchedule,
+      enableFamilyWelcomeEmails,
+      enablePaymentEmails,
     } = body
     
     const mongoose = require('mongoose')
@@ -119,6 +125,12 @@ export async function POST(request: NextRequest) {
     if (taskEmailsSchedule) {
       updateData.taskEmailsSchedule = taskEmailsSchedule
     }
+    if (typeof enableFamilyWelcomeEmails === 'boolean') {
+      updateData.enableFamilyWelcomeEmails = enableFamilyWelcomeEmails
+    }
+    if (typeof enablePaymentEmails === 'boolean') {
+      updateData.enablePaymentEmails = enablePaymentEmails
+    }
     
     const settings = await AutomationSettings.findOneAndUpdate(
       { userId: userObjectId },
@@ -137,6 +149,8 @@ export async function POST(request: NextRequest) {
       weddingConversionSchedule: settings.weddingConversionSchedule,
       enableTaskEmails: settings.enableTaskEmails,
       taskEmailsSchedule: settings.taskEmailsSchedule,
+      enableFamilyWelcomeEmails: settings.enableFamilyWelcomeEmails ?? true,
+      enablePaymentEmails: settings.enablePaymentEmails ?? true,
       isActive: settings.isActive,
     })
   } catch (error: any) {

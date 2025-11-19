@@ -274,26 +274,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Send welcome email with login details
+    // Send welcome email with login details (if enabled in settings)
     if (email) {
       try {
-        const { sendFamilyWelcomeEmail } = await import('@/lib/email-helpers')
+        // Check if welcome emails are enabled for this admin
+        const { AutomationSettings } = await import('@/lib/models')
+        const mongoose = require('mongoose')
+        const adminObjectId = new mongoose.Types.ObjectId(user.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
-        // Get base URL from request or environment
-        const baseUrl = request.nextUrl.origin || 
-          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-          process.env.NEXT_PUBLIC_BASE_URL || 
-          'http://localhost:3000'
+        const shouldSendEmail = automationSettings?.enableFamilyWelcomeEmails !== false // Default to true if not set
         
-        const loginUrl = `${baseUrl}/login`
-        
-        await sendFamilyWelcomeEmail(
-          email,
-          family.name,
-          loginUrl,
-          phoneNumber
-        )
-        console.log(`✅ Welcome email sent to ${email}`)
+        if (shouldSendEmail) {
+          const { sendFamilyWelcomeEmail } = await import('@/lib/email-helpers')
+          
+          // Get base URL from request or environment
+          const baseUrl = request.nextUrl.origin || 
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+            process.env.NEXT_PUBLIC_BASE_URL || 
+            'http://localhost:3000'
+          
+          const loginUrl = `${baseUrl}/login`
+          
+          await sendFamilyWelcomeEmail(
+            email,
+            family.name,
+            loginUrl,
+            phoneNumber
+          )
+          console.log(`✅ Welcome email sent to ${email}`)
+        } else {
+          console.log(`ℹ️ Welcome email skipped - disabled in automation settings for admin ${user.userId}`)
+        }
       } catch (emailError: any) {
         // Log error but don't fail family creation if email sending fails
         console.error(`⚠️ Failed to send welcome email to ${email}:`, emailError.message)

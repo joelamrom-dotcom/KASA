@@ -385,6 +385,10 @@ const AutomationSettingsSchema = new Schema({
   enableTaskEmails: { type: Boolean, default: true },
   taskEmailsSchedule: { type: String, default: '0 9 * * *' }, // Daily at 9 AM
   
+  // Email Notifications
+  enableFamilyWelcomeEmails: { type: Boolean, default: true },
+  enablePaymentEmails: { type: Boolean, default: true },
+  
   isActive: { type: Boolean, default: true },
   lastUpdated: { type: Date, default: Date.now },
 }, { timestamps: true })

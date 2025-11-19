@@ -180,32 +180,44 @@ export async function POST(
       fullPaymentObject: JSON.stringify(paymentObj, null, 2)
     })
 
-    // Send payment confirmation email
+    // Send payment confirmation email (if enabled in settings)
     try {
       const family = await Family.findById(params.id)
-      if (family && family.email) {
-        const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
+      if (family && family.email && family.userId) {
+        // Check if payment emails are enabled for this admin
+        const { AutomationSettings } = await import('@/lib/models')
+        const mongoose = require('mongoose')
+        const adminObjectId = new mongoose.Types.ObjectId(family.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
-        // Format payment method for display
-        let paymentMethodDisplay = paymentObj.paymentMethod || 'Unknown'
-        if (paymentMethodDisplay === 'credit_card' && paymentObj.ccInfo) {
-          paymentMethodDisplay = `${paymentObj.ccInfo.cardType || 'Credit Card'} ending in ${paymentObj.ccInfo.last4 || '****'}`
-        } else if (paymentMethodDisplay === 'credit_card') {
-          paymentMethodDisplay = 'Credit Card'
-        } else if (paymentMethodDisplay === 'check' && paymentObj.checkInfo) {
-          paymentMethodDisplay = `Check (****${paymentObj.checkInfo.accountNumber?.slice(-4) || '****'})`
+        const shouldSendEmail = automationSettings?.enablePaymentEmails !== false // Default to true if not set
+        
+        if (shouldSendEmail) {
+          const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
+          
+          // Format payment method for display
+          let paymentMethodDisplay = paymentObj.paymentMethod || 'Unknown'
+          if (paymentMethodDisplay === 'credit_card' && paymentObj.ccInfo) {
+            paymentMethodDisplay = `${paymentObj.ccInfo.cardType || 'Credit Card'} ending in ${paymentObj.ccInfo.last4 || '****'}`
+          } else if (paymentMethodDisplay === 'credit_card') {
+            paymentMethodDisplay = 'Credit Card'
+          } else if (paymentMethodDisplay === 'check' && paymentObj.checkInfo) {
+            paymentMethodDisplay = `Check (****${paymentObj.checkInfo.accountNumber?.slice(-4) || '****'})`
+          }
+          
+          await sendPaymentConfirmationEmail(
+            family.email,
+            family.name,
+            paymentObj.amount,
+            new Date(paymentObj.paymentDate),
+            paymentMethodDisplay,
+            paymentObj._id?.toString(),
+            paymentObj.notes
+          )
+          console.log(`✅ Payment confirmation email sent to ${family.email}`)
+        } else {
+          console.log(`ℹ️ Payment confirmation email skipped - disabled in automation settings for admin ${family.userId}`)
         }
-        
-        await sendPaymentConfirmationEmail(
-          family.email,
-          family.name,
-          paymentObj.amount,
-          new Date(paymentObj.paymentDate),
-          paymentMethodDisplay,
-          paymentObj._id?.toString(),
-          paymentObj.notes
-        )
-        console.log(`✅ Payment confirmation email sent to ${family.email}`)
       }
     } catch (emailError: any) {
       // Log error but don't fail payment creation if email sending fails

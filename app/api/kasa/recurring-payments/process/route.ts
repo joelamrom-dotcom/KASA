@@ -190,23 +190,35 @@ export async function POST(request: NextRequest) {
             recurringPayment.nextPaymentDate = nextPaymentDate
             await recurringPayment.save()
 
-            // Send payment confirmation email
+            // Send payment confirmation email (if enabled in settings)
             try {
-              if (family && family.email) {
-                const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
+              if (family && family.email && family.userId) {
+                // Check if payment emails are enabled for this admin
+                const { AutomationSettings } = await import('@/lib/models')
+                const mongoose = require('mongoose')
+                const adminObjectId = new mongoose.Types.ObjectId(family.userId)
+                const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
                 
-                const paymentMethodDisplay = `${savedPaymentMethod.cardType || 'Credit Card'} ending in ${savedPaymentMethod.last4 || '****'}`
+                const shouldSendEmail = automationSettings?.enablePaymentEmails !== false // Default to true if not set
                 
-                await sendPaymentConfirmationEmail(
-                  family.email,
-                  family.name,
-                  recurringPayment.amount,
-                  paymentDate,
-                  paymentMethodDisplay,
-                  payment._id.toString(),
-                  `Automatic monthly payment - ${recurringPayment.notes || ''}`
-                )
-                console.log(`✅ Payment confirmation email sent to ${family.email}`)
+                if (shouldSendEmail) {
+                  const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
+                  
+                  const paymentMethodDisplay = `${savedPaymentMethod.cardType || 'Credit Card'} ending in ${savedPaymentMethod.last4 || '****'}`
+                  
+                  await sendPaymentConfirmationEmail(
+                    family.email,
+                    family.name,
+                    recurringPayment.amount,
+                    paymentDate,
+                    paymentMethodDisplay,
+                    payment._id.toString(),
+                    `Automatic monthly payment - ${recurringPayment.notes || ''}`
+                  )
+                  console.log(`✅ Payment confirmation email sent to ${family.email}`)
+                } else {
+                  console.log(`ℹ️ Payment confirmation email skipped - disabled in automation settings for admin ${family.userId}`)
+                }
               }
             } catch (emailError: any) {
               // Log error but don't fail payment processing if email sending fails

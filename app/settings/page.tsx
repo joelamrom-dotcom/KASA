@@ -99,6 +99,8 @@ export default function SettingsPage() {
     enableStatementEmails: true,
     enableWeddingConversion: true,
     enableTaskEmails: true,
+    enableFamilyWelcomeEmails: true,
+    enablePaymentEmails: true,
   })
 
   useEffect(() => {
@@ -450,6 +452,8 @@ export default function SettingsPage() {
           enableStatementEmails: settings.enableStatementEmails ?? true,
           enableWeddingConversion: settings.enableWeddingConversion ?? true,
           enableTaskEmails: settings.enableTaskEmails ?? true,
+          enableFamilyWelcomeEmails: settings.enableFamilyWelcomeEmails ?? true,
+          enablePaymentEmails: settings.enablePaymentEmails ?? true,
         })
       } else {
         // Create default settings
@@ -2325,6 +2329,49 @@ export default function SettingsPage() {
                       />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                     </label>
+                  </div>
+                </div>
+
+                {/* Email Notifications Section */}
+                <div className="pt-6 border-t-2 border-gray-300 mt-6">
+                  <h2 className="text-lg font-bold text-gray-800 mb-4">Email Notifications</h2>
+                  
+                  {/* Family Welcome Emails */}
+                  <div className="border rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="font-semibold text-gray-800">Family Welcome Emails</h3>
+                        <p className="text-sm text-gray-600">Send welcome email with login URL and sign-in details when a new family is created</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={automationFormData.enableFamilyWelcomeEmails}
+                          onChange={(e) => setAutomationFormData({ ...automationFormData, enableFamilyWelcomeEmails: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Payment Confirmation Emails */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="font-semibold text-gray-800">Payment Confirmation Emails</h3>
+                        <p className="text-sm text-gray-600">Send payment confirmation email to families when a payment is received</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={automationFormData.enablePaymentEmails}
+                          onChange={(e) => setAutomationFormData({ ...automationFormData, enablePaymentEmails: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      </label>
+                    </div>
                   </div>
                 </div>
 

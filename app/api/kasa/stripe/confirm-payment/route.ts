@@ -175,28 +175,40 @@ export async function POST(request: NextRequest) {
       await payment.save()
     }
 
-    // Send payment confirmation email
+    // Send payment confirmation email (if enabled in settings)
     try {
       const family = await Family.findById(familyId)
-      if (family && family.email) {
-        const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
+      if (family && family.email && family.userId) {
+        // Check if payment emails are enabled for this admin
+        const { AutomationSettings } = await import('@/lib/models')
+        const mongoose = require('mongoose')
+        const adminObjectId = new mongoose.Types.ObjectId(family.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
         
-        // Format payment method for display
-        let paymentMethodDisplay = 'Credit Card'
-        if (ccInfo) {
-          paymentMethodDisplay = `${ccInfo.cardType || 'Credit Card'} ending in ${ccInfo.last4 || '****'}`
+        const shouldSendEmail = automationSettings?.enablePaymentEmails !== false // Default to true if not set
+        
+        if (shouldSendEmail) {
+          const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
+          
+          // Format payment method for display
+          let paymentMethodDisplay = 'Credit Card'
+          if (ccInfo) {
+            paymentMethodDisplay = `${ccInfo.cardType || 'Credit Card'} ending in ${ccInfo.last4 || '****'}`
+          }
+          
+          await sendPaymentConfirmationEmail(
+            family.email,
+            family.name,
+            paymentObj.amount,
+            new Date(paymentObj.paymentDate),
+            paymentMethodDisplay,
+            paymentObj._id?.toString(),
+            notes
+          )
+          console.log(`✅ Payment confirmation email sent to ${family.email}`)
+        } else {
+          console.log(`ℹ️ Payment confirmation email skipped - disabled in automation settings for admin ${family.userId}`)
         }
-        
-        await sendPaymentConfirmationEmail(
-          family.email,
-          family.name,
-          paymentObj.amount,
-          new Date(paymentObj.paymentDate),
-          paymentMethodDisplay,
-          paymentObj._id?.toString(),
-          notes
-        )
-        console.log(`✅ Payment confirmation email sent to ${family.email}`)
       }
     } catch (emailError: any) {
       // Log error but don't fail payment creation if email sending fails
