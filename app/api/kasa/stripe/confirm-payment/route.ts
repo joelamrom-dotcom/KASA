@@ -175,6 +175,34 @@ export async function POST(request: NextRequest) {
       await payment.save()
     }
 
+    // Send payment confirmation email
+    try {
+      const family = await Family.findById(familyId)
+      if (family && family.email) {
+        const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
+        
+        // Format payment method for display
+        let paymentMethodDisplay = 'Credit Card'
+        if (ccInfo) {
+          paymentMethodDisplay = `${ccInfo.cardType || 'Credit Card'} ending in ${ccInfo.last4 || '****'}`
+        }
+        
+        await sendPaymentConfirmationEmail(
+          family.email,
+          family.name,
+          paymentObj.amount,
+          new Date(paymentObj.paymentDate),
+          paymentMethodDisplay,
+          paymentObj._id?.toString(),
+          notes
+        )
+        console.log(`✅ Payment confirmation email sent to ${family.email}`)
+      }
+    } catch (emailError: any) {
+      // Log error but don't fail payment creation if email sending fails
+      console.error(`⚠️ Failed to send payment confirmation email:`, emailError.message)
+    }
+
     return NextResponse.json({
       success: true,
       payment: paymentObj,

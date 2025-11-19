@@ -228,17 +228,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Auto-create user account for family if email exists
+    let familyUser = null
+    let phoneNumber = ''
     if (email) {
       try {
         // Check if user already exists with this email
         const existingUser = await User.findOne({ email: email.toLowerCase() })
         
+        // Get phone number (prefer husbandCellPhone, then wifeCellPhone, then phone)
+        phoneNumber = husbandCellPhone || wifeCellPhone || phone || ''
+        
         if (!existingUser) {
-          // Get phone number (prefer husbandCellPhone, then wifeCellPhone, then phone)
-          const phoneNumber = husbandCellPhone || wifeCellPhone || phone || ''
-          
           // Create user account for family
-          const familyUser = await User.create({
+          familyUser = await User.create({
             email: email.toLowerCase(),
             firstName: husbandFirstName || wifeFirstName || name.split(' ')[0] || 'Family',
             lastName: name.split(' ').slice(1).join(' ') || 'Member',
@@ -257,15 +259,44 @@ export async function POST(request: NextRequest) {
             existingUser.familyId = family._id
             existingUser.role = 'family'
             if (!existingUser.phoneNumber) {
-              existingUser.phoneNumber = husbandCellPhone || wifeCellPhone || phone || ''
+              existingUser.phoneNumber = phoneNumber
             }
             await existingUser.save()
+            familyUser = existingUser
             console.log(`✅ Linked existing user ${existingUser.email} to family ${family.name}`)
+          } else {
+            familyUser = existingUser
           }
         }
       } catch (error: any) {
         // Log error but don't fail family creation if user creation fails
         console.error(`⚠️ Failed to create user account for family ${family.name}:`, error.message)
+      }
+    }
+
+    // Send welcome email with login details
+    if (email) {
+      try {
+        const { sendFamilyWelcomeEmail } = await import('@/lib/email-helpers')
+        
+        // Get base URL from request or environment
+        const baseUrl = request.nextUrl.origin || 
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+          process.env.NEXT_PUBLIC_BASE_URL || 
+          'http://localhost:3000'
+        
+        const loginUrl = `${baseUrl}/login`
+        
+        await sendFamilyWelcomeEmail(
+          email,
+          family.name,
+          loginUrl,
+          phoneNumber
+        )
+        console.log(`✅ Welcome email sent to ${email}`)
+      } catch (emailError: any) {
+        // Log error but don't fail family creation if email sending fails
+        console.error(`⚠️ Failed to send welcome email to ${email}:`, emailError.message)
       }
     }
 

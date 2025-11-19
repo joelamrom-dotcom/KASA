@@ -190,6 +190,29 @@ export async function POST(request: NextRequest) {
             recurringPayment.nextPaymentDate = nextPaymentDate
             await recurringPayment.save()
 
+            // Send payment confirmation email
+            try {
+              if (family && family.email) {
+                const { sendPaymentConfirmationEmail } = await import('@/lib/email-helpers')
+                
+                const paymentMethodDisplay = `${savedPaymentMethod.cardType || 'Credit Card'} ending in ${savedPaymentMethod.last4 || '****'}`
+                
+                await sendPaymentConfirmationEmail(
+                  family.email,
+                  family.name,
+                  recurringPayment.amount,
+                  paymentDate,
+                  paymentMethodDisplay,
+                  payment._id.toString(),
+                  `Automatic monthly payment - ${recurringPayment.notes || ''}`
+                )
+                console.log(`✅ Payment confirmation email sent to ${family.email}`)
+              }
+            } catch (emailError: any) {
+              // Log error but don't fail payment processing if email sending fails
+              console.error(`⚠️ Failed to send payment confirmation email:`, emailError.message)
+            }
+
             allResults.push({
               adminId: admin.userId,
               recurringPaymentId: recurringPayment._id.toString(),
