@@ -200,6 +200,16 @@ const EmailConfigSchema = new Schema({
 
 EmailConfigSchema.index({ userId: 1, isActive: 1 }) // Index for faster queries
 
+// SMS Configuration Schema (Email-to-SMS)
+const SmsConfigSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this SMS config
+  defaultGateway: { type: String, default: 'txt.att.net' }, // Default carrier gateway if carrier unknown
+  emailSubject: { type: String, default: 'SMS' }, // Subject line for email-to-SMS
+  isActive: { type: Boolean, default: true },
+}, { timestamps: true })
+
+SmsConfigSchema.index({ userId: 1, isActive: 1 }) // Index for faster queries
+
 // Cycle Configuration Schema (Membership Year Configuration)
 const CycleConfigSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Owner of this cycle config (optional for backward compatibility)
@@ -389,6 +399,10 @@ const AutomationSettingsSchema = new Schema({
   enableFamilyWelcomeEmails: { type: Boolean, default: true },
   enablePaymentEmails: { type: Boolean, default: true },
   
+  // SMS Notifications
+  enableFamilyWelcomeSMS: { type: Boolean, default: false },
+  enablePaymentSMS: { type: Boolean, default: false },
+  
   isActive: { type: Boolean, default: true },
   lastUpdated: { type: Date, default: Date.now },
 }, { timestamps: true })
@@ -396,6 +410,7 @@ const AutomationSettingsSchema = new Schema({
 AutomationSettingsSchema.index({ userId: 1 }, { unique: true })
 
 export const EmailConfig = mongoose.models.EmailConfig || mongoose.model('EmailConfig', EmailConfigSchema)
+export const SmsConfig = mongoose.models.SmsConfig || mongoose.model('SmsConfig', SmsConfigSchema)
 export const CycleConfig = mongoose.models.CycleConfig || mongoose.model('CycleConfig', CycleConfigSchema)
 export const StripeConfig = mongoose.models.StripeConfig || mongoose.model('StripeConfig', StripeConfigSchema)
 export const AutomationSettings = mongoose.models.AutomationSettings || mongoose.model('AutomationSettings', AutomationSettingsSchema)

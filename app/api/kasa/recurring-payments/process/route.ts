@@ -225,6 +225,32 @@ export async function POST(request: NextRequest) {
               console.error(`⚠️ Failed to send payment confirmation email:`, emailError.message)
             }
 
+            // Send payment confirmation SMS (if enabled in settings)
+            try {
+              if (family && family.userId && automationSettings?.enablePaymentSMS === true) {
+                const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
+                
+                if (phoneNumber) {
+                  const { sendPaymentConfirmationSMS } = await import('@/lib/sms-helpers')
+                  
+                  const paymentMethodDisplay = `${savedPaymentMethod.cardType || 'Credit Card'} ending in ${savedPaymentMethod.last4 || '****'}`
+                  
+                  await sendPaymentConfirmationSMS(
+                    phoneNumber,
+                    family.name,
+                    recurringPayment.amount,
+                    paymentDate,
+                    paymentMethodDisplay,
+                    family.userId.toString()
+                  )
+                  console.log(`✅ Payment confirmation SMS sent to ${phoneNumber}`)
+                }
+              }
+            } catch (smsError: any) {
+              // Log error but don't fail payment processing if SMS sending fails
+              console.error(`⚠️ Failed to send payment confirmation SMS:`, smsError.message)
+            }
+
             allResults.push({
               adminId: admin.userId,
               recurringPaymentId: recurringPayment._id.toString(),

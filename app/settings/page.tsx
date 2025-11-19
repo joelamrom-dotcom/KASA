@@ -101,6 +101,8 @@ export default function SettingsPage() {
     enableTaskEmails: true,
     enableFamilyWelcomeEmails: true,
     enablePaymentEmails: true,
+    enableFamilyWelcomeSMS: false,
+    enablePaymentSMS: false,
   })
 
   useEffect(() => {
@@ -454,6 +456,8 @@ export default function SettingsPage() {
           enableTaskEmails: settings.enableTaskEmails ?? true,
           enableFamilyWelcomeEmails: settings.enableFamilyWelcomeEmails ?? true,
           enablePaymentEmails: settings.enablePaymentEmails ?? true,
+          enableFamilyWelcomeSMS: settings.enableFamilyWelcomeSMS ?? false,
+          enablePaymentSMS: settings.enablePaymentSMS ?? false,
         })
       } else {
         // Create default settings
@@ -2356,7 +2360,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Payment Confirmation Emails */}
-                  <div className="border rounded-lg p-4">
+                  <div className="border rounded-lg p-4 mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <h3 className="font-semibold text-gray-800">Payment Confirmation Emails</h3>
@@ -2371,6 +2375,50 @@ export default function SettingsPage() {
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                       </label>
+                    </div>
+                  </div>
+
+                  {/* SMS Notifications */}
+                  <div className="pt-4 border-t-2 border-gray-300 mt-4">
+                    <h3 className="text-md font-bold text-gray-800 mb-4">SMS Notifications</h3>
+                    <p className="text-sm text-gray-600 mb-4">SMS notifications are sent via email-to-SMS gateways (e.g., phonenumber@txt.att.net)</p>
+                    
+                    {/* Family Welcome SMS */}
+                    <div className="border rounded-lg p-4 mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h3 className="font-semibold text-gray-800">Family Welcome SMS</h3>
+                          <p className="text-sm text-gray-600">Send welcome SMS with login URL when a new family is created</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationFormData.enableFamilyWelcomeSMS}
+                            onChange={(e) => setAutomationFormData({ ...automationFormData, enableFamilyWelcomeSMS: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Payment Confirmation SMS */}
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h3 className="font-semibold text-gray-800">Payment Confirmation SMS</h3>
+                          <p className="text-sm text-gray-600">Send payment confirmation SMS to families when a payment is received</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationFormData.enablePaymentSMS}
+                            onChange={(e) => setAutomationFormData({ ...automationFormData, enablePaymentSMS: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
         enableTaskEmails: true,
         enableFamilyWelcomeEmails: true,
         enablePaymentEmails: true,
+        enableFamilyWelcomeSMS: false,
+        enablePaymentSMS: false,
       })
     }
     
@@ -48,6 +50,8 @@ export async function GET(request: NextRequest) {
       taskEmailsSchedule: settings.taskEmailsSchedule,
       enableFamilyWelcomeEmails: settings.enableFamilyWelcomeEmails ?? true,
       enablePaymentEmails: settings.enablePaymentEmails ?? true,
+      enableFamilyWelcomeSMS: settings.enableFamilyWelcomeSMS ?? false,
+      enablePaymentSMS: settings.enablePaymentSMS ?? false,
       isActive: settings.isActive,
     })
   } catch (error: any) {
@@ -86,6 +90,8 @@ export async function POST(request: NextRequest) {
       taskEmailsSchedule,
       enableFamilyWelcomeEmails,
       enablePaymentEmails,
+      enableFamilyWelcomeSMS,
+      enablePaymentSMS,
     } = body
     
     const mongoose = require('mongoose')
@@ -131,6 +137,12 @@ export async function POST(request: NextRequest) {
     if (typeof enablePaymentEmails === 'boolean') {
       updateData.enablePaymentEmails = enablePaymentEmails
     }
+    if (typeof enableFamilyWelcomeSMS === 'boolean') {
+      updateData.enableFamilyWelcomeSMS = enableFamilyWelcomeSMS
+    }
+    if (typeof enablePaymentSMS === 'boolean') {
+      updateData.enablePaymentSMS = enablePaymentSMS
+    }
     
     const settings = await AutomationSettings.findOneAndUpdate(
       { userId: userObjectId },
@@ -151,6 +163,8 @@ export async function POST(request: NextRequest) {
       taskEmailsSchedule: settings.taskEmailsSchedule,
       enableFamilyWelcomeEmails: settings.enableFamilyWelcomeEmails ?? true,
       enablePaymentEmails: settings.enablePaymentEmails ?? true,
+      enableFamilyWelcomeSMS: settings.enableFamilyWelcomeSMS ?? false,
+      enablePaymentSMS: settings.enablePaymentSMS ?? false,
       isActive: settings.isActive,
     })
   } catch (error: any) {

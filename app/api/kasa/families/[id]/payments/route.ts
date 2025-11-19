@@ -224,6 +224,50 @@ export async function POST(
       console.error(`⚠️ Failed to send payment confirmation email:`, emailError.message)
     }
 
+    // Send payment confirmation SMS (if enabled in settings)
+    try {
+      if (family && family.userId) {
+        const { AutomationSettings } = await import('@/lib/models')
+        const mongoose = require('mongoose')
+        const adminObjectId = new mongoose.Types.ObjectId(family.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
+        
+        const shouldSendSMS = automationSettings?.enablePaymentSMS === true
+        
+        if (shouldSendSMS) {
+          // Get phone number from family (prefer husbandCellPhone, then wifeCellPhone, then phone)
+          const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
+          
+          if (phoneNumber) {
+            const { sendPaymentConfirmationSMS } = await import('@/lib/sms-helpers')
+            
+            // Format payment method for display
+            let paymentMethodDisplay = paymentObj.paymentMethod || 'Unknown'
+            if (paymentMethodDisplay === 'credit_card' && paymentObj.ccInfo) {
+              paymentMethodDisplay = `${paymentObj.ccInfo.cardType || 'Credit Card'} ending in ${paymentObj.ccInfo.last4 || '****'}`
+            } else if (paymentMethodDisplay === 'credit_card') {
+              paymentMethodDisplay = 'Credit Card'
+            } else if (paymentMethodDisplay === 'check' && paymentObj.checkInfo) {
+              paymentMethodDisplay = `Check (****${paymentObj.checkInfo.accountNumber?.slice(-4) || '****'})`
+            }
+            
+            await sendPaymentConfirmationSMS(
+              phoneNumber,
+              family.name,
+              paymentObj.amount,
+              new Date(paymentObj.paymentDate),
+              paymentMethodDisplay,
+              family.userId.toString()
+            )
+            console.log(`✅ Payment confirmation SMS sent to ${phoneNumber}`)
+          }
+        }
+      }
+    } catch (smsError: any) {
+      // Log error but don't fail payment creation if SMS sending fails
+      console.error(`⚠️ Failed to send payment confirmation SMS:`, smsError.message)
+    }
+
     return NextResponse.json(paymentObj, { status: 201 })
   } catch (error: any) {
     console.error('Error creating payment:', error)

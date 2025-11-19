@@ -312,6 +312,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Send welcome SMS (if enabled in settings and phone number available)
+    if (phoneNumber) {
+      try {
+        const { AutomationSettings } = await import('@/lib/models')
+        const mongoose = require('mongoose')
+        const adminObjectId = new mongoose.Types.ObjectId(user.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
+        
+        const shouldSendSMS = automationSettings?.enableFamilyWelcomeSMS === true
+        
+        if (shouldSendSMS) {
+          const { sendFamilyWelcomeSMS } = await import('@/lib/sms-helpers')
+          
+          // Get base URL from request or environment
+          const baseUrl = request.nextUrl.origin || 
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+            process.env.NEXT_PUBLIC_BASE_URL || 
+            'http://localhost:3000'
+          
+          const loginUrl = `${baseUrl}/login`
+          
+          await sendFamilyWelcomeSMS(
+            phoneNumber,
+            family.name,
+            loginUrl,
+            user.userId
+          )
+          console.log(`✅ Welcome SMS sent to ${phoneNumber}`)
+        }
+      } catch (smsError: any) {
+        // Log error but don't fail family creation if SMS sending fails
+        console.error(`⚠️ Failed to send welcome SMS to ${phoneNumber}:`, smsError.message)
+      }
+    }
+
     return NextResponse.json(family, { status: 201 })
   } catch (error: any) {
     console.error('Error creating family:', error)
