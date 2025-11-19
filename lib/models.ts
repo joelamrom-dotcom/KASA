@@ -403,6 +403,10 @@ const AutomationSettingsSchema = new Schema({
   enableFamilyWelcomeSMS: { type: Boolean, default: false },
   enablePaymentSMS: { type: Boolean, default: false },
   
+  // Payment Reminders
+  enablePaymentReminders: { type: Boolean, default: false },
+  reminderDaysBefore: { type: [Number], default: [3, 1] }, // Send reminders 3 days and 1 day before payment
+  
   isActive: { type: Boolean, default: true },
   lastUpdated: { type: Date, default: Date.now },
 }, { timestamps: true })

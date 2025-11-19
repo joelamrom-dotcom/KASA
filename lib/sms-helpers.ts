@@ -173,3 +173,56 @@ export async function sendPaymentConfirmationSMS(
   const message = `Payment: ${formatCurrency(amount)} on ${formatDate(paymentDate)} via ${shortMethod}. Thank you!`
   return await sendSMS(phoneNumber, message, userId)
 }
+
+/**
+ * Send payment reminder SMS
+ */
+export async function sendPaymentReminderSMS(
+  phoneNumber: string,
+  familyName: string,
+  amount: number,
+  dueDate: Date,
+  daysUntilDue: number,
+  userId?: string
+) {
+  const formatCurrency = (amt: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amt)
+  }
+  
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric'
+    }).format(date)
+  }
+  
+  const message = `Reminder ${familyName}: Payment of ${formatCurrency(amount)} due ${daysUntilDue === 1 ? 'tomorrow' : `in ${daysUntilDue} days`} (${formatDate(dueDate)}). Thank you!`
+  return await sendSMS(phoneNumber, message, userId)
+}
+
+/**
+ * Send thank you SMS after payment
+ */
+export async function sendPaymentThankYouSMS(
+  phoneNumber: string,
+  familyName: string,
+  amount: number,
+  userId?: string
+) {
+  const formatCurrency = (amt: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amt)
+  }
+  
+  const message = `Thank you ${familyName}! We received your payment of ${formatCurrency(amount)}. We appreciate your support!`
+  return await sendSMS(phoneNumber, message, userId)
+}

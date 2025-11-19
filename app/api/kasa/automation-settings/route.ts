@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
         enablePaymentEmails: true,
         enableFamilyWelcomeSMS: false,
         enablePaymentSMS: false,
+        enablePaymentReminders: false,
+        reminderDaysBefore: [3, 1],
       })
     }
     
@@ -52,6 +54,8 @@ export async function GET(request: NextRequest) {
       enablePaymentEmails: settings.enablePaymentEmails ?? true,
       enableFamilyWelcomeSMS: settings.enableFamilyWelcomeSMS ?? false,
       enablePaymentSMS: settings.enablePaymentSMS ?? false,
+      enablePaymentReminders: settings.enablePaymentReminders ?? false,
+      reminderDaysBefore: settings.reminderDaysBefore || [3, 1],
       isActive: settings.isActive,
     })
   } catch (error: any) {
@@ -92,6 +96,8 @@ export async function POST(request: NextRequest) {
       enablePaymentEmails,
       enableFamilyWelcomeSMS,
       enablePaymentSMS,
+      enablePaymentReminders,
+      reminderDaysBefore,
     } = body
     
     const mongoose = require('mongoose')
@@ -143,6 +149,12 @@ export async function POST(request: NextRequest) {
     if (typeof enablePaymentSMS === 'boolean') {
       updateData.enablePaymentSMS = enablePaymentSMS
     }
+    if (typeof enablePaymentReminders === 'boolean') {
+      updateData.enablePaymentReminders = enablePaymentReminders
+    }
+    if (Array.isArray(reminderDaysBefore) && reminderDaysBefore.length > 0) {
+      updateData.reminderDaysBefore = reminderDaysBefore
+    }
     
     const settings = await AutomationSettings.findOneAndUpdate(
       { userId: userObjectId },
@@ -165,6 +177,8 @@ export async function POST(request: NextRequest) {
       enablePaymentEmails: settings.enablePaymentEmails ?? true,
       enableFamilyWelcomeSMS: settings.enableFamilyWelcomeSMS ?? false,
       enablePaymentSMS: settings.enablePaymentSMS ?? false,
+      enablePaymentReminders: settings.enablePaymentReminders ?? false,
+      reminderDaysBefore: settings.reminderDaysBefore || [3, 1],
       isActive: settings.isActive,
     })
   } catch (error: any) {

@@ -103,6 +103,8 @@ export default function SettingsPage() {
     enablePaymentEmails: true,
     enableFamilyWelcomeSMS: false,
     enablePaymentSMS: false,
+    enablePaymentReminders: false,
+    reminderDaysBefore: [3, 1],
   })
 
   useEffect(() => {
@@ -458,6 +460,8 @@ export default function SettingsPage() {
           enablePaymentEmails: settings.enablePaymentEmails ?? true,
           enableFamilyWelcomeSMS: settings.enableFamilyWelcomeSMS ?? false,
           enablePaymentSMS: settings.enablePaymentSMS ?? false,
+          enablePaymentReminders: settings.enablePaymentReminders ?? false,
+          reminderDaysBefore: settings.reminderDaysBefore || [3, 1],
         })
       } else {
         // Create default settings
@@ -2420,6 +2424,70 @@ export default function SettingsPage() {
                         </label>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Payment Reminders Section */}
+                <div className="pt-6 border-t-2 border-gray-300 mt-6">
+                  <h2 className="text-lg font-bold text-gray-800 mb-4">Payment Reminders</h2>
+                  <p className="text-sm text-gray-600 mb-4">Send reminders to families before their recurring payments are due</p>
+                  
+                  {/* Payment Reminders Toggle */}
+                  <div className="border rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="font-semibold text-gray-800">Payment Reminders</h3>
+                        <p className="text-sm text-gray-600">Send email and SMS reminders before payments are due</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={automationFormData.enablePaymentReminders}
+                          onChange={(e) => setAutomationFormData({ ...automationFormData, enablePaymentReminders: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      </label>
+                    </div>
+                    
+                    {automationFormData.enablePaymentReminders && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Send reminders (days before payment):
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {[7, 5, 3, 2, 1].map((days) => (
+                            <label key={days} className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={automationFormData.reminderDaysBefore.includes(days)}
+                                onChange={(e) => {
+                                  const current = automationFormData.reminderDaysBefore
+                                  if (e.target.checked) {
+                                    setAutomationFormData({
+                                      ...automationFormData,
+                                      reminderDaysBefore: [...current, days].sort((a, b) => b - a)
+                                    })
+                                  } else {
+                                    setAutomationFormData({
+                                      ...automationFormData,
+                                      reminderDaysBefore: current.filter(d => d !== days)
+                                    })
+                                  }
+                                }}
+                                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                              />
+                              <span className="text-sm text-gray-700">{days} {days === 1 ? 'day' : 'days'}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Selected: {automationFormData.reminderDaysBefore.length > 0 
+                            ? automationFormData.reminderDaysBefore.sort((a, b) => b - a).join(', ') + ' days before'
+                            : 'None selected'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

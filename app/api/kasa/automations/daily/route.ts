@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
         if (automationSettings && (
           automationSettings.enableMonthlyPayments ||
           automationSettings.enableWeddingConversion ||
-          automationSettings.enableTaskEmails
+          automationSettings.enableTaskEmails ||
+          automationSettings.enablePaymentReminders
         )) {
           adminUsers.push({ _id: adminId, userId: adminId.toString() })
         }
@@ -51,7 +52,8 @@ export async function POST(request: NextRequest) {
     const results: any = {
       monthlyPayments: { processed: 0, failed: 0 },
       weddingConversion: { converted: 0 },
-      taskEmails: { sent: 0, failed: 0 }
+      taskEmails: { sent: 0, failed: 0 },
+      paymentReminders: { sent: 0, failed: 0 }
     }
 
     // Get base URL from request or environment
@@ -107,6 +109,23 @@ export async function POST(request: NextRequest) {
       }
     } catch (error: any) {
       console.error('Error processing task emails:', error)
+    }
+
+    // Process payment reminders
+    try {
+      const remindersRes = await fetch(`${baseUrl}/api/kasa/payments/send-reminders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (remindersRes.ok) {
+        const remindersData = await remindersRes.json()
+        results.paymentReminders = {
+          sent: remindersData.sent || 0,
+          failed: remindersData.failed || 0
+        }
+      }
+    } catch (error: any) {
+      console.error('Error processing payment reminders:', error)
     }
 
     return NextResponse.json({

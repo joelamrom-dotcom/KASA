@@ -225,3 +225,149 @@ export async function sendPaymentConfirmationEmail(
   return await sendEmail(familyEmail, subject, html)
 }
 
+/**
+ * Send payment reminder email
+ */
+export async function sendPaymentReminderEmail(
+  familyEmail: string,
+  familyName: string,
+  paymentAmount: number,
+  dueDate: Date,
+  daysUntilDue: number,
+  userId?: string
+) {
+  const subject = `Payment Reminder - Payment Due in ${daysUntilDue} ${daysUntilDue === 1 ? 'Day' : 'Days'}`
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount)
+  }
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(date)
+  }
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .reminder-box { background: white; padding: 20px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+        .amount { font-size: 32px; font-weight: bold; color: #f59e0b; text-align: center; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .detail-label { font-weight: bold; color: #666; }
+        .detail-value { color: #333; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>⏰ Payment Reminder</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${familyName},</p>
+          
+          <p>This is a friendly reminder that you have a payment due ${daysUntilDue === 1 ? 'tomorrow' : `in ${daysUntilDue} days`}.</p>
+          
+          <div class="reminder-box">
+            <div class="amount">${formatCurrency(paymentAmount)}</div>
+            
+            <div class="detail-row">
+              <span class="detail-label">Due Date:</span>
+              <span class="detail-value">${formatDate(dueDate)}</span>
+            </div>
+          </div>
+          
+          <p>Please ensure your payment method is up to date. If you have any questions or need assistance, please don't hesitate to contact us.</p>
+          
+          <p>Thank you for your attention to this matter.</p>
+          
+          <p>Best regards,<br>Kasa Family Management Team</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated reminder. Please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return await sendEmail(familyEmail, subject, html, undefined)
+}
+
+/**
+ * Send thank you email after payment
+ */
+export async function sendPaymentThankYouEmail(
+  familyEmail: string,
+  familyName: string,
+  paymentAmount: number,
+  userId?: string
+) {
+  const subject = 'Thank You for Your Payment - Kasa Family Management'
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount)
+  }
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .thank-you-box { background: white; padding: 20px; border-left: 4px solid #10b981; margin: 20px 0; text-align: center; }
+        .amount { font-size: 28px; font-weight: bold; color: #10b981; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🙏 Thank You!</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${familyName},</p>
+          
+          <div class="thank-you-box">
+            <p style="font-size: 18px; margin-bottom: 10px;">We sincerely appreciate your payment of</p>
+            <div class="amount">${formatCurrency(paymentAmount)}</div>
+            <p style="font-size: 16px; margin-top: 10px;">Your continued support means the world to us!</p>
+          </div>
+          
+          <p>Thank you for being a valued member of our community. Your timely payment helps us continue to provide excellent service.</p>
+          
+          <p>If you have any questions or need assistance, please don't hesitate to reach out to us.</p>
+          
+          <p>With gratitude,<br>Kasa Family Management Team</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return await sendEmail(familyEmail, subject, html, undefined)
+}
+

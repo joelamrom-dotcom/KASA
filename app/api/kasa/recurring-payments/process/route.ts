@@ -258,6 +258,41 @@ export async function POST(request: NextRequest) {
               console.error(`⚠️ Failed to send payment confirmation SMS:`, smsError.message)
             }
 
+            // Send thank you email (separate from confirmation)
+            try {
+              if (family && family.email && family.userId && automationSettings?.enablePaymentEmails !== false) {
+                const { sendPaymentThankYouEmail } = await import('@/lib/email-helpers')
+                await sendPaymentThankYouEmail(
+                  family.email,
+                  family.name,
+                  recurringPayment.amount,
+                  family.userId.toString()
+                )
+                console.log(`✅ Thank you email sent to ${family.email}`)
+              }
+            } catch (thankYouError: any) {
+              console.error(`⚠️ Failed to send thank you email:`, thankYouError.message)
+            }
+
+            // Send thank you SMS (separate from confirmation)
+            try {
+              if (family && family.userId && automationSettings?.enablePaymentSMS === true) {
+                const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
+                if (phoneNumber) {
+                  const { sendPaymentThankYouSMS } = await import('@/lib/sms-helpers')
+                  await sendPaymentThankYouSMS(
+                    phoneNumber,
+                    family.name,
+                    recurringPayment.amount,
+                    family.userId.toString()
+                  )
+                  console.log(`✅ Thank you SMS sent to ${phoneNumber}`)
+                }
+              }
+            } catch (thankYouSmsError: any) {
+              console.error(`⚠️ Failed to send thank you SMS:`, thankYouSmsError.message)
+            }
+
             allResults.push({
               adminId: admin.userId,
               recurringPaymentId: recurringPayment._id.toString(),

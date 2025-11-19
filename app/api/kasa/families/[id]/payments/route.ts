@@ -268,6 +268,56 @@ export async function POST(
       console.error(`⚠️ Failed to send payment confirmation SMS:`, smsError.message)
     }
 
+    // Send thank you email (separate from confirmation)
+    try {
+      if (family && family.email && family.userId) {
+        const { AutomationSettings } = await import('@/lib/models')
+        const mongoose = require('mongoose')
+        const adminObjectId = new mongoose.Types.ObjectId(family.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
+        
+        // Send thank you if payment emails are enabled
+        if (automationSettings?.enablePaymentEmails !== false) {
+          const { sendPaymentThankYouEmail } = await import('@/lib/email-helpers')
+          await sendPaymentThankYouEmail(
+            family.email,
+            family.name,
+            paymentObj.amount,
+            family.userId.toString()
+          )
+          console.log(`✅ Thank you email sent to ${family.email}`)
+        }
+      }
+    } catch (thankYouError: any) {
+      console.error(`⚠️ Failed to send thank you email:`, thankYouError.message)
+    }
+
+    // Send thank you SMS (separate from confirmation)
+    try {
+      if (family && family.userId) {
+        const { AutomationSettings } = await import('@/lib/models')
+        const mongoose = require('mongoose')
+        const adminObjectId = new mongoose.Types.ObjectId(family.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
+        
+        if (automationSettings?.enablePaymentSMS === true) {
+          const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
+          if (phoneNumber) {
+            const { sendPaymentThankYouSMS } = await import('@/lib/sms-helpers')
+            await sendPaymentThankYouSMS(
+              phoneNumber,
+              family.name,
+              paymentObj.amount,
+              family.userId.toString()
+            )
+            console.log(`✅ Thank you SMS sent to ${phoneNumber}`)
+          }
+        }
+      }
+    } catch (thankYouSmsError: any) {
+      console.error(`⚠️ Failed to send thank you SMS:`, thankYouSmsError.message)
+    }
+
     return NextResponse.json(paymentObj, { status: 201 })
   } catch (error: any) {
     console.error('Error creating payment:', error)
