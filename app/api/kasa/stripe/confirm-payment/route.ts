@@ -175,16 +175,24 @@ export async function POST(request: NextRequest) {
       await payment.save()
     }
 
-    // Send payment confirmation email (if enabled in settings)
+    // Get family and automation settings (used by both email and SMS)
+    let family = null
+    let automationSettings = null
     try {
-      const family = await Family.findById(familyId)
-      if (family && family.email && family.userId) {
-        // Check if payment emails are enabled for this admin
+      family = await Family.findById(familyId)
+      if (family && family.userId) {
         const { AutomationSettings } = await import('@/lib/models')
         const mongoose = require('mongoose')
         const adminObjectId = new mongoose.Types.ObjectId(family.userId)
-        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
-        
+        automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
+      }
+    } catch (settingsError: any) {
+      console.error(`⚠️ Failed to fetch family or automation settings:`, settingsError.message)
+    }
+
+    // Send payment confirmation email (if enabled in settings)
+    try {
+      if (family && family.email && family.userId) {
         const shouldSendEmail = automationSettings?.enablePaymentEmails !== false // Default to true if not set
         
         if (shouldSendEmail) {
@@ -217,11 +225,7 @@ export async function POST(request: NextRequest) {
 
     // Send payment confirmation SMS (if enabled in settings)
     try {
-      if (family && family.userId) {
-        const { AutomationSettings } = await import('@/lib/models')
-        const mongoose = require('mongoose')
-        const adminObjectId = new mongoose.Types.ObjectId(family.userId)
-        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
+      if (family && family.userId && automationSettings?.enablePaymentSMS === true) {
         
         const shouldSendSMS = automationSettings?.enablePaymentSMS === true
         
