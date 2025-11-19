@@ -52,11 +52,16 @@ export async function POST(request: NextRequest) {
       statementEmails: { sent: 0, failed: 0 }
     }
 
+    // Get base URL from request or environment
+    const baseUrl = request.nextUrl.origin || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+
     // Generate statements
     try {
-      const generateRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/kasa/statements/auto-generate`, {
+      const generateRes = await fetch(`${baseUrl}/api/kasa/statements/auto-generate`, {
         method: 'POST',
-        headers: request.headers
+        headers: { 'Content-Type': 'application/json' }
       })
       if (generateRes.ok) {
         const generateData = await generateRes.json()
@@ -70,9 +75,9 @@ export async function POST(request: NextRequest) {
 
     // Send statement emails
     try {
-      const emailsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/kasa/statements/send-monthly-emails`, {
+      const emailsRes = await fetch(`${baseUrl}/api/kasa/statements/send-monthly-emails`, {
         method: 'POST',
-        headers: request.headers
+        headers: { 'Content-Type': 'application/json' }
       })
       if (emailsRes.ok) {
         const emailsData = await emailsRes.json()

@@ -54,11 +54,16 @@ export async function POST(request: NextRequest) {
       taskEmails: { sent: 0, failed: 0 }
     }
 
+    // Get base URL from request or environment
+    const baseUrl = request.nextUrl.origin || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+
     // Process monthly payments
     try {
-      const paymentsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/kasa/recurring-payments/process`, {
+      const paymentsRes = await fetch(`${baseUrl}/api/kasa/recurring-payments/process`, {
         method: 'POST',
-        headers: request.headers
+        headers: { 'Content-Type': 'application/json' }
       })
       if (paymentsRes.ok) {
         const paymentsData = await paymentsRes.json()
@@ -73,9 +78,9 @@ export async function POST(request: NextRequest) {
 
     // Process wedding conversion
     try {
-      const weddingRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/kasa/wedding-converter`, {
+      const weddingRes = await fetch(`${baseUrl}/api/kasa/wedding-converter`, {
         method: 'POST',
-        headers: request.headers
+        headers: { 'Content-Type': 'application/json' }
       })
       if (weddingRes.ok) {
         const weddingData = await weddingRes.json()
@@ -89,9 +94,9 @@ export async function POST(request: NextRequest) {
 
     // Process task emails
     try {
-      const tasksRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/kasa/tasks/send-due-date-emails`, {
+      const tasksRes = await fetch(`${baseUrl}/api/kasa/tasks/send-due-date-emails`, {
         method: 'POST',
-        headers: request.headers
+        headers: { 'Content-Type': 'application/json' }
       })
       if (tasksRes.ok) {
         const tasksData = await tasksRes.json()
