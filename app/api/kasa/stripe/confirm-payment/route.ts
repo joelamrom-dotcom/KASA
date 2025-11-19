@@ -226,10 +226,6 @@ export async function POST(request: NextRequest) {
     // Send payment confirmation SMS (if enabled in settings)
     try {
       if (family && family.userId && automationSettings?.enablePaymentSMS === true) {
-        
-        const shouldSendSMS = automationSettings?.enablePaymentSMS === true
-        
-        if (shouldSendSMS) {
           // Get phone number from family
           const phoneNumber = family.husbandCellPhone || family.wifeCellPhone || family.phone
           
