@@ -21,9 +21,21 @@ export async function POST(request: NextRequest) {
 
     for (const scheduledReport of dueReports) {
       try {
-        const report = scheduledReport.reportId as any
+        // Type assertion: find().lean() returns array of documents
+        const scheduledReportDoc = scheduledReport as { 
+          _id: { toString(): string } | string
+          reportId?: any
+          name?: string
+          recipients?: any[]
+          schedule?: any
+          runCount?: number
+          errorCount?: number
+          exportFormat?: string
+        }
+        const report = scheduledReportDoc.reportId as any
         if (!report) {
-          console.error(`Report not found for scheduled report ${scheduledReport._id}`)
+          const reportId = typeof scheduledReportDoc._id === 'string' ? scheduledReportDoc._id : scheduledReportDoc._id.toString()
+          console.error(`Report not found for scheduled report ${reportId}`)
           continue
         }
 
@@ -53,7 +65,7 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             reportId: report._id.toString(),
-            format: scheduledReport.exportFormat,
+            format: scheduledReportDoc.exportFormat,
             reportData
           })
         })
@@ -67,7 +79,7 @@ export async function POST(request: NextRequest) {
         // Send emails to recipients
         const { sendEmail } = await import('@/lib/email-helpers')
         
-        for (const recipient of scheduledReport.recipients || []) {
+        for (const recipient of scheduledReportDoc.recipients || []) {
           try {
             // Convert blob to base64 for email attachment
             const buffer = await blob.arrayBuffer()
@@ -75,15 +87,15 @@ export async function POST(request: NextRequest) {
             
             await sendEmail(
               recipient.email,
-              `Scheduled Report: ${scheduledReport.name}`,
-              `Please find attached the scheduled report "${scheduledReport.name}".`,
+              `Scheduled Report: ${scheduledReportDoc.name || 'Report'}`,
+              `Please find attached the scheduled report "${scheduledReportDoc.name || 'Report'}".`,
               undefined,
               [{
-                filename: `${scheduledReport.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.${scheduledReport.exportFormat === 'excel' ? 'xlsx' : scheduledReport.exportFormat}`,
+                filename: `${(scheduledReportDoc.name || 'report').replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.${scheduledReportDoc.exportFormat === 'excel' ? 'xlsx' : scheduledReportDoc.exportFormat || 'csv'}`,
                 content: base64,
                 encoding: 'base64',
-                contentType: scheduledReport.exportFormat === 'pdf' ? 'application/pdf' : 
-                             scheduledReport.exportFormat === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
+                contentType: scheduledReportDoc.exportFormat === 'pdf' ? 'application/pdf' : 
+                             scheduledReportDoc.exportFormat === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
                              'text/csv'
               }]
             )
@@ -94,39 +106,41 @@ export async function POST(request: NextRequest) {
 
         // Update scheduled report
         const mongoose = require('mongoose')
-        const scheduledReportId = new mongoose.Types.ObjectId(scheduledReport._id)
+        const scheduledReportIdStr = typeof scheduledReportDoc._id === 'string' ? scheduledReportDoc._id : scheduledReportDoc._id.toString()
+        const scheduledReportId = new mongoose.Types.ObjectId(scheduledReportIdStr)
         
         // Calculate next run
-        const nextRun = calculateNextRun(scheduledReport.schedule)
+        const nextRun = calculateNextRun(scheduledReportDoc.schedule || {})
         
         await ScheduledReport.findByIdAndUpdate(scheduledReportId, {
           lastRun: now,
           nextRun,
-          runCount: (scheduledReport.runCount || 0) + 1,
-          errorCount: scheduledReport.errorCount || 0
+          runCount: (scheduledReportDoc.runCount || 0) + 1,
+          errorCount: scheduledReportDoc.errorCount || 0
         })
 
         results.push({
-          scheduledReportId: scheduledReport._id.toString(),
-          name: scheduledReport.name,
+          scheduledReportId: scheduledReportIdStr,
+          name: scheduledReportDoc.name || 'Unknown',
           status: 'success',
-          recipientsSent: scheduledReport.recipients?.length || 0
+          recipientsSent: scheduledReportDoc.recipients?.length || 0
         })
       } catch (error: any) {
-        console.error(`Error processing scheduled report ${scheduledReport._id}:`, error)
+        const scheduledReportIdStr = typeof scheduledReportDoc._id === 'string' ? scheduledReportDoc._id : scheduledReportDoc._id.toString()
+        console.error(`Error processing scheduled report ${scheduledReportIdStr}:`, error)
         
         // Update error count
         const mongoose = require('mongoose')
-        const scheduledReportId = new mongoose.Types.ObjectId(scheduledReport._id)
+        const scheduledReportId = new mongoose.Types.ObjectId(scheduledReportIdStr)
         
         await ScheduledReport.findByIdAndUpdate(scheduledReportId, {
-          errorCount: (scheduledReport.errorCount || 0) + 1,
+          errorCount: (scheduledReportDoc.errorCount || 0) + 1,
           lastError: error.message
         })
 
         results.push({
-          scheduledReportId: scheduledReport._id.toString(),
-          name: scheduledReport.name,
+          scheduledReportId: scheduledReportIdStr,
+          name: scheduledReportDoc.name || 'Unknown',
           status: 'error',
           error: error.message
         })
