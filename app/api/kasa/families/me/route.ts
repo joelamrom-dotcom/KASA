@@ -46,7 +46,21 @@ export async function GET(request: NextRequest) {
 
     // Get recent payments (last 10)
     // Type assertion: findOne().lean() returns a single document or null, not an array
-    const familyDoc = family as { _id: mongoose.Types.ObjectId | string }
+    const familyDoc = family as {
+      _id: mongoose.Types.ObjectId | string
+      name?: string
+      hebrewName?: string
+      email?: string
+      phone?: string
+      address?: string
+      city?: string
+      state?: string
+      zip?: string
+      husbandFirstName?: string
+      wifeFirstName?: string
+      husbandCellPhone?: string
+      wifeCellPhone?: string
+    }
     const familyId = String(familyDoc._id)
     const recentPayments = await Payment.find({ familyId })
       .sort({ paymentDate: -1 })
@@ -80,18 +94,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       family: {
         _id: familyId,
-        name: family.name,
-        hebrewName: family.hebrewName,
-        email: family.email,
-        phone: family.phone,
-        address: family.address,
-        city: family.city,
-        state: family.state,
-        zip: family.zip,
-        husbandFirstName: family.husbandFirstName,
-        wifeFirstName: family.wifeFirstName,
-        husbandCellPhone: family.husbandCellPhone,
-        wifeCellPhone: family.wifeCellPhone
+        name: familyDoc.name,
+        hebrewName: familyDoc.hebrewName,
+        email: familyDoc.email,
+        phone: familyDoc.phone,
+        address: familyDoc.address,
+        city: familyDoc.city,
+        state: familyDoc.state,
+        zip: familyDoc.zip,
+        husbandFirstName: familyDoc.husbandFirstName,
+        wifeFirstName: familyDoc.wifeFirstName,
+        husbandCellPhone: familyDoc.husbandCellPhone,
+        wifeCellPhone: familyDoc.wifeCellPhone
       },
       recentPayments,
       upcomingRecurringPayments,
