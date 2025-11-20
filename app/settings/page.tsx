@@ -3449,22 +3449,42 @@ export default function SettingsPage() {
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium mb-1">Footer Text</label>
-                            <input
-                              type="text"
-                              value={templateFormData.footerText}
-                              onChange={(e) => setTemplateFormData({ ...templateFormData, footerText: e.target.value })}
-                              className="w-full border rounded-lg px-3 py-2"
-                            />
+                            <label className="block text-sm font-medium mb-1">
+                              Footer Text
+                              <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={templateFormData.footerText}
+                                onChange={(e) => setTemplateFormData({ ...templateFormData, footerText: e.target.value })}
+                                className="flex-1 border rounded-lg px-3 py-2"
+                                placeholder="e.g., Thank you {{familyName}}!"
+                              />
+                              <VariablePicker
+                                onSelectVariable={(varName) => setTemplateFormData({ ...templateFormData, footerText: templateFormData.footerText + varName })}
+                                type="email"
+                              />
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium mb-1">Footer Subtext</label>
-                            <input
-                              type="text"
-                              value={templateFormData.footerSubtext}
-                              onChange={(e) => setTemplateFormData({ ...templateFormData, footerSubtext: e.target.value })}
-                              className="w-full border rounded-lg px-3 py-2"
-                            />
+                            <label className="block text-sm font-medium mb-1">
+                              Footer Subtext
+                              <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={templateFormData.footerSubtext}
+                                onChange={(e) => setTemplateFormData({ ...templateFormData, footerSubtext: e.target.value })}
+                                className="flex-1 border rounded-lg px-3 py-2"
+                                placeholder="e.g., {{organizationName}}"
+                              />
+                              <VariablePicker
+                                onSelectVariable={(varName) => setTemplateFormData({ ...templateFormData, footerSubtext: templateFormData.footerSubtext + varName })}
+                                type="email"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
