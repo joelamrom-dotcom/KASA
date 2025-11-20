@@ -142,12 +142,15 @@ export async function PUT(
       .populate('relatedMemberId', 'firstName lastName')
       .lean()
 
-    if (!updatedTask) {
+    if (!updatedTask || Array.isArray(updatedTask)) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
       )
     }
+
+    // Type assertion: findByIdAndUpdate().lean() returns a single document or null, not an array
+    const updatedTaskDoc = updatedTask as { title?: string; status?: string; [key: string]: any }
 
     // Create audit log entry
     if (oldTask && Object.keys(updateData).length > 0) {
@@ -165,6 +168,7 @@ export async function PUT(
         
         if (Object.keys(changedFields).length > 0) {
           const action = status === 'completed' ? 'task_complete' : 'task_update'
+          const taskTitle = updatedTaskDoc.title || (oldTask as any).title || 'Unknown'
           await createAuditLog({
             userId: user.userId,
             userEmail: user.email,
@@ -172,16 +176,16 @@ export async function PUT(
             action,
             entityType: 'task',
             entityId: params.id,
-            entityName: updatedTask.title || oldTask.title,
+            entityName: taskTitle,
             changes: changedFields,
             description: status === 'completed' 
-              ? `Completed task "${updatedTask.title || oldTask.title}"`
-              : `Updated task "${updatedTask.title || oldTask.title}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+              ? `Completed task "${taskTitle}"`
+              : `Updated task "${taskTitle}" - Changed: ${Object.keys(changedFields).join(', ')}`,
             ipAddress: getIpAddress(request),
             userAgent: getUserAgent(request),
             metadata: {
-              title: updatedTask.title || oldTask.title,
-              status: updatedTask.status,
+              title: taskTitle,
+              status: updatedTaskDoc.status,
             }
           })
         }
@@ -190,7 +194,7 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json(updatedTask)
+    return NextResponse.json(updatedTaskDoc)
   } catch (error: any) {
     console.error('Error updating task:', error)
     return NextResponse.json(
