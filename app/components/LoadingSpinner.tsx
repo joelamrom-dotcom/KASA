@@ -1,7 +1,5 @@
 'use client'
 
-import { SpinnerIcon } from '@heroicons/react/24/outline'
-
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg' | 'xl'
   color?: 'primary' | 'secondary' | 'white' | 'gray'
