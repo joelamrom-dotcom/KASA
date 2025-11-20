@@ -31,10 +31,10 @@ interface PaymentPlan {
   families?: Family[]
 }
 
-type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations' | 'templates' | 'security' | 'roles' | 'auditLogs' | 'sessions' | 'familyTags' | 'familyGroups' | 'backup'
+type SettingsSection = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations' | 'templates' | 'security' | 'roles' | 'auditLogs' | 'sessions' | 'familyTags' | 'familyGroups' | 'backup'
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('email')
+  const [activeSection, setActiveSection] = useState<SettingsSection>('email')
   
   // Stripe Configuration state
   const [stripeConfig, setStripeConfig] = useState<any>(null)
@@ -141,6 +141,9 @@ export default function SettingsPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const [selectedRolePermissions, setSelectedRolePermissions] = useState<Set<string>>(new Set())
   const [savingPermissions, setSavingPermissions] = useState(false)
+  const [showRoleModal, setShowRoleModal] = useState(false)
+  const [editingRole, setEditingRole] = useState<any>(null)
+  const [roleFormData, setRoleFormData] = useState({ name: '', displayName: '', description: '', permissions: [] as string[] })
 
   // Audit Logs state
   const [auditLogs, setAuditLogs] = useState<any[]>([])
@@ -236,24 +239,26 @@ export default function SettingsPage() {
     fetchTemplates()
   }, [])
 
-  // Load data when specific tabs are activated
+  // Load data when specific sections are activated
   useEffect(() => {
-    if (activeTab === 'familyTags' && !tagsLoading) {
+    if (activeSection === 'familyTags' && !tagsLoading) {
       fetchFamilyTags()
-    } else if (activeTab === 'familyGroups' && !groupsLoading) {
+    } else if (activeSection === 'familyGroups' && !groupsLoading) {
       fetchFamilyGroups()
       fetchAllFamilies()
-    } else if (activeTab === 'backup' && !backupLoading) {
+    } else if (activeSection === 'backup' && !backupLoading) {
       fetchBackups()
-    } else if (activeTab === 'sessions' && !sessionsLoading) {
+    } else if (activeSection === 'sessions' && !sessionsLoading) {
       fetchSessions()
-    } else if (activeTab === 'auditLogs' && !auditLogsLoading) {
+    } else if (activeSection === 'auditLogs' && !auditLogsLoading) {
       fetchAuditLogs()
-    } else if (activeTab === 'roles' && !rolesLoading) {
+    } else if (activeSection === 'roles' && !rolesLoading) {
       fetchRoles()
       fetchPermissions()
+    } else if (activeSection === 'kevittel' && !kevittelLoading) {
+      fetchKevittelData()
     }
-  }, [activeTab])
+  }, [activeSection])
 
   // Fetch functions for new tabs
   const fetchFamilyTags = async () => {
@@ -418,9 +423,87 @@ export default function SettingsPage() {
           .map(p => p.name)
         setSelectedRolePermissions(new Set(permissionNames))
         setSelectedRoleId(roleId)
+        setEditingRole(role)
       }
     } catch (error) {
       console.error('Error loading role permissions:', error)
+    }
+  }
+
+  const handleCreateRole = async () => {
+    setEditingRole(null)
+    setRoleFormData({ name: '', displayName: '', description: '', permissions: [] })
+    setSelectedRolePermissions(new Set())
+    setShowRoleModal(true)
+  }
+
+  const handleSaveRole = async () => {
+    try {
+      setSavingPermissions(true)
+      const token = localStorage.getItem('token')
+      const permissionIds = permissions
+        .filter(p => roleFormData.permissions.includes(p.name))
+        .map(p => p._id)
+
+      const url = editingRole ? `/api/roles/${editingRole._id}` : '/api/roles'
+      const method = editingRole ? 'PUT' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          name: roleFormData.name,
+          displayName: roleFormData.displayName || roleFormData.name,
+          description: roleFormData.description,
+          permissions: permissionIds
+        })
+      })
+
+      if (res.ok) {
+        showToast(editingRole ? 'Role updated successfully' : 'Role created successfully', 'success')
+        setShowRoleModal(false)
+        setEditingRole(null)
+        setRoleFormData({ name: '', displayName: '', description: '', permissions: [] })
+        setSelectedRolePermissions(new Set())
+        setSelectedRoleId(null)
+        fetchRoles()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to save role', 'error')
+      }
+    } catch (error) {
+      showToast('Failed to save role', 'error')
+    } finally {
+      setSavingPermissions(false)
+    }
+  }
+
+  const handleDeleteRole = async (roleId: string) => {
+    if (!confirm('Are you sure you want to delete this role? Users with this role will need to be reassigned.')) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/roles/${roleId}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+
+      if (res.ok) {
+        showToast('Role deleted successfully', 'success')
+        if (selectedRoleId === roleId) {
+          setSelectedRoleId(null)
+          setSelectedRolePermissions(new Set())
+        }
+        fetchRoles()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to delete role', 'error')
+      }
+    } catch (error) {
+      showToast('Failed to delete role', 'error')
     }
   }
 
@@ -495,11 +578,11 @@ export default function SettingsPage() {
 
   // Refresh Kevittel data when switching to the Kevittel tab
   useEffect(() => {
-    if (activeTab === 'kevittel' && !kevittelLoading) {
+    if (activeSection === 'kevittel' && !kevittelLoading) {
       fetchKevittelData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
+  }, [activeSection])
 
   // Email Configuration functions
   const fetchEmailConfig = async () => {
@@ -1395,7 +1478,7 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Settings
@@ -1403,228 +1486,206 @@ export default function SettingsPage() {
           <p className="text-gray-600">Manage your system configuration</p>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-lg mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
-              <button
-                onClick={() => setActiveTab('email')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'email'
-                    ? 'border-purple-600 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <EnvelopeIcon className="h-5 w-5" />
-                  Email Configuration
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('eventTypes')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'eventTypes'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5" />
-                  Event Types
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('paymentPlans')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'paymentPlans'
-                    ? 'border-green-600 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <CreditCardIcon className="h-5 w-5" />
-                  Payment Plans
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('kevittel')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'kevittel'
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <UserGroupIcon className="h-5 w-5" />
-                  Kevittel
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('cycle')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'cycle'
-                    ? 'border-orange-600 text-orange-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5" />
-                  Cycle
-                </div>
-              </button>
-              {(userRole === 'admin' || userRole === 'super_admin') && (
-                <>
-                  <button
-                    onClick={() => setActiveTab('stripe')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'stripe'
-                        ? 'border-indigo-600 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <CreditCardIcon className="h-5 w-5" />
-                      Stripe Connection
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('automations')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'automations'
-                        ? 'border-purple-600 text-purple-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Cog6ToothIcon className="h-5 w-5" />
-                      Automations
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('templates')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'templates'
-                        ? 'border-teal-600 text-teal-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <DocumentTextIcon className="h-5 w-5" />
-                      Templates
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('security')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'security'
-                        ? 'border-red-600 text-red-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShieldCheckIcon className="h-5 w-5" />
-                      Security
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('roles')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'roles'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShieldCheckIcon className="h-5 w-5" />
-                      Roles & Permissions
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('sessions')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'sessions'
-                        ? 'border-indigo-600 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ComputerDesktopIcon className="h-5 w-5" />
-                      Sessions
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('familyTags')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'familyTags'
-                        ? 'border-purple-600 text-purple-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <TagIcon className="h-5 w-5" />
-                      Family Tags
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('familyGroups')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'familyGroups'
-                        ? 'border-green-600 text-green-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <UserGroupIcon className="h-5 w-5" />
-                      Family Groups
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('backup')}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'backup'
-                        ? 'border-orange-600 text-orange-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ArrowDownTrayIcon className="h-5 w-5" />
-                      Backup & Restore
-                    </div>
-                  </button>
-                </>
-              )}
-              {userRole === 'super_admin' && (
+        {/* Sidebar Layout */}
+        <div className="flex gap-6">
+          {/* Left Sidebar Navigation */}
+          <div className="w-64 flex-shrink-0">
+            <div className="bg-white rounded-lg shadow-lg p-2 sticky top-8">
+              <nav className="space-y-1">
                 <button
-                  onClick={() => setActiveTab('auditLogs')}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'auditLogs'
-                      ? 'border-yellow-600 text-yellow-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  onClick={() => setActiveSection('email')}
+                  className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                    activeSection === 'email'
+                      ? 'bg-purple-100 text-purple-700 border-l-4 border-purple-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <ClipboardDocumentCheckIcon className="h-5 w-5" />
-                    Audit Logs
-                  </div>
+                  <EnvelopeIcon className="h-5 w-5" />
+                  Email Configuration
                 </button>
-              )}
-            </nav>
+                <button
+                  onClick={() => setActiveSection('eventTypes')}
+                  className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                    activeSection === 'eventTypes'
+                      ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <CalendarIcon className="h-5 w-5" />
+                  Event Types
+                </button>
+                <button
+                  onClick={() => setActiveSection('paymentPlans')}
+                  className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                    activeSection === 'paymentPlans'
+                      ? 'bg-green-100 text-green-700 border-l-4 border-green-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <CreditCardIcon className="h-5 w-5" />
+                  Payment Plans
+                </button>
+                <button
+                  onClick={() => setActiveSection('kevittel')}
+                  className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                    activeSection === 'kevittel'
+                      ? 'bg-indigo-100 text-indigo-700 border-l-4 border-indigo-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <UserGroupIcon className="h-5 w-5" />
+                  Kevittel
+                </button>
+                <button
+                  onClick={() => setActiveSection('cycle')}
+                  className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                    activeSection === 'cycle'
+                      ? 'bg-orange-100 text-orange-700 border-l-4 border-orange-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <CalendarIcon className="h-5 w-5" />
+                  Cycle
+                </button>
+                {(userRole === 'admin' || userRole === 'super_admin') && (
+                  <>
+                    <div className="pt-4 mt-4 border-t border-gray-200">
+                      <p className="px-4 text-xs font-semibold text-gray-400 uppercase mb-2">Administration</p>
+                    </div>
+                    <button
+                      onClick={() => setActiveSection('stripe')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'stripe'
+                          ? 'bg-indigo-100 text-indigo-700 border-l-4 border-indigo-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <CreditCardIcon className="h-5 w-5" />
+                      Stripe Connection
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('automations')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'automations'
+                          ? 'bg-purple-100 text-purple-700 border-l-4 border-purple-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <Cog6ToothIcon className="h-5 w-5" />
+                      Automations
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('templates')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'templates'
+                          ? 'bg-teal-100 text-teal-700 border-l-4 border-teal-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <DocumentTextIcon className="h-5 w-5" />
+                      Templates
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('security')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'security'
+                          ? 'bg-red-100 text-red-700 border-l-4 border-red-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <ShieldCheckIcon className="h-5 w-5" />
+                      Security
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('roles')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'roles'
+                          ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <ShieldCheckIcon className="h-5 w-5" />
+                      Roles & Permissions
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('sessions')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'sessions'
+                          ? 'bg-indigo-100 text-indigo-700 border-l-4 border-indigo-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <ComputerDesktopIcon className="h-5 w-5" />
+                      Sessions
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('familyTags')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'familyTags'
+                          ? 'bg-purple-100 text-purple-700 border-l-4 border-purple-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <TagIcon className="h-5 w-5" />
+                      Family Tags
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('familyGroups')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'familyGroups'
+                          ? 'bg-green-100 text-green-700 border-l-4 border-green-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <UserGroupIcon className="h-5 w-5" />
+                      Family Groups
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('backup')}
+                      className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                        activeSection === 'backup'
+                          ? 'bg-orange-100 text-orange-700 border-l-4 border-orange-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <ArrowDownTrayIcon className="h-5 w-5" />
+                      Backup & Restore
+                    </button>
+                    {userRole === 'super_admin' && (
+                      <button
+                        onClick={() => setActiveSection('auditLogs')}
+                        className={`w-full px-4 py-3 text-sm font-medium rounded-lg transition-all flex items-center gap-3 ${
+                          activeSection === 'auditLogs'
+                            ? 'bg-gray-100 text-gray-700 border-l-4 border-gray-600'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
+                      >
+                        <ClipboardDocumentCheckIcon className="h-5 w-5" />
+                        Audit Logs
+                      </button>
+                    )}
+                  </>
+                )}
+              </nav>
+            </div>
           </div>
-        </div>
 
-        {/* Message Display */}
-        {message && (
-          <div className={`mb-6 p-4 rounded-lg ${
-            message.type === 'success' 
-              ? 'bg-green-50 border border-green-200 text-green-800' 
-              : 'bg-red-50 border border-red-200 text-red-800'
-          }`}>
-            {message.text}
-          </div>
-        )}
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0">
 
-        {/* Email Configuration Tab */}
-        {activeTab === 'email' && (
+            {/* Message Display */}
+            {message && (
+              <div className={`mb-6 p-4 rounded-lg ${
+                message.type === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                {message.text}
+              </div>
+            )}
+
+            {/* Email Configuration Section */}
+            {activeSection === 'email' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -1758,7 +1819,7 @@ export default function SettingsPage() {
         )}
 
         {/* Event Types Tab */}
-        {activeTab === 'eventTypes' && (
+        {activeSection === 'eventTypes' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -1864,7 +1925,7 @@ export default function SettingsPage() {
         )}
 
         {/* Payment Plans Tab */}
-        {activeTab === 'paymentPlans' && (
+        {activeSection === 'paymentPlans' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -2078,7 +2139,7 @@ export default function SettingsPage() {
         )}
 
         {/* Kevittel Tab */}
-        {activeTab === 'kevittel' && (
+        {activeSection === 'kevittel' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-end mb-6">
               <div className="flex gap-3">
@@ -2581,7 +2642,7 @@ export default function SettingsPage() {
         )}
 
         {/* Stripe Configuration Tab */}
-        {activeTab === 'stripe' && (
+        {activeSection === 'stripe' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800">Stripe Connection</h2>
@@ -2638,7 +2699,7 @@ export default function SettingsPage() {
         )}
 
         {/* Cycle Configuration Tab */}
-        {activeTab === 'cycle' && (
+        {activeSection === 'cycle' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800">Cycle Configuration</h2>
@@ -2769,7 +2830,7 @@ export default function SettingsPage() {
         )}
 
         {/* Automation Settings Tab */}
-        {activeTab === 'automations' && (userRole === 'admin' || userRole === 'super_admin') && (
+        {activeSection === 'automations' && (userRole === 'admin' || userRole === 'super_admin') && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800">Automation Settings</h2>
@@ -3050,7 +3111,7 @@ export default function SettingsPage() {
         )}
 
         {/* Templates Tab */}
-        {activeTab === 'templates' && (
+        {activeSection === 'templates' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -3392,8 +3453,8 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Security Tab */}
-        {activeTab === 'security' && (userRole === 'admin' || userRole === 'super_admin') && (
+        {/* Security Section */}
+        {activeSection === 'security' && (userRole === 'admin' || userRole === 'super_admin') && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -3434,37 +3495,52 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Roles & Permissions Tab - Salesforce-style table */}
-        {activeTab === 'roles' && (userRole === 'admin' || userRole === 'super_admin') && (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Roles & Permissions</h2>
-              <p className="text-gray-600">Manage user roles and their permissions</p>
-            </div>
+            {/* Roles & Permissions Section - Salesforce-style table */}
+            {activeSection === 'roles' && (userRole === 'admin' || userRole === 'super_admin') && (
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Roles & Permissions</h2>
+                    <p className="text-gray-600">Manage user roles and their permissions</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedRoleId(null)
+                      setSelectedRolePermissions(new Set())
+                      setShowRoleModal(true)
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  >
+                    <PlusIcon className="h-5 w-5" />
+                    Create Role
+                  </button>
+                </div>
 
-            {/* Role Selector */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Role</label>
-              <select
-                value={selectedRoleId || ''}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    loadRolePermissions(e.target.value)
-                  } else {
-                    setSelectedRoleId(null)
-                    setSelectedRolePermissions(new Set())
-                  }
-                }}
-                className="w-full max-w-md border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">-- Select a role --</option>
-                {roles.map((role: any) => (
-                  <option key={role._id} value={role._id}>
-                    {role.displayName || role.name} {role.isSystem ? '(System)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {/* Role Selector */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Role</label>
+                  <div className="flex gap-3">
+                    <select
+                      value={selectedRoleId || ''}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          loadRolePermissions(e.target.value)
+                        } else {
+                          setSelectedRoleId(null)
+                          setSelectedRolePermissions(new Set())
+                        }
+                      }}
+                      className="flex-1 max-w-md border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">-- Select a role --</option>
+                      {roles.map((role: any) => (
+                        <option key={role._id} value={role._id}>
+                          {role.displayName || role.name} {role.isSystem ? '(System)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
             {rolesLoading ? (
               <div className="text-center py-8 text-gray-500">Loading...</div>
@@ -3634,11 +3710,122 @@ export default function SettingsPage() {
                 )}
               </div>
             )}
+
+            {/* Role Creation Modal */}
+            <Modal
+              isOpen={showRoleModal}
+              onClose={() => {
+                setShowRoleModal(false)
+                setEditingRole(null)
+                setRoleFormData({ name: '', displayName: '', description: '', permissions: [] })
+              }}
+              title={editingRole ? 'Edit Role' : 'Create New Role'}
+            >
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  try {
+                    const token = localStorage.getItem('token')
+                    const permissionIds = permissions
+                      .filter(p => roleFormData.permissions.includes(p.name))
+                      .map(p => p._id)
+
+                    const url = editingRole ? `/api/roles/${editingRole._id}` : '/api/roles'
+                    const method = editingRole ? 'PUT' : 'POST'
+
+                    const res = await fetch(url, {
+                      method,
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                      },
+                      body: JSON.stringify({
+                        name: roleFormData.name,
+                        displayName: roleFormData.displayName,
+                        description: roleFormData.description,
+                        permissions: permissionIds
+                      })
+                    })
+
+                    if (res.ok) {
+                      showToast(editingRole ? 'Role updated successfully' : 'Role created successfully', 'success')
+                      setShowRoleModal(false)
+                      setEditingRole(null)
+                      setRoleFormData({ name: '', displayName: '', description: '', permissions: [] })
+                      fetchRoles()
+                    } else {
+                      const error = await res.json()
+                      showToast(error.error || 'Failed to save role', 'error')
+                    }
+                  } catch (error) {
+                    showToast('Error saving role', 'error')
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role Name (ID)</label>
+                  <input
+                    type="text"
+                    value={roleFormData.name}
+                    onChange={(e) => setRoleFormData({ ...roleFormData, name: e.target.value })}
+                    placeholder="e.g., custom_admin"
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Lowercase, no spaces (used internally)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                  <input
+                    type="text"
+                    value={roleFormData.displayName}
+                    onChange={(e) => setRoleFormData({ ...roleFormData, displayName: e.target.value })}
+                    placeholder="e.g., Custom Admin"
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={roleFormData.description}
+                    onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })}
+                    placeholder="Describe this role's purpose..."
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Permissions</p>
+                  <p className="text-xs text-gray-500 mb-3">Select permissions after creating the role</p>
+                </div>
+                <div className="flex gap-3 justify-end pt-4 border-t">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRoleModal(false)
+                      setEditingRole(null)
+                      setRoleFormData({ name: '', displayName: '', description: '', permissions: [] })
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    {editingRole ? 'Update Role' : 'Create Role'}
+                  </button>
+                </div>
+              </form>
+            </Modal>
           </div>
         )}
 
-        {/* Audit Logs Tab - Embedded from /audit-logs page */}
-        {activeTab === 'auditLogs' && userRole === 'super_admin' && (
+        {/* Audit Logs Section */}
+        {activeSection === 'auditLogs' && userRole === 'super_admin' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Audit Logs</h2>
@@ -3690,8 +3877,8 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Sessions Tab - Embedded from /sessions page */}
-        {activeTab === 'sessions' && (userRole === 'admin' || userRole === 'super_admin') && (
+        {/* Sessions Section */}
+        {activeSection === 'sessions' && (userRole === 'admin' || userRole === 'super_admin') && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Active Sessions</h2>
@@ -3743,7 +3930,7 @@ export default function SettingsPage() {
         )}
 
         {/* Family Tags Tab - Embedded from /family-tags page */}
-        {activeTab === 'familyTags' && (userRole === 'admin' || userRole === 'super_admin') && (
+        {activeSection === 'familyTags' && (userRole === 'admin' || userRole === 'super_admin') && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
@@ -3886,7 +4073,7 @@ export default function SettingsPage() {
         )}
 
         {/* Family Groups Tab - Embedded from /family-groups page */}
-        {activeTab === 'familyGroups' && (userRole === 'admin' || userRole === 'super_admin') && (
+        {activeSection === 'familyGroups' && (userRole === 'admin' || userRole === 'super_admin') && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
@@ -4065,7 +4252,7 @@ export default function SettingsPage() {
         )}
 
         {/* Backup & Restore Tab - Embedded from /backup page */}
-        {activeTab === 'backup' && (userRole === 'admin' || userRole === 'super_admin') && (
+        {activeSection === 'backup' && (userRole === 'admin' || userRole === 'super_admin') && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Backup & Restore</h2>
@@ -4193,6 +4380,8 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </main>
   )
