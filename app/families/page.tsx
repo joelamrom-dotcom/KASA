@@ -1166,6 +1166,7 @@ export default function FamiliesPage() {
               onPageChange={setCurrentPage}
             />
           )}
+          )}
 
           {viewType === 'kanban' && (
             <div className="p-6">
