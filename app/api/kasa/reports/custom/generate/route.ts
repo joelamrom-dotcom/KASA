@@ -28,13 +28,16 @@ export async function POST(request: NextRequest) {
       isActive: true
     }).lean()
 
-    if (!report) {
+    if (!report || Array.isArray(report)) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 })
     }
 
+    // Type assertion: findOne().lean() returns a single document or null, not an array
+    const reportDoc = report as { dateRange?: any; filters?: any }
+    
     // Use override date range if provided, otherwise use report's date range
-    const dateRange = dateRangeOverride || report.dateRange
-    const filters = filtersOverride || report.filters
+    const dateRange = dateRangeOverride || reportDoc.dateRange
+    const filters = filtersOverride || reportDoc.filters
 
     // Calculate actual dates based on date range type
     let startDate: Date
