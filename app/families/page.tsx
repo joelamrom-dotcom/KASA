@@ -11,7 +11,8 @@ import {
   ChevronDownIcon,
   ArrowsUpDownIcon,
   CalendarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import Pagination from '@/app/components/Pagination'
@@ -134,6 +135,7 @@ export default function FamiliesPage() {
   const [families, setFamilies] = useState<Family[]>([])
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([])
   const [loading, setLoading] = useState(true)
+  const [permissionDenied, setPermissionDenied] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [editingFamily, setEditingFamily] = useState<Family | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -205,7 +207,23 @@ export default function FamiliesPage() {
   const fetchFamilies = async () => {
     try {
       setLoading(true)
+      setPermissionDenied(false)
       const res = await fetch('/api/kasa/families')
+      
+      if (res.status === 403) {
+        setPermissionDenied(true)
+        setFamilies([])
+        return
+      }
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to load families' }))
+        console.error('API error:', errorData)
+        setFamilies([])
+        showToast(errorData.error || 'Failed to load families', 'error')
+        return
+      }
+      
       const data = await res.json()
       if (Array.isArray(data)) {
         setFamilies(data)
@@ -1070,7 +1088,25 @@ export default function FamiliesPage() {
               </tr>
             </thead>
             <tbody className="bg-white/10 divide-y divide-white/20">
-              {filteredFamilies.length === 0 ? (
+              {permissionDenied ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12">
+                    <div className="text-center py-12 px-4">
+                      <div className="flex justify-center mb-4">
+                        <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                          <ShieldCheckIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        Access Denied
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                        You don't have permission to view families. Please contact your administrator to request access.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredFamilies.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12">
                     <EmptyState
@@ -1172,8 +1208,23 @@ export default function FamiliesPage() {
 
           {viewType === 'kanban' && (
             <div className="p-6">
-              <KanbanBoard
-                items={sortedFamilies}
+              {permissionDenied ? (
+                <div className="text-center py-12 px-4">
+                  <div className="flex justify-center mb-4">
+                    <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                      <ShieldCheckIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Access Denied
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    You don't have permission to view families. Please contact your administrator to request access.
+                  </p>
+                </div>
+              ) : (
+                <KanbanBoard
+                  items={sortedFamilies}
                 getItemId={(f) => f._id}
                 getItemStatus={(f) => {
                   if (f.openBalance > 1000) return 'high-balance'
@@ -1206,14 +1257,30 @@ export default function FamiliesPage() {
                     </div>
                   </div>
                 )}
-              />
+                />
+              )}
             </div>
           )}
 
           {viewType === 'card' && (
             <div className="p-6">
-              <CardView
-                items={sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
+              {permissionDenied ? (
+                <div className="text-center py-12 px-4">
+                  <div className="flex justify-center mb-4">
+                    <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                      <ShieldCheckIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Access Denied
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    You don't have permission to view families. Please contact your administrator to request access.
+                  </p>
+                </div>
+              ) : (
+                <CardView
+                  items={sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
                 columns={3}
                 renderCard={(family) => (
                   <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
@@ -1262,8 +1329,9 @@ export default function FamiliesPage() {
                     </div>
                   </div>
                 )}
-              />
-              {filteredFamilies.length > 0 && (
+                />
+              )}
+              {!permissionDenied && filteredFamilies.length > 0 && (
                 <Pagination
                   currentPage={currentPage}
                   totalPages={Math.ceil(filteredFamilies.length / itemsPerPage)}
@@ -1277,56 +1345,74 @@ export default function FamiliesPage() {
 
           {viewType === 'list' && (
             <div className="p-6">
-              <ListView
-                items={sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
-                renderItem={(family) => (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={bulkSelection.isSelected(family._id)}
-                        onChange={() => bulkSelection.toggleSelection(family._id)}
-                        className="rounded border-gray-300 text-blue-600"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <Link href={`/families/${family._id}`} className="font-medium text-blue-600 hover:underline flex-1">
-                        {family.name}
-                      </Link>
-                      <span className="text-sm text-gray-600 w-32">{new Date(family.weddingDate).toLocaleDateString()}</span>
-                      <span className="text-sm text-gray-600 w-24 flex items-center gap-1">
-                        <UserGroupIcon className="h-4 w-4" />
-                        {family.memberCount || 0}
-                      </span>
-                      <span className="text-sm text-gray-600 w-32">{getPlanNameById(family.paymentPlanId, family.currentPlan)}</span>
-                      <span className="text-sm font-medium w-24">${family.openBalance.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEdit(family)}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded"
-                        title="Edit"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(family)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                        title="Delete"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
+              {permissionDenied ? (
+                <div className="text-center py-12 px-4">
+                  <div className="flex justify-center mb-4">
+                    <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                      <ShieldCheckIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
                     </div>
                   </div>
-                )}
-              />
-              {filteredFamilies.length > 0 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={Math.ceil(filteredFamilies.length / itemsPerPage)}
-                  totalItems={filteredFamilies.length}
-                  itemsPerPage={itemsPerPage}
-                  onPageChange={setCurrentPage}
-                />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Access Denied
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    You don't have permission to view families. Please contact your administrator to request access.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <ListView
+                    items={sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
+                    renderItem={(family) => (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={bulkSelection.isSelected(family._id)}
+                            onChange={() => bulkSelection.toggleSelection(family._id)}
+                            className="rounded border-gray-300 text-blue-600"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <Link href={`/families/${family._id}`} className="font-medium text-blue-600 hover:underline flex-1">
+                            {family.name}
+                          </Link>
+                          <span className="text-sm text-gray-600 w-32">{new Date(family.weddingDate).toLocaleDateString()}</span>
+                          <span className="text-sm text-gray-600 w-24 flex items-center gap-1">
+                            <UserGroupIcon className="h-4 w-4" />
+                            {family.memberCount || 0}
+                          </span>
+                          <span className="text-sm text-gray-600 w-32">{getPlanNameById(family.paymentPlanId, family.currentPlan)}</span>
+                          <span className="text-sm font-medium w-24">${family.openBalance.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEdit(family)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="Edit"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(family)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Delete"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  />
+                  {filteredFamilies.length > 0 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={Math.ceil(filteredFamilies.length / itemsPerPage)}
+                      totalItems={filteredFamilies.length}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </>
               )}
             </div>
           )}
