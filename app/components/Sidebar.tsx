@@ -101,9 +101,6 @@ export default function Sidebar() {
         { href: '/families', label: 'Families', icon: UserGroupIcon, iconSolid: UserGroupIconSolid }
       ]),
       { href: '/payments', label: 'Payments', icon: CurrencyDollarIcon, iconSolid: CurrencyDollarIconSolid },
-      ...(user?.role === 'admin' || user?.role === 'super_admin' ? [
-        { href: '/overdue-payments', label: 'Overdue Payments', icon: ExclamationTriangleIcon, iconSolid: ExclamationTriangleIconSolid }
-      ] : []),
       { href: '/tasks', label: 'Tasks', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
       { href: '/calendar', label: 'Calendar', icon: CalendarDaysIcon, iconSolid: CalendarDaysIconSolid },
       { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
@@ -116,8 +113,6 @@ export default function Sidebar() {
       ...(user?.role === 'admin' || user?.role === 'super_admin' ? [
         { href: '/family-tags', label: 'Family Tags', icon: TagIcon, iconSolid: TagIconSolid },
         { href: '/family-groups', label: 'Family Groups', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
-        { href: '/payment-links', label: 'Payment Links', icon: LinkIcon, iconSolid: LinkIconSolid },
-        { href: '/payment-analytics', label: 'Payment Analytics', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
         { href: '/backup', label: 'Backup & Restore', icon: ArrowDownTrayIcon, iconSolid: ArrowDownTrayIconSolid }
       ] : []),
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },

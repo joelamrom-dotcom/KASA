@@ -7,8 +7,19 @@ import {
   CurrencyDollarIcon,
   DocumentTextIcon,
   BoltIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ExclamationTriangleIcon,
+  LinkIcon,
+  ChartBarIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  DocumentDuplicateIcon,
+  XMarkIcon,
+  CalendarIcon,
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline'
+import { getUser } from '@/lib/auth'
 import Pagination from '@/app/components/Pagination'
 import TableImportExport from '@/app/components/TableImportExport'
 import FilterBuilder, { FilterGroup } from '@/app/components/FilterBuilder'
@@ -75,7 +86,10 @@ const paymentMethodColors = {
   quick_pay: 'bg-orange-100 text-orange-800'
 }
 
+type PaymentTab = 'all' | 'overdue' | 'links' | 'analytics'
+
 export default function PaymentsPage() {
+  const [activeTab, setActiveTab] = useState<PaymentTab>('all')
   const [payments, setPayments] = useState<Payment[]>([])
   const [allPayments, setAllPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,6 +104,33 @@ export default function PaymentsPage() {
   })
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   const [viewType, setViewType] = useState<ViewType>('table')
+  
+  // Overdue payments state
+  const [overduePayments, setOverduePayments] = useState<any[]>([])
+  const [overdueStats, setOverdueStats] = useState<any>(null)
+  const [overdueLoading, setOverdueLoading] = useState(false)
+  const [overdueFilter, setOverdueFilter] = useState<'all' | 'level1' | 'level2' | 'level3'>('all')
+  
+  // Payment links state
+  const [links, setLinks] = useState<any[]>([])
+  const [families, setFamilies] = useState<any[]>([])
+  const [linksLoading, setLinksLoading] = useState(false)
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [editingLink, setEditingLink] = useState<any>(null)
+  const [linkFormData, setLinkFormData] = useState<any>({
+    familyId: '',
+    amount: undefined,
+    description: '',
+    paymentPlan: { enabled: false },
+    expiresAt: '',
+    maxUses: undefined
+  })
+  const [linkMessage, setLinkMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  
+  // Analytics state
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('30')
 
   // Define filter fields for payments
   const paymentFilterFields = [
@@ -374,8 +415,37 @@ export default function PaymentsPage() {
             </h1>
             <p className="text-gray-600">View and manage all payments across all families</p>
           </div>
-          <div className="flex items-center gap-4">
-            <TableImportExport
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+          <nav className="-mb-px flex space-x-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors`}
+                >
+                  <Icon className="h-5 w-5" />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+
+        {/* All Payments Tab */}
+        {activeTab === 'all' && (
+          <>
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4">
+              <TableImportExport
               data={payments.map(p => ({
                 ...p,
                 familyName: typeof p.familyId === 'object' ? p.familyId.name : 'Unknown',
@@ -748,6 +818,596 @@ export default function PaymentsPage() {
             </div>
           </div>
         </div>
+          </>
+        )}
+
+        {/* Overdue Payments Tab */}
+        {activeTab === 'overdue' && (
+          <div className="space-y-6">
+            {/* Statistics */}
+            {overdueStats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="glass-strong rounded-xl shadow-lg p-6 border border-white/30">
+                  <div className="text-sm text-gray-600 mb-1">Total Overdue</div>
+                  <div className="text-3xl font-bold text-gray-800">{overdueStats.total}</div>
+                </div>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl shadow-lg p-6 border-2 border-yellow-200 dark:border-yellow-800">
+                  <div className="text-sm text-yellow-700 dark:text-yellow-300 mb-1">7-13 Days</div>
+                  <div className="text-3xl font-bold text-yellow-800 dark:text-yellow-200">{overdueStats.byLevel.level1}</div>
+                </div>
+                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl shadow-lg p-6 border-2 border-orange-200 dark:border-orange-800">
+                  <div className="text-sm text-orange-700 dark:text-orange-300 mb-1">14-29 Days</div>
+                  <div className="text-3xl font-bold text-orange-800 dark:text-orange-200">{overdueStats.byLevel.level2}</div>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl shadow-lg p-6 border-2 border-red-200 dark:border-red-800">
+                  <div className="text-sm text-red-700 dark:text-red-300 mb-1">30+ Days</div>
+                  <div className="text-3xl font-bold text-red-800 dark:text-red-200">{overdueStats.byLevel.level3}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="glass-strong rounded-xl shadow-xl p-6 border border-white/30">
+              <div className="flex gap-2 flex-wrap">
+                {['all', 'level1', 'level2', 'level3'].map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setOverdueFilter(filter as any)}
+                    className={`px-4 py-2 rounded-lg transition-all ${
+                      overdueFilter === filter
+                        ? filter === 'all' ? 'bg-purple-600 text-white' :
+                          filter === 'level1' ? 'bg-yellow-600 text-white' :
+                          filter === 'level2' ? 'bg-orange-600 text-white' :
+                          'bg-red-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {filter === 'all' ? 'All Overdue' :
+                     filter === 'level1' ? '7-13 Days' :
+                     filter === 'level2' ? '14-29 Days' :
+                     '30+ Days'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Overdue Payments Table */}
+            <div className="glass-strong rounded-xl shadow-xl p-6 border border-white/30">
+              {overdueLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Loading overdue payments...</p>
+                </div>
+              ) : (overdueFilter === 'all' ? overduePayments : overdueFilter === 'level1' 
+                ? overduePayments.filter((p: any) => p.daysOverdue >= 7 && p.daysOverdue < 14)
+                : overdueFilter === 'level2'
+                ? overduePayments.filter((p: any) => p.daysOverdue >= 14 && p.daysOverdue < 30)
+                : overduePayments.filter((p: any) => p.daysOverdue >= 30)
+              ).length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No overdue payments found</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-gray-700">
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Family</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Amount</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Due Date</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Days Overdue</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Payment Method</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(overdueFilter === 'all' ? overduePayments : overdueFilter === 'level1' 
+                        ? overduePayments.filter((p: any) => p.daysOverdue >= 7 && p.daysOverdue < 14)
+                        : overdueFilter === 'level2'
+                        ? overduePayments.filter((p: any) => p.daysOverdue >= 14 && p.daysOverdue < 30)
+                        : overduePayments.filter((p: any) => p.daysOverdue >= 30)
+                      ).map((payment: any) => (
+                        <tr key={payment._id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="py-3 px-4">
+                            <Link
+                              href={`/families/${payment.familyId._id}`}
+                              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium hover:underline"
+                            >
+                              {payment.familyId.name}
+                            </Link>
+                            {payment.familyId.email && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{payment.familyId.email}</div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-red-600 dark:text-red-400">
+                            ${payment.amount.toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                            {new Date(payment.nextPaymentDate).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                              payment.daysOverdue >= 30 ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800' :
+                              payment.daysOverdue >= 14 ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800' :
+                              'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800'
+                            }`}>
+                              {payment.daysOverdue} {payment.daysOverdue === 1 ? 'day' : 'days'} overdue
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                            {payment.savedPaymentMethodId?.cardType || 'N/A'} •••• {payment.savedPaymentMethodId?.last4 || 'N/A'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Link
+                              href={`/families/${payment.familyId._id}`}
+                              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
+                            >
+                              View Family →
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Payment Links Tab */}
+        {activeTab === 'links' && (
+          <div className="space-y-6">
+            {linkMessage && (
+              <div className={`p-4 rounded-lg ${
+                linkMessage.type === 'success' 
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300' 
+                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+              }`}>
+                {linkMessage.text}
+              </div>
+            )}
+
+            <div className="glass-strong rounded-xl shadow-lg p-6 border border-white/30">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Payment Links</h2>
+                <button
+                  onClick={() => {
+                    setEditingLink(null)
+                    setLinkFormData({ familyId: '', amount: undefined, description: '', paymentPlan: { enabled: false }, expiresAt: '', maxUses: undefined })
+                    setShowLinkModal(true)
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                  New Payment Link
+                </button>
+              </div>
+
+              {linksLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Loading...</p>
+                </div>
+              ) : links.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                  <LinkIcon className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                  <p>No payment links found. Create your first payment link to get started.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {links.map((link) => (
+                    <div
+                      key={link._id}
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-white dark:bg-gray-800"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-gray-800 dark:text-gray-200">{link.familyName || 'Unknown Family'}</h3>
+                            {link.isActive ? (
+                              <span className="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 text-xs rounded-full">Active</span>
+                            ) : (
+                              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 text-xs rounded-full">Inactive</span>
+                            )}
+                          </div>
+                          {link.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{link.description}</p>
+                          )}
+                          {link.amount && (
+                            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">${link.amount.toLocaleString()}</p>
+                          )}
+                          {link.linkUrl && (
+                            <div className="flex items-center gap-2 mb-2">
+                              <input
+                                type="text"
+                                readOnly
+                                value={link.linkUrl}
+                                className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                              />
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(link.linkUrl!)
+                                  setLinkMessage({ type: 'success', text: 'Link copied to clipboard!' })
+                                  setTimeout(() => setLinkMessage(null), 3000)
+                                }}
+                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                                title="Copy link"
+                              >
+                                <DocumentDuplicateIcon className="h-5 w-5" />
+                              </button>
+                            </div>
+                          )}
+                          <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                            {link.expiresAt && (
+                              <span>Expires: {new Date(link.expiresAt).toLocaleDateString()}</span>
+                            )}
+                            {link.maxUses && (
+                              <span>Uses: {link.currentUses || 0} / {link.maxUses}</span>
+                            )}
+                            {link.paymentPlan?.enabled && (
+                              <span>Payment Plan: {link.paymentPlan.installments} installments ({link.paymentPlan.frequency})</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingLink(link)
+                              setLinkFormData({
+                                familyId: link.familyId,
+                                amount: link.amount,
+                                description: link.description,
+                                paymentPlan: link.paymentPlan || { enabled: false },
+                                expiresAt: link.expiresAt ? new Date(link.expiresAt).toISOString().split('T')[0] : '',
+                                maxUses: link.maxUses
+                              })
+                              setShowLinkModal(true)
+                            }}
+                            className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                          >
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Are you sure you want to delete this payment link?')) return
+                              try {
+                                const token = localStorage.getItem('token')
+                                const res = await fetch(`/api/kasa/payment-links?id=${link._id}`, {
+                                  method: 'DELETE',
+                                  headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                                })
+                                if (res.ok) {
+                                  setLinkMessage({ type: 'success', text: 'Payment link deleted successfully!' })
+                                  fetchLinks()
+                                } else {
+                                  const error = await res.json()
+                                  setLinkMessage({ type: 'error', text: error.error || 'Failed to delete payment link' })
+                                }
+                              } catch (error) {
+                                setLinkMessage({ type: 'error', text: 'Failed to delete payment link' })
+                              }
+                            }}
+                            className="p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Payment Link Modal */}
+            {showLinkModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{editingLink ? 'Edit Payment Link' : 'Create New Payment Link'}</h2>
+                    <button
+                      onClick={() => {
+                        setShowLinkModal(false)
+                        setEditingLink(null)
+                        setLinkFormData({ familyId: '', amount: undefined, description: '', paymentPlan: { enabled: false }, expiresAt: '', maxUses: undefined })
+                      }}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={async (e) => {
+                    e.preventDefault()
+                    try {
+                      const token = localStorage.getItem('token')
+                      const res = await fetch('/api/kasa/payment-links', {
+                        method: editingLink ? 'PUT' : 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({
+                          ...linkFormData,
+                          _id: editingLink?._id,
+                          amount: linkFormData.amount ? parseFloat(linkFormData.amount.toString()) : undefined,
+                          maxUses: linkFormData.maxUses ? parseInt(linkFormData.maxUses.toString()) : undefined
+                        })
+                      })
+
+                      if (res.ok) {
+                        setLinkMessage({ type: 'success', text: editingLink ? 'Payment link updated successfully!' : 'Payment link created successfully!' })
+                        setShowLinkModal(false)
+                        setEditingLink(null)
+                        setLinkFormData({ familyId: '', amount: undefined, description: '', paymentPlan: { enabled: false }, expiresAt: '', maxUses: undefined })
+                        fetchLinks()
+                      } else {
+                        const error = await res.json()
+                        setLinkMessage({ type: 'error', text: error.error || 'Failed to save payment link' })
+                      }
+                    } catch (error) {
+                      setLinkMessage({ type: 'error', text: 'Failed to save payment link' })
+                    }
+                  }} className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Family *</label>
+                      <select
+                        required
+                        value={linkFormData.familyId}
+                        onChange={(e) => setLinkFormData({ ...linkFormData, familyId: e.target.value })}
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="">Select a family</option>
+                        {families.map((family) => (
+                          <option key={family._id} value={family._id}>{family.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (optional - leave empty for custom amount)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={linkFormData.amount || ''}
+                        onChange={(e) => setLinkFormData({ ...linkFormData, amount: e.target.value ? parseFloat(e.target.value) : undefined })}
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                      <textarea
+                        value={linkFormData.description || ''}
+                        onChange={(e) => setLinkFormData({ ...linkFormData, description: e.target.value })}
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                        rows={3}
+                        placeholder="Payment description..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={linkFormData.paymentPlan?.enabled || false}
+                          onChange={(e) => setLinkFormData({
+                            ...linkFormData,
+                            paymentPlan: { ...linkFormData.paymentPlan, enabled: e.target.checked } as any
+                          })}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Payment Plan</span>
+                      </label>
+                      {linkFormData.paymentPlan?.enabled && (
+                        <div className="ml-6 space-y-2">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Installments</label>
+                            <input
+                              type="number"
+                              value={linkFormData.paymentPlan.installments || ''}
+                              onChange={(e) => setLinkFormData({
+                                ...linkFormData,
+                                paymentPlan: { ...linkFormData.paymentPlan, installments: parseInt(e.target.value) } as any
+                              })}
+                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                              min="2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
+                            <select
+                              value={linkFormData.paymentPlan.frequency || 'monthly'}
+                              onChange={(e) => setLinkFormData({
+                                ...linkFormData,
+                                paymentPlan: { ...linkFormData.paymentPlan, frequency: e.target.value } as any
+                              })}
+                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                            >
+                              <option value="weekly">Weekly</option>
+                              <option value="biweekly">Bi-weekly</option>
+                              <option value="monthly">Monthly</option>
+                              <option value="quarterly">Quarterly</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiration Date (optional)</label>
+                      <input
+                        type="date"
+                        value={linkFormData.expiresAt || ''}
+                        onChange={(e) => setLinkFormData({ ...linkFormData, expiresAt: e.target.value })}
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Uses (optional)</label>
+                      <input
+                        type="number"
+                        value={linkFormData.maxUses || ''}
+                        onChange={(e) => setLinkFormData({ ...linkFormData, maxUses: e.target.value ? parseInt(e.target.value) : undefined })}
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                        min="1"
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowLinkModal(false)
+                          setEditingLink(null)
+                          setLinkFormData({ familyId: '', amount: undefined, description: '', paymentPlan: { enabled: false }, expiresAt: '', maxUses: undefined })
+                        }}
+                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        {editingLink ? 'Update Link' : 'Create Link'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Period</label>
+              <select
+                value={analyticsPeriod}
+                onChange={(e) => setAnalyticsPeriod(e.target.value)}
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              >
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last year</option>
+              </select>
+            </div>
+
+            {analyticsLoading ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">Loading analytics...</p>
+              </div>
+            ) : !analytics ? (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                No analytics data available
+              </div>
+            ) : (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="glass-strong rounded-lg shadow-lg p-6 border border-white/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Total Payments</p>
+                        <p className="text-3xl font-bold text-gray-800 dark:text-gray-200">{analytics.totals.totalPayments}</p>
+                      </div>
+                      <ChartBarIcon className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  </div>
+
+                  <div className="glass-strong rounded-lg shadow-lg p-6 border border-white/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Total Amount</p>
+                        <p className="text-3xl font-bold text-gray-800 dark:text-gray-200">${analytics.totals.totalAmount.toLocaleString()}</p>
+                      </div>
+                      <CurrencyDollarIcon className="h-12 w-12 text-green-600 dark:text-green-400" />
+                    </div>
+                  </div>
+
+                  <div className="glass-strong rounded-lg shadow-lg p-6 border border-white/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Average Amount</p>
+                        <p className="text-3xl font-bold text-gray-800 dark:text-gray-200">${analytics.totals.averageAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                      </div>
+                      <ArrowTrendingUpIcon className="h-12 w-12 text-purple-600 dark:text-purple-400" />
+                    </div>
+                  </div>
+
+                  <div className="glass-strong rounded-lg shadow-lg p-6 border border-white/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Success Rate</p>
+                        <p className="text-3xl font-bold text-gray-800 dark:text-gray-200">
+                          {analytics.totals.totalPayments > 0 
+                            ? ((analytics.totals.successfulPayments / analytics.totals.totalPayments) * 100).toFixed(1)
+                            : 0}%
+                        </p>
+                      </div>
+                      <ChartBarIcon className="h-12 w-12 text-green-600 dark:text-green-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Methods Breakdown */}
+                <div className="glass-strong rounded-lg shadow-lg p-6 border border-white/30">
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Payment Methods</h2>
+                  <div className="space-y-3">
+                    {Object.entries(analytics.totals.byMethod).map(([method, data]: [string, any]) => (
+                      <div key={method} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-800 dark:text-gray-200 capitalize">{method.replace('_', ' ')}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{data.count} payments</p>
+                        </div>
+                        <p className="text-lg font-bold text-gray-800 dark:text-gray-200">${data.amount.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Payment Types Breakdown */}
+                <div className="glass-strong rounded-lg shadow-lg p-6 border border-white/30">
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Payment Types</h2>
+                  <div className="space-y-3">
+                    {Object.entries(analytics.totals.byType).map(([type, data]: [string, any]) => (
+                      <div key={type} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-800 dark:text-gray-200 capitalize">{type}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{data.count} payments</p>
+                        </div>
+                        <p className="text-lg font-bold text-gray-800 dark:text-gray-200">${data.amount.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Daily Trends */}
+                {analytics.totals.trends.length > 0 && (
+                  <div className="glass-strong rounded-lg shadow-lg p-6 border border-white/30">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Daily Trends</h2>
+                    <div className="space-y-2">
+                      {analytics.totals.trends.slice(-14).map((trend: any) => (
+                        <div key={trend.date} className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{new Date(trend.date).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">{trend.count} payments</span>
+                            <span className="font-semibold text-gray-800 dark:text-gray-200">${trend.amount.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
