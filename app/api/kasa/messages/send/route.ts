@@ -4,6 +4,7 @@ import { Family, MessageHistory } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
 import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 import { auditLogFromRequest } from '@/lib/audit-log'
+import { replaceVariables, buildFamilyVariables } from '@/lib/template-variables'
 import nodemailer from 'nodemailer'
 
 export const dynamic = 'force-dynamic'
@@ -74,12 +75,17 @@ export async function POST(request: NextRequest) {
         }
 
         try {
+          // Replace variables in subject and body for each family
+          const variables = buildFamilyVariables(family)
+          const personalizedSubject = replaceVariables(subject, variables, { fallback: '' })
+          const personalizedBody = replaceVariables(messageBody, variables, { fallback: '' })
+          
           await transporter.sendMail({
             from: `"${emailConfig.fromName || 'Kasa Family Management'}" <${emailConfig.email}>`,
             to: family.email,
-            subject,
-            text: messageBody,
-            html: messageBody.replace(/\n/g, '<br>')
+            subject: personalizedSubject,
+            text: personalizedBody,
+            html: personalizedBody.replace(/\n/g, '<br>')
           })
           successCount++
           recipients.push(family.email)
@@ -118,6 +124,10 @@ export async function POST(request: NextRequest) {
         }
 
         try {
+          // Replace variables in message body for each family
+          const variables = buildFamilyVariables(family)
+          const personalizedBody = replaceVariables(messageBody, variables, { fallback: '' })
+          
           // Use email-to-SMS gateway
           const smsEmail = `${phoneNumber.replace(/\D/g, '')}@${smsConfig.gateway || 'txt.att.net'}`
           
@@ -125,7 +135,7 @@ export async function POST(request: NextRequest) {
             from: emailConfig.email,
             to: smsEmail,
             subject: '',
-            text: messageBody.substring(0, 160) // SMS limit
+            text: personalizedBody.substring(0, 160) // SMS limit
           })
           successCount++
           recipients.push(phoneNumber)

@@ -9,9 +9,13 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
-  XMarkIcon
+  XMarkIcon,
+  EyeIcon,
+  CodeBracketIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
+import VariablePicker from '@/app/components/VariablePicker'
+import { replaceVariables, buildFamilyVariables, AVAILABLE_VARIABLES } from '@/lib/template-variables'
 
 interface Family {
   _id: string
@@ -28,7 +32,9 @@ interface MessageTemplate {
   name: string
   subject: string
   body: string
+  bodyHtml?: string
   type: 'email' | 'sms'
+  isHtml?: boolean
 }
 
 interface MessageHistory {
@@ -54,11 +60,15 @@ export default function CommunicationPage() {
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewFamily, setPreviewFamily] = useState<Family | null>(null)
   const [templateForm, setTemplateForm] = useState({
     name: '',
     subject: '',
     body: '',
-    type: 'email' as 'email' | 'sms'
+    bodyHtml: '',
+    type: 'email' as 'email' | 'sms',
+    isHtml: false
   })
 
   useEffect(() => {
@@ -129,10 +139,47 @@ export default function CommunicationPage() {
   }
 
   const handleUseTemplate = (template: MessageTemplate) => {
-    setSubject(template.subject)
-    setBody(template.body)
+    setSubject(template.subject || '')
+    setBody(template.bodyHtml || template.body)
     setMessageType(template.type)
     setShowTemplateModal(false)
+  }
+
+  const handleInsertVariable = (variable: string) => {
+    setBody(prev => prev + variable)
+  }
+
+  const handleInsertVariableInSubject = (variable: string) => {
+    setSubject(prev => prev + variable)
+  }
+
+  const handlePreview = () => {
+    // Use first selected family or first eligible family for preview
+    const familyId = selectedFamilies.length > 0 
+      ? selectedFamilies[0] 
+      : eligibleFamilies.length > 0 
+        ? eligibleFamilies[0]._id 
+        : null
+    
+    if (familyId) {
+      const family = families.find(f => f._id === familyId)
+      if (family) {
+        setPreviewFamily(family)
+        setShowPreview(true)
+      }
+    } else {
+      alert('Please select at least one family to preview')
+    }
+  }
+
+  const getPreviewContent = () => {
+    if (!previewFamily) return { subject: '', body: '' }
+    
+    const variables = buildFamilyVariables(previewFamily)
+    const previewSubject = replaceVariables(subject, variables, { fallback: '[Variable]' })
+    const previewBody = replaceVariables(body, variables, { fallback: '[Variable]' })
+    
+    return { subject: previewSubject, body: previewBody }
   }
 
   const handleSend = async () => {
@@ -207,7 +254,7 @@ export default function CommunicationPage() {
       if (response.ok) {
         alert('Template saved successfully!')
         setShowTemplateModal(false)
-        setTemplateForm({ name: '', subject: '', body: '', type: 'email' })
+        setTemplateForm({ name: '', subject: '', body: '', bodyHtml: '', type: 'email', isHtml: false })
         fetchTemplates()
       }
     } catch (error) {
@@ -277,7 +324,9 @@ export default function CommunicationPage() {
                       name: '',
                       subject: subject,
                       body: body,
-                      type: messageType
+                      bodyHtml: '',
+                      type: messageType,
+                      isHtml: false
                     })
                     setShowTemplateModal(true)
                   }}

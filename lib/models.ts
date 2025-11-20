@@ -887,9 +887,16 @@ export const Document = mongoose.models.Document || mongoose.model('Document', D
 const MessageTemplateSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
-  subject: String, // For email templates
-  body: { type: String, required: true },
+  subject: String, // For email templates (can contain variables)
+  body: { type: String, required: true }, // Can contain HTML for email templates
+  bodyHtml: { type: String }, // Rich HTML content for email templates
   type: { type: String, enum: ['email', 'sms'], required: true },
+  variables: [{ // Available variables for this template
+    name: { type: String, required: true }, // Variable name like 'familyName'
+    displayName: { type: String, required: true }, // Display name like 'Family Name'
+    category: { type: String, enum: ['family', 'payment', 'member', 'system'], default: 'family' }
+  }],
+  isHtml: { type: Boolean, default: false }, // Whether body contains HTML
 }, { timestamps: true })
 
 MessageTemplateSchema.index({ userId: 1, type: 1 })

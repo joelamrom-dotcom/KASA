@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, subject, body: messageBody, type } = body
+    const { name, subject, body: messageBody, bodyHtml, type, isHtml } = body
 
     if (!name || !messageBody) {
       return NextResponse.json({ error: 'Name and body required' }, { status: 400 })
@@ -50,12 +50,27 @@ export async function POST(request: NextRequest) {
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
+    // Extract variables from template
+    const { extractVariables, AVAILABLE_VARIABLES } = await import('@/lib/template-variables')
+    const usedVariables = extractVariables(messageBody + (subject || ''))
+    const variables = usedVariables.map(varName => {
+      const varDef = AVAILABLE_VARIABLES.find(v => v.name === varName)
+      return varDef ? {
+        name: varDef.name,
+        displayName: varDef.displayName,
+        category: varDef.category
+      } : null
+    }).filter(Boolean)
+
     const template = await MessageTemplate.create({
       userId,
       name,
       subject: type === 'email' ? subject : undefined,
       body: messageBody,
-      type
+      bodyHtml: bodyHtml || messageBody,
+      type,
+      isHtml: isHtml || false,
+      variables
     })
 
     return NextResponse.json({ template })
