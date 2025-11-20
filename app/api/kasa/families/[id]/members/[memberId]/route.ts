@@ -18,6 +18,15 @@ export async function PUT(
       throw new Error('Database connection not ready')
     }
     
+    // Get authenticated user
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
     const { 
       firstName, hebrewFirstName, lastName, hebrewLastName, birthDate, hebrewBirthDate, gender, 
