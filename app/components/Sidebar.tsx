@@ -110,21 +110,11 @@ export default function Sidebar() {
       { href: '/statements', label: 'Statements', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
-      ...(user?.role === 'admin' || user?.role === 'super_admin' ? [
-        { href: '/family-tags', label: 'Family Tags', icon: TagIcon, iconSolid: TagIconSolid },
-        { href: '/family-groups', label: 'Family Groups', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
-        { href: '/backup', label: 'Backup & Restore', icon: ArrowDownTrayIcon, iconSolid: ArrowDownTrayIconSolid }
-      ] : []),
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/communication', label: 'Communication', icon: ChatBubbleLeftRightIcon, iconSolid: ChatBubbleLeftRightIconSolid },
       { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
-      ...(user?.role === 'super_admin' || user?.role === 'admin' ? [
-        { href: '/roles', label: 'Roles & Permissions', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
-        { href: '/sessions', label: 'Sessions', icon: ComputerDesktopIcon, iconSolid: ComputerDesktopIconSolid }
-      ] : []),
       ...(user?.role === 'super_admin' ? [
-        { href: '/users', label: 'Users', icon: UsersIcon, iconSolid: UsersIconSolid },
-        { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardDocumentCheckIcon, iconSolid: ClipboardDocumentCheckIconSolid }
+        { href: '/users', label: 'Users', icon: UsersIcon, iconSolid: UsersIconSolid }
       ] : []),
     ]
 

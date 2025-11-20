@@ -1,10 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon, XMarkIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon, XMarkIcon, ShieldCheckIcon, TagIcon, ArrowDownTrayIcon, ComputerDesktopIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
 import TwoFactorAuth from '@/app/components/TwoFactorAuth'
+import { getUser } from '@/lib/auth'
+import Modal from '@/app/components/Modal'
+import ConfirmationDialog from '@/app/components/ConfirmationDialog'
+import { showToast } from '@/app/components/Toast'
 
 interface LifecycleEventType {
   _id: string
@@ -27,7 +31,7 @@ interface PaymentPlan {
   families?: Family[]
 }
 
-type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations' | 'templates' | 'security'
+type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations' | 'templates' | 'security' | 'roles' | 'auditLogs' | 'sessions' | 'familyTags' | 'familyGroups' | 'backup'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('email')
@@ -130,6 +134,48 @@ export default function SettingsPage() {
     isDefault: false
   })
 
+  // Roles & Permissions state
+  const [roles, setRoles] = useState<any[]>([])
+  const [permissions, setPermissions] = useState<any[]>([])
+  const [rolesLoading, setRolesLoading] = useState(false)
+  const [showRoleModal, setShowRoleModal] = useState(false)
+  const [editingRole, setEditingRole] = useState<any>(null)
+  const [roleFormData, setRoleFormData] = useState<any>({ name: '', displayName: '', description: '', permissions: [] })
+
+  // Audit Logs state
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [auditLogsLoading, setAuditLogsLoading] = useState(false)
+  const [auditFilters, setAuditFilters] = useState({ userId: '', entityType: '', action: '', startDate: '', endDate: '' })
+
+  // Sessions state
+  const [sessions, setSessions] = useState<any[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [showRevokeDialog, setShowRevokeDialog] = useState(false)
+  const [sessionToRevoke, setSessionToRevoke] = useState<any>(null)
+
+  // Family Tags state
+  const [familyTags, setFamilyTags] = useState<any[]>([])
+  const [tagsLoading, setTagsLoading] = useState(false)
+  const [showTagModal, setShowTagModal] = useState(false)
+  const [editingTag, setEditingTag] = useState<any>(null)
+  const [tagFormData, setTagFormData] = useState({ name: '', color: '#3b82f6', description: '' })
+
+  // Family Groups state
+  const [familyGroups, setFamilyGroups] = useState<any[]>([])
+  const [groupsLoading, setGroupsLoading] = useState(false)
+  const [showGroupModal, setShowGroupModal] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<any>(null)
+  const [groupFormData, setGroupFormData] = useState({ name: '', color: '#3b82f6', description: '', families: [] })
+  const [allFamilies, setAllFamilies] = useState<any[]>([])
+
+  // Backup state
+  const [backups, setBackups] = useState<any[]>([])
+  const [backupLoading, setBackupLoading] = useState(false)
+  const [creatingBackup, setCreatingBackup] = useState(false)
+  const [backupType, setBackupType] = useState('full')
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+
   useEffect(() => {
     // Fetch user role first to determine which tabs to show
     const fetchUserRole = async () => {
@@ -189,6 +235,174 @@ export default function SettingsPage() {
     fetchAutomationSettings()
     fetchTemplates()
   }, [])
+
+  // Load data when specific tabs are activated
+  useEffect(() => {
+    if (activeTab === 'familyTags' && !tagsLoading) {
+      fetchFamilyTags()
+    } else if (activeTab === 'familyGroups' && !groupsLoading) {
+      fetchFamilyGroups()
+      fetchAllFamilies()
+    } else if (activeTab === 'backup' && !backupLoading) {
+      fetchBackups()
+    } else if (activeTab === 'sessions' && !sessionsLoading) {
+      fetchSessions()
+    } else if (activeTab === 'auditLogs' && !auditLogsLoading) {
+      fetchAuditLogs()
+    } else if (activeTab === 'roles' && !rolesLoading) {
+      fetchRoles()
+      fetchPermissions()
+    }
+  }, [activeTab])
+
+  // Fetch functions for new tabs
+  const fetchFamilyTags = async () => {
+    try {
+      setTagsLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/family-tags', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFamilyTags(data)
+      }
+    } catch (error) {
+      console.error('Error fetching tags:', error)
+    } finally {
+      setTagsLoading(false)
+    }
+  }
+
+  const fetchFamilyGroups = async () => {
+    try {
+      setGroupsLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/family-groups', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFamilyGroups(data)
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error)
+    } finally {
+      setGroupsLoading(false)
+    }
+  }
+
+  const fetchAllFamilies = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/families', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAllFamilies(data)
+      }
+    } catch (error) {
+      console.error('Error fetching families:', error)
+    }
+  }
+
+  const fetchBackups = async () => {
+    try {
+      setBackupLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/backup', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setBackups(data)
+      }
+    } catch (error) {
+      console.error('Error fetching backups:', error)
+    } finally {
+      setBackupLoading(false)
+    }
+  }
+
+  const fetchSessions = async () => {
+    try {
+      setSessionsLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/sessions', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setSessions(data.sessions || [])
+      }
+    } catch (error) {
+      console.error('Error fetching sessions:', error)
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
+  const fetchAuditLogs = async () => {
+    try {
+      setAuditLogsLoading(true)
+      const token = localStorage.getItem('token')
+      const params = new URLSearchParams({
+        limit: '50',
+        skip: '0',
+      })
+      if (auditFilters.userId) params.append('userId', auditFilters.userId)
+      if (auditFilters.entityType) params.append('entityType', auditFilters.entityType)
+      if (auditFilters.action) params.append('action', auditFilters.action)
+      if (auditFilters.startDate) params.append('startDate', auditFilters.startDate)
+      if (auditFilters.endDate) params.append('endDate', auditFilters.endDate)
+
+      const res = await fetch(`/api/audit-logs?${params}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAuditLogs(data.logs || [])
+      }
+    } catch (error) {
+      console.error('Error fetching audit logs:', error)
+    } finally {
+      setAuditLogsLoading(false)
+    }
+  }
+
+  const fetchRoles = async () => {
+    try {
+      setRolesLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/roles', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setRoles(data)
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error)
+    } finally {
+      setRolesLoading(false)
+    }
+  }
+
+  const fetchPermissions = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/permissions', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setPermissions(data)
+      }
+    } catch (error) {
+      console.error('Error fetching permissions:', error)
+    }
+  }
 
   // Refresh Kevittel data when switching to the Kevittel tab
   useEffect(() => {
@@ -1223,7 +1437,87 @@ export default function SettingsPage() {
                       Security
                     </div>
                   </button>
+                  <button
+                    onClick={() => setActiveTab('roles')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'roles'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ShieldCheckIcon className="h-5 w-5" />
+                      Roles & Permissions
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('sessions')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'sessions'
+                        ? 'border-indigo-600 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ComputerDesktopIcon className="h-5 w-5" />
+                      Sessions
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('familyTags')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'familyTags'
+                        ? 'border-purple-600 text-purple-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <TagIcon className="h-5 w-5" />
+                      Family Tags
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('familyGroups')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'familyGroups'
+                        ? 'border-green-600 text-green-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserGroupIcon className="h-5 w-5" />
+                      Family Groups
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('backup')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'backup'
+                        ? 'border-orange-600 text-orange-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ArrowDownTrayIcon className="h-5 w-5" />
+                      Backup & Restore
+                    </div>
+                  </button>
                 </>
+              )}
+              {userRole === 'super_admin' && (
+                <button
+                  onClick={() => setActiveTab('auditLogs')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'auditLogs'
+                      ? 'border-yellow-600 text-yellow-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ClipboardDocumentCheckIcon className="h-5 w-5" />
+                    Audit Logs
+                  </div>
+                </button>
               )}
             </nav>
           </div>
