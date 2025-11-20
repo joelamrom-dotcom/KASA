@@ -30,10 +30,14 @@ export async function GET(request: NextRequest) {
     
     let statements = await Statement.find(query).sort({ date: -1 }).lean()
     
-    // Check permission - users with statements.view see all, others see only their families' statements
-    const canViewAll = await hasPermission(user, PERMISSIONS.STATEMENTS_VIEW)
+    // Check permission
+    const canView = await hasPermission(user, PERMISSIONS.STATEMENTS_VIEW)
+    if (!canView && user.role !== 'family') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     
-    if (!canViewAll) {
+    // Filter statements by user's families - only super_admin sees all
+    if (user.role !== 'super_admin') {
       let userFamilyIds: string[] = []
       
       if (user.role === 'family' && user.familyId) {
@@ -41,8 +45,8 @@ export async function GET(request: NextRequest) {
         userFamilyIds = [user.familyId]
       } else {
         // Regular admin user - get their families
-        const userFamilies = await Family.find({ userId: user.userId }).select('_id')
-        userFamilyIds = userFamilies.map(f => f._id.toString())
+        const userFamilies = await Family.find({ userId: user.userId }).select('_id').lean()
+        userFamilyIds = userFamilies.map((f: any) => f._id.toString())
       }
       
       // Filter statements to only those belonging to user's families

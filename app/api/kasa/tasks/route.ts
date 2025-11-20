@@ -28,10 +28,14 @@ export async function GET(request: NextRequest) {
     
     const query: any = {}
     
-    // Check permission - users with tasks.view see all, others see only their tasks
-    const canViewAll = await hasPermission(user, PERMISSIONS.TASKS_VIEW)
+    // Check permission
+    const canView = await hasPermission(user, PERMISSIONS.TASKS_VIEW)
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     
-    if (!canViewAll) {
+    // Only super_admin sees all tasks, others see only their own
+    if (user.role !== 'super_admin') {
       query.userId = user.userId
     }
     

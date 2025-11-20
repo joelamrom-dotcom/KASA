@@ -20,8 +20,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permission - users with documents.view see all, others see only their documents
-    const canViewAll = await hasPermission(user, PERMISSIONS.DOCUMENTS_VIEW)
+    // Check permission
+    const canView = await hasPermission(user, PERMISSIONS.DOCUMENTS_VIEW)
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     
     const searchParams = request.nextUrl.searchParams
     const category = searchParams.get('category')
@@ -31,7 +34,8 @@ export async function GET(request: NextRequest) {
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
-    const query: any = canViewAll ? {} : { userId }
+    // Only super_admin sees all documents, others see only their own
+    const query: any = user.role === 'super_admin' ? {} : { userId }
     
     if (category) {
       query.category = category

@@ -34,14 +34,20 @@ export async function GET(
       )
     }
     
-    // Check permission or ownership
-    const canViewAll = await hasPermission(user, PERMISSIONS.FAMILIES_VIEW)
+    // Check permission
+    const canView = await hasPermission(user, PERMISSIONS.FAMILIES_VIEW)
+    if (!canView && user.role !== 'family') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Check access - only super_admin can access any family, others only their own
+    const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === params.id
     
-    if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
+    if (!isSuperAdmin && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have access to this family' },
+        { error: 'Forbidden - You can only access your own families' },
         { status: 403 }
       )
     }
@@ -98,10 +104,19 @@ export async function PUT(
       )
     }
     
-    // Check ownership
-    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+    // Check permission
+    const canUpdate = await hasPermission(user, PERMISSIONS.FAMILIES_UPDATE)
+    if (!canUpdate) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Check access - only super_admin can update any family, others only their own
+    const isSuperAdmin = user.role === 'super_admin'
+    const isFamilyOwner = family.userId?.toString() === user.userId
+    
+    if (!isSuperAdmin && !isFamilyOwner) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have access to this family' },
+        { error: 'Forbidden - You can only update your own families' },
         { status: 403 }
       )
     }
@@ -246,13 +261,19 @@ export async function DELETE(
       )
     }
     
-    // Check permission or ownership
-    const canDeleteAll = await hasPermission(user, PERMISSIONS.FAMILIES_DELETE)
+    // Check permission
+    const canDelete = await hasPermission(user, PERMISSIONS.FAMILIES_DELETE)
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Check access - only super_admin can delete any family, others only their own
+    const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
     
-    if (!canDeleteAll && !isFamilyOwner) {
+    if (!isSuperAdmin && !isFamilyOwner) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have permission to delete this family' },
+        { error: 'Forbidden - You can only delete your own families' },
         { status: 403 }
       )
     }

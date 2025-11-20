@@ -32,14 +32,20 @@ export async function GET(
       )
     }
     
-    // Check permission or ownership
-    const canViewAll = await hasPermission(user, PERMISSIONS.MEMBERS_VIEW)
+    // Check permission
+    const canView = await hasPermission(user, PERMISSIONS.MEMBERS_VIEW)
+    if (!canView && user.role !== 'family') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Check access - only super_admin can access any family, others only their own
+    const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === params.id
     
-    if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
+    if (!isSuperAdmin && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have access to this family' },
+        { error: 'Forbidden - You can only access your own families' },
         { status: 403 }
       )
     }
@@ -81,13 +87,19 @@ export async function POST(
       )
     }
     
-    // Check permission or ownership
-    const canCreateAll = await hasPermission(user, PERMISSIONS.MEMBERS_CREATE)
+    // Check permission
+    const canCreate = await hasPermission(user, PERMISSIONS.MEMBERS_CREATE)
+    if (!canCreate) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Check access - only super_admin can access any family, others only their own
+    const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
     
-    if (!canCreateAll && !isFamilyOwner) {
+    if (!isSuperAdmin && !isFamilyOwner) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have permission to add members to this family' },
+        { error: 'Forbidden - You can only add members to your own families' },
         { status: 403 }
       )
     }

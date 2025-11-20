@@ -160,13 +160,19 @@ export async function PUT(
       )
     }
 
-    // Check permission or ownership
-    const canUpdateAll = await hasPermission(user, PERMISSIONS.MEMBERS_UPDATE)
+    // Check permission
+    const canUpdate = await hasPermission(user, PERMISSIONS.MEMBERS_UPDATE)
+    if (!canUpdate) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Check access - only super_admin can update any member, others only their own families
+    const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
     
-    if (!canUpdateAll && !isFamilyOwner) {
+    if (!isSuperAdmin && !isFamilyOwner) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have permission to update this member' },
+        { error: 'Forbidden - You can only update members in your own families' },
         { status: 403 }
       )
     }
@@ -325,14 +331,20 @@ export async function DELETE(
       )
     }
     
-    // Check permission or ownership
-    const canDeleteAll = await hasPermission(user, PERMISSIONS.MEMBERS_DELETE)
+    // Check permission
+    const canDelete = await hasPermission(user, PERMISSIONS.MEMBERS_DELETE)
+    if (!canDelete && user.role !== 'family') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Check access - only super_admin can delete any member, others only their own families
+    const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === params.id
     
-    if (!canDeleteAll && !isFamilyOwner && !isFamilyMember) {
+    if (!isSuperAdmin && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have permission to delete this member' },
+        { error: 'Forbidden - You can only delete members from your own families' },
         { status: 403 }
       )
     }

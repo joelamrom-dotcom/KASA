@@ -226,6 +226,85 @@ export async function hasAllPermissions(
 }
 
 /**
+ * Build a query filter to scope data access by user
+ * Only super_admin can see all data; other users see only their own data
+ * @param user - The authenticated user
+ * @param userIdField - The field name for userId in the query (default: 'userId')
+ * @returns Query filter object
+ */
+export function buildUserScopedQuery(
+  user: AuthenticatedRequest | null,
+  userIdField: string = 'userId'
+): any {
+  if (!user) {
+    // No user = no access
+    return { _id: null } // Return impossible query
+  }
+  
+  // Super admin sees all data
+  if (user.role === 'super_admin') {
+    return {}
+  }
+  
+  // Family users see only their own family
+  if (user.role === 'family' && user.familyId) {
+    return { _id: user.familyId }
+  }
+  
+  // All other users (including admins with permissions) see only their own data
+  return { [userIdField]: user.userId }
+}
+
+/**
+ * Check if user can access a specific family
+ * @param user - The authenticated user
+ * @param familyUserId - The userId of the family owner
+ * @returns true if user can access the family
+ */
+export function canAccessFamily(
+  user: AuthenticatedRequest | null,
+  familyUserId: string | null | undefined
+): boolean {
+  if (!user) return false
+  
+  // Super admin can access all families
+  if (user.role === 'super_admin') return true
+  
+  // Family users can access their own family (checked separately)
+  if (user.role === 'family') return true
+  
+  // Other users can only access families they own
+  return familyUserId?.toString() === user.userId
+}
+
+/**
+ * Get user's family IDs for filtering queries
+ * @param user - The authenticated user
+ * @returns Array of family IDs the user can access
+ */
+export async function getUserFamilyIds(user: AuthenticatedRequest | null): Promise<string[]> {
+  if (!user) return []
+  
+  await connectDB()
+  const { Family } = await import('@/lib/models')
+  
+  // Super admin can access all families
+  if (user.role === 'super_admin') {
+    const allFamilies = await Family.find({}).select('_id').lean()
+    return allFamilies.map((f: any) => f._id.toString())
+  }
+  
+  // Family users can access their own family
+  if (user.role === 'family' && user.familyId) {
+    return [user.familyId]
+  }
+  
+  // Other users can only access families they own
+  const userFamilies = await Family.find({ userId: user.userId }).select('_id').lean()
+  return userFamilies.map((f: any) => f._id.toString())
+}
+
+/**
  * Initialize default permissions in database
  */
 export async function initializePermissions(): Promise<void> {

@@ -40,13 +40,24 @@ export async function GET(request: NextRequest) {
       .sort({ paymentDate: -1 })
       .lean()
 
-    // Check permission - users with payments.view see all, others see only their families' payments
-    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
+    // Check permission
+    const canView = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
+    if (!canView && user.role !== 'family') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     
-    if (!canViewAll) {
-      // Get user's family IDs
-      const userFamilies = await Family.find({ userId: user.userId }).select('_id')
-      const userFamilyIds = userFamilies.map(f => f._id.toString())
+    // Filter payments by user's families - only super_admin sees all
+    if (user.role !== 'super_admin') {
+      let userFamilyIds: string[] = []
+      
+      if (user.role === 'family' && user.familyId) {
+        // Family users see only their own family's payments
+        userFamilyIds = [user.familyId]
+      } else {
+        // Regular admins see only their own families' payments
+        const userFamilies = await Family.find({ userId: user.userId }).select('_id').lean()
+        userFamilyIds = userFamilies.map((f: any) => f._id.toString())
+      }
       
       // Filter payments to only those belonging to user's families
       payments = payments.filter((payment: any) => {

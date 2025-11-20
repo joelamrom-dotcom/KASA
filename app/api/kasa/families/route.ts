@@ -61,25 +61,25 @@ export async function GET(request: NextRequest) {
     }
     
     // Check permission
-    const canViewAll = await hasPermission(user, PERMISSIONS.FAMILIES_VIEW)
-    if (!canViewAll && user.role !== 'family') {
+    const canView = await hasPermission(user, PERMISSIONS.FAMILIES_VIEW)
+    if (!canView && user.role !== 'family') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    // Build query - users with families.view see all, regular users see only their data, family users see only their family
+    // Build query - only super_admin sees all families, others see only their own
     let query: any = {}
-    if (canViewAll) {
-      // Users with families.view permission see all families
+    if (isSuperAdminUser) {
+      // Super admin sees all families
       query = {}
-      console.log('GET /api/kasa/families - Has permission: showing all families')
+      console.log('GET /api/kasa/families - Super admin: showing all families')
     } else if (user.role === 'family' && user.familyId) {
       // Family users see only their own family
       query = { _id: user.familyId }
       console.log('GET /api/kasa/families - Family user: showing family', user.familyId)
     } else {
-      // Regular users see their families
+      // Regular admins see only their own families (where userId matches)
       query = { userId: user.userId }
-      console.log('GET /api/kasa/families - Regular user: showing families for userId', user.userId)
+      console.log('GET /api/kasa/families - Admin user: showing families for userId', user.userId)
     }
     
     // Check cache first
