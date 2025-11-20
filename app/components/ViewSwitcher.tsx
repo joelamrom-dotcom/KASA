@@ -32,15 +32,15 @@ export default function ViewSwitcher({
   const filteredViews = viewOptions.filter(v => availableViews.includes(v.type))
 
   return (
-    <div className={`flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 ${className}`}>
+    <div className={`flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-1 shadow-sm ${className}`}>
       {filteredViews.map(({ type, label, icon: Icon }) => (
         <button
           key={type}
           onClick={() => onViewChange(type)}
           className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
             currentView === type
-              ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           title={label}
         >

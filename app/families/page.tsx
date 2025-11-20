@@ -885,7 +885,7 @@ export default function FamiliesPage() {
 
         {/* Search and Filters Bar */}
         <div className="mb-6 space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
