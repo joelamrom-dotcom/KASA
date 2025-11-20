@@ -110,7 +110,7 @@ export default function PortalPage() {
     try {
       setLoading(true)
       const token = localStorage.getItem('token')
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {}
 
       // Fetch all data in parallel
       const [familyRes, paymentsRes, documentsRes, ticketsRes, contactRes] = await Promise.all([
