@@ -13,11 +13,15 @@ import {
   DocumentArrowDownIcon,
   EnvelopeIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  ClipboardDocumentCheckIcon,
+  ArrowPathIcon,
+  ArrowPathIcon as RefundIcon
 } from '@heroicons/react/24/outline'
 import { calculateHebrewAge, convertToHebrewDate } from '@/lib/hebrew-date'
 import StripePaymentForm from '@/app/components/StripePaymentForm'
 import Pagination from '@/app/components/Pagination'
+import { getUser } from '@/lib/auth'
 
 // QWERTY to Hebrew keyboard mapping
 const qwertyToHebrew: { [key: string]: string } = {
@@ -102,6 +106,7 @@ interface LifecycleEventType {
 export default function FamilyDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const user = getUser()
   const [data, setData] = useState<FamilyDetails | null>(null)
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([])
   const [lifecycleEventTypes, setLifecycleEventTypes] = useState<LifecycleEventType[]>([])
@@ -115,12 +120,24 @@ export default function FamilyDetailPage() {
     password: '',
     fromName: 'Kasa Family Management'
   })
-  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements' | 'sub-families' | 'notes'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'payments' | 'events' | 'statements' | 'sub-families' | 'notes' | 'relationships' | 'history'>('info')
   const [notes, setNotes] = useState<any[]>([])
   const [loadingNotes, setLoadingNotes] = useState(false)
   const [showNoteModal, setShowNoteModal] = useState(false)
   const [editingNote, setEditingNote] = useState<any>(null)
   const [noteText, setNoteText] = useState('')
+  const [relationships, setRelationships] = useState<any[]>([])
+  const [loadingRelationships, setLoadingRelationships] = useState(false)
+  const [showRelationshipModal, setShowRelationshipModal] = useState(false)
+  const [relationshipForm, setRelationshipForm] = useState({
+    relatedFamilyId: '',
+    relationshipType: 'related' as 'related' | 'merged' | 'split' | 'parent_child' | 'sibling' | 'custom',
+    customType: '',
+    notes: ''
+  })
+  const [allFamilies, setAllFamilies] = useState<any[]>([])
+  const [history, setHistory] = useState<any>(null)
+  const [loadingHistory, setLoadingHistory] = useState(false)
   const [subFamilies, setSubFamilies] = useState<any[]>([])
   const [loadingSubFamilies, setLoadingSubFamilies] = useState(false)
   const [showInfoModal, setShowInfoModal] = useState(false)
@@ -154,7 +171,7 @@ export default function FamilyDetailPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const tab = urlParams.get('tab')
-    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements' || tab === 'sub-families' || tab === 'notes') {
+    if (tab === 'info' || tab === 'members' || tab === 'payments' || tab === 'events' || tab === 'statements' || tab === 'sub-families' || tab === 'notes' || tab === 'relationships' || tab === 'history') {
       setActiveTab(tab as any)
       // Auto-open modal if coming from quick add
       if (tab === 'members' && urlParams.get('add') === 'true') {
@@ -261,7 +278,126 @@ export default function FamilyDetailPage() {
     if (activeTab === 'notes' && params.id) {
       fetchNotes()
     }
+    if (activeTab === 'relationships' && params.id) {
+      fetchRelationships()
+      fetchAllFamilies()
+    }
+    if (activeTab === 'history' && params.id) {
+      fetchHistory()
+    }
   }, [activeTab, params.id])
+
+  const fetchRelationships = async () => {
+    if (!params.id) return
+    setLoadingRelationships(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/families/${params.id}/relationships`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setRelationships(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching relationships:', error)
+    } finally {
+      setLoadingRelationships(false)
+    }
+  }
+
+  const fetchAllFamilies = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/families', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        // Filter out current family
+        setAllFamilies(data.filter((f: any) => f._id !== params.id) || [])
+      }
+    } catch (error) {
+      console.error('Error fetching families:', error)
+    }
+  }
+
+  const fetchHistory = async () => {
+    if (!params.id) return
+    setLoadingHistory(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/families/${params.id}/history`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setHistory(data)
+      }
+    } catch (error) {
+      console.error('Error fetching history:', error)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  const handleSaveRelationship = async () => {
+    if (!relationshipForm.relatedFamilyId || !relationshipForm.relationshipType) {
+      alert('Please select a family and relationship type')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/families/${params.id}/relationships`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(relationshipForm)
+      })
+
+      if (res.ok) {
+        await fetchRelationships()
+        setShowRelationshipModal(false)
+        setRelationshipForm({
+          relatedFamilyId: '',
+          relationshipType: 'related',
+          customType: '',
+          notes: ''
+        })
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to create relationship')
+      }
+    } catch (error) {
+      console.error('Error creating relationship:', error)
+      alert('Failed to create relationship')
+    }
+  }
+
+  const handleDeleteRelationship = async (relationshipId: string) => {
+    if (!confirm('Are you sure you want to delete this relationship?')) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/families/${params.id}/relationships/${relationshipId}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+
+      if (res.ok) {
+        await fetchRelationships()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to delete relationship')
+      }
+    } catch (error) {
+      console.error('Error deleting relationship:', error)
+      alert('Failed to delete relationship')
+    }
+  }
 
   const fetchSubFamilies = async () => {
     if (!params.id) return
@@ -368,6 +504,40 @@ export default function FamilyDetailPage() {
     } catch (error) {
       console.error('Error deleting note:', error)
       alert('Error deleting note. Please try again.')
+    }
+  }
+
+  const handleRefund = async (paymentId: string, amount: number) => {
+    if (!confirm(`Are you sure you want to refund $${amount.toLocaleString()}?`)) return
+
+    const reason = prompt('Refund reason:\n1. duplicate\n2. fraudulent\n3. requested_by_customer\n4. cancelled\n5. error\n6. other', 'requested_by_customer') || 'requested_by_customer'
+    const notes = prompt('Additional notes (optional):') || undefined
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/payments/${paymentId}/refund`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ amount, reason, notes })
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        alert(`Refund processed successfully! Refund ID: ${result.refund.stripeRefundId || 'N/A'}`)
+        // Refresh family data to show updated refund status
+        if (params.id) {
+          fetchFamilyDetails()
+        }
+      } else {
+        const errorData = await res.json()
+        alert(`Error processing refund: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error processing refund:', error)
+      alert('Error processing refund. Please try again.')
     }
   }
 
@@ -2024,6 +2194,8 @@ export default function FamilyDetailPage() {
                 { id: 'events', label: 'Lifecycle Events' },
                 { id: 'statements', label: 'Statements' },
                 { id: 'sub-families', label: 'Sub-Families' },
+                { id: 'relationships', label: 'Relationships' },
+                { id: 'history', label: 'History' },
                 { id: 'notes', label: 'Notes' }
               ].map(tab => (
                 <button
@@ -2048,40 +2220,50 @@ export default function FamilyDetailPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">Family Information</h3>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (data?.family) {
-                        setInfoForm({
-                          name: data.family.name || '',
-                          hebrewName: data.family.hebrewName || '',
-                          weddingDate: data.family.weddingDate ? new Date(data.family.weddingDate).toISOString().split('T')[0] : '',
-                          husbandFirstName: data.family.husbandFirstName || '',
-                          husbandHebrewName: data.family.husbandHebrewName || '',
-                          husbandFatherHebrewName: data.family.husbandFatherHebrewName || '',
-                          wifeFirstName: data.family.wifeFirstName || '',
-                          wifeHebrewName: data.family.wifeHebrewName || '',
-                          wifeFatherHebrewName: data.family.wifeFatherHebrewName || '',
-                          husbandCellPhone: data.family.husbandCellPhone || '',
-                          wifeCellPhone: data.family.wifeCellPhone || '',
-                          address: data.family.address || '',
-                          street: data.family.street || '',
-                          phone: data.family.phone || '',
-                          email: data.family.email || '',
-                          city: data.family.city || '',
-                          state: data.family.state || '',
-                          zip: data.family.zip || '',
-                          paymentPlanId: data.family.paymentPlanId?.toString() || '',
-                          receiveEmails: data.family.receiveEmails !== false,
-                          receiveSMS: data.family.receiveSMS !== false
-                        })
-                        setShowInfoModal(true)
-                      }
-                    }}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:shadow-lg transition-all text-sm"
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                    Edit Info
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => router.push(`/audit-logs?entityType=family&entityId=${params.id}`)}
+                      className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:shadow-lg transition-all text-sm"
+                      title="View audit logs for this family"
+                    >
+                      <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                      View History
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (data?.family) {
+                          setInfoForm({
+                            name: data.family.name || '',
+                            hebrewName: data.family.hebrewName || '',
+                            weddingDate: data.family.weddingDate ? new Date(data.family.weddingDate).toISOString().split('T')[0] : '',
+                            husbandFirstName: data.family.husbandFirstName || '',
+                            husbandHebrewName: data.family.husbandHebrewName || '',
+                            husbandFatherHebrewName: data.family.husbandFatherHebrewName || '',
+                            wifeFirstName: data.family.wifeFirstName || '',
+                            wifeHebrewName: data.family.wifeHebrewName || '',
+                            wifeFatherHebrewName: data.family.wifeFatherHebrewName || '',
+                            husbandCellPhone: data.family.husbandCellPhone || '',
+                            wifeCellPhone: data.family.wifeCellPhone || '',
+                            address: data.family.address || '',
+                            street: data.family.street || '',
+                            phone: data.family.phone || '',
+                            email: data.family.email || '',
+                            city: data.family.city || '',
+                            state: data.family.state || '',
+                            zip: data.family.zip || '',
+                            paymentPlanId: data.family.paymentPlanId?.toString() || '',
+                            receiveEmails: data.family.receiveEmails !== false,
+                            receiveSMS: data.family.receiveSMS !== false
+                          })
+                          setShowInfoModal(true)
+                        }
+                      }}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:shadow-lg transition-all text-sm"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                      Edit Info
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   {/* Basic Information */}
@@ -3110,12 +3292,13 @@ export default function FamilyDetailPage() {
                             <th className="text-left p-2">Payment Method</th>
                             <th className="text-left p-2">Year</th>
                             <th className="text-left p-2">Notes</th>
+                            <th className="text-left p-2">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {familyPayments.length === 0 ? (
                             <tr>
-                              <td colSpan={6} className="p-8 text-center text-gray-500">
+                              <td colSpan={7} className="p-8 text-center text-gray-500">
                                 No family payments found
                               </td>
                             </tr>
@@ -3132,10 +3315,29 @@ export default function FamilyDetailPage() {
                                 return methodLabels[payment.paymentMethod] || payment.paymentMethod
                               }
                               
+                              const isRefunded = payment.refundedAmount > 0
+                              const remainingAmount = payment.amount - (payment.refundedAmount || 0)
+                              
                               return (
-                                <tr key={payment._id} className="border-b">
-                                  <td className="p-2">{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                                  <td className="p-2 font-medium">${payment.amount.toLocaleString()}</td>
+                                <tr key={payment._id} className={`border-b ${isRefunded ? 'bg-red-50' : ''}`}>
+                                  <td className="p-2">
+                                    {new Date(payment.paymentDate).toLocaleDateString()}
+                                    {isRefunded && (
+                                      <div className="text-xs text-red-600 mt-1">
+                                        {payment.isFullyRefunded ? 'Fully Refunded' : `Refunded: $${payment.refundedAmount.toLocaleString()}`}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="p-2 font-medium">
+                                    <div className={isRefunded ? 'line-through text-gray-400' : ''}>
+                                      ${payment.amount.toLocaleString()}
+                                    </div>
+                                    {isRefunded && remainingAmount > 0 && (
+                                      <div className="text-sm text-green-600 font-semibold mt-1">
+                                        Remaining: ${remainingAmount.toLocaleString()}
+                                      </div>
+                                    )}
+                                  </td>
                                   <td className="p-2 capitalize">{payment.type}</td>
                                   <td className="p-2">
                                     <div className="text-sm">{formatPaymentMethod()}</div>
@@ -3148,6 +3350,40 @@ export default function FamilyDetailPage() {
                                   </td>
                                   <td className="p-2">{payment.year}</td>
                                   <td className="p-2 text-gray-600">{payment.notes || '-'}</td>
+                                  <td className="p-2">
+                                    <div className="flex gap-2 items-center">
+                                      {/* Invoice/Receipt Actions */}
+                                      <button
+                                        onClick={() => window.open(`/api/kasa/payments/${payment._id}/receipt?format=html`, '_blank')}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                        title="View Receipt"
+                                      >
+                                        <DocumentArrowDownIcon className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => window.open(`/api/kasa/payments/${payment._id}/invoice?format=html`, '_blank')}
+                                        className="p-1.5 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                                        title="View Invoice"
+                                      >
+                                        <DocumentArrowDownIcon className="h-4 w-4" />
+                                      </button>
+                                      {/* Refund Button (Admin only) */}
+                                      {(user?.role === 'admin' || user?.role === 'super_admin') && remainingAmount > 0 && (
+                                        <button
+                                          onClick={() => {
+                                            const refundAmount = prompt(`Enter refund amount (max: $${remainingAmount.toLocaleString()}):`)
+                                            if (refundAmount && parseFloat(refundAmount) > 0) {
+                                              handleRefund(payment._id, parseFloat(refundAmount))
+                                            }
+                                          }}
+                                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                          title="Process Refund"
+                                        >
+                                          <RefundIcon className="h-4 w-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
                                 </tr>
                               )
                             })
@@ -3389,6 +3625,175 @@ export default function FamilyDetailPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'relationships' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Family Relationships</h3>
+                    <p className="text-sm text-gray-500">Link this family to related families</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setRelationshipForm({
+                        relatedFamilyId: '',
+                        relationshipType: 'related',
+                        customType: '',
+                        notes: ''
+                      })
+                      setShowRelationshipModal(true)
+                    }}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:shadow-lg transition-all text-sm"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add Relationship
+                  </button>
+                </div>
+
+                {loadingRelationships ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <p className="text-gray-500 mt-4">Loading relationships...</p>
+                  </div>
+                ) : relationships.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <UserGroupIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-600 font-medium mb-2">No relationships found</p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Link this family to related families to track connections.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setRelationshipForm({
+                          relatedFamilyId: '',
+                          relationshipType: 'related',
+                          customType: '',
+                          notes: ''
+                        })
+                        setShowRelationshipModal(true)
+                      }}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Add First Relationship
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {relationships.map((rel: any) => (
+                      <div key={rel._id} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold text-gray-800">
+                                {rel.family1Name || rel.family2Name || 'Unknown Family'}
+                              </span>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full capitalize">
+                                {rel.relationshipType === 'custom' ? rel.customType : rel.relationshipType}
+                              </span>
+                            </div>
+                            {rel.notes && (
+                              <p className="text-sm text-gray-600 mt-2">{rel.notes}</p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-2">
+                              Created: {new Date(rel.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteRelationship(rel._id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'history' && (
+              <div>
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold">Family History Timeline</h3>
+                  <p className="text-sm text-gray-500">Complete activity timeline for this family</p>
+                </div>
+
+                {loadingHistory ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <p className="text-gray-500 mt-4">Loading history...</p>
+                  </div>
+                ) : !history || !history.timeline || history.timeline.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <ClockIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-600 font-medium mb-2">No history found</p>
+                    <p className="text-sm text-gray-500">
+                      History will appear here as activities are recorded.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    {history.stats && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600">Total Events</p>
+                          <p className="text-2xl font-bold text-blue-600">{history.stats.totalEvents}</p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600">Payments</p>
+                          <p className="text-2xl font-bold text-green-600">{history.stats.payments}</p>
+                        </div>
+                        <div className="bg-purple-50 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600">Members</p>
+                          <p className="text-2xl font-bold text-purple-600">{history.stats.members}</p>
+                        </div>
+                        <div className="bg-orange-50 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600">Lifecycle Events</p>
+                          <p className="text-2xl font-bold text-orange-600">{history.stats.lifecycleEvents}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      {history.timeline.map((event: any, index: number) => (
+                        <div key={index} className="flex gap-4 p-4 border-l-4 border-blue-500 bg-gray-50 rounded-r-lg">
+                          <div className="flex-shrink-0">
+                            <div className="w-3 h-3 bg-blue-500 rounded-full mt-2"></div>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="font-semibold text-gray-800">{event.description || event.action}</p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {event.type === 'payment' && event.amount && (
+                                    <span className="text-green-600 font-medium">${event.amount.toLocaleString()}</span>
+                                  )}
+                                  {event.type === 'lifecycle_event' && event.eventType && (
+                                    <span className="text-purple-600 capitalize">{event.eventType.replace('_', ' ')}</span>
+                                  )}
+                                  {event.user && (
+                                    <span className="text-gray-500"> by {event.user}</span>
+                                  )}
+                                </p>
+                              </div>
+                              <span className="text-xs text-gray-500 whitespace-nowrap">
+                                {new Date(event.date).toLocaleString()}
+                              </span>
+                            </div>
+                            {event.changes && (
+                              <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded">
+                                <pre className="whitespace-pre-wrap">{JSON.stringify(event.changes, null, 2)}</pre>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -4621,6 +5026,110 @@ export default function FamilyDetailPage() {
                     className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all"
                   >
                     {editingNote ? 'Update Note' : 'Add Note'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Relationship Modal */}
+        {showRelationshipModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-xl font-bold">Add Relationship</h2>
+                <button
+                  onClick={() => {
+                    setShowRelationshipModal(false)
+                    setRelationshipForm({
+                      relatedFamilyId: '',
+                      relationshipType: 'related',
+                      customType: '',
+                      notes: ''
+                    })
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">Related Family *</label>
+                  <select
+                    required
+                    value={relationshipForm.relatedFamilyId}
+                    onChange={(e) => setRelationshipForm({ ...relationshipForm, relatedFamilyId: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a family</option>
+                    {allFamilies.map((family) => (
+                      <option key={family._id} value={family._id}>{family.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">Relationship Type *</label>
+                  <select
+                    required
+                    value={relationshipForm.relationshipType}
+                    onChange={(e) => setRelationshipForm({ ...relationshipForm, relationshipType: e.target.value as any })}
+                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="related">Related</option>
+                    <option value="merged">Merged</option>
+                    <option value="split">Split</option>
+                    <option value="parent_child">Parent/Child</option>
+                    <option value="sibling">Sibling</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                {relationshipForm.relationshipType === 'custom' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">Custom Type *</label>
+                    <input
+                      type="text"
+                      required
+                      value={relationshipForm.customType}
+                      onChange={(e) => setRelationshipForm({ ...relationshipForm, customType: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="e.g., Cousin, In-law, etc."
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">Notes</label>
+                  <textarea
+                    value={relationshipForm.notes}
+                    onChange={(e) => setRelationshipForm({ ...relationshipForm, notes: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="Optional notes about this relationship..."
+                  />
+                </div>
+                <div className="flex gap-4 justify-end pt-4 border-t">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRelationshipModal(false)
+                      setRelationshipForm({
+                        relatedFamilyId: '',
+                        relationshipType: 'related',
+                        customType: '',
+                        notes: ''
+                      })
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveRelationship}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all"
+                  >
+                    Add Relationship
                   </button>
                 </div>
               </div>

@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
       monthlyPayments: { processed: 0, failed: 0 },
       weddingConversion: { converted: 0 },
       taskEmails: { sent: 0, failed: 0 },
-      paymentReminders: { sent: 0, failed: 0 }
+      paymentReminders: { sent: 0, failed: 0 },
+      overdueReminders: { sent: 0, failed: 0 }
     }
 
     // Get base URL from request or environment
@@ -126,6 +127,47 @@ export async function POST(request: NextRequest) {
       }
     } catch (error: any) {
       console.error('Error processing payment reminders:', error)
+    }
+
+    // Process overdue payment reminders
+    try {
+      const overdueRes = await fetch(`${baseUrl}/api/kasa/payments/send-overdue-reminders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (overdueRes.ok) {
+        const overdueData = await overdueRes.json()
+        results.overdueReminders = {
+          sent: overdueData.sent || 0,
+          failed: overdueData.failed || 0
+        }
+      }
+    } catch (error: any) {
+      console.error('Error processing overdue reminders:', error)
+    }
+
+    // Process scheduled reports
+    try {
+      const baseUrl = request.nextUrl.origin || 
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+        process.env.NEXT_PUBLIC_BASE_URL || 
+        'http://localhost:3000'
+      
+      const scheduledReportsRes = await fetch(`${baseUrl}/api/kasa/reports/scheduled/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': request.headers.get('Authorization') || ''
+        }
+      })
+      
+      if (scheduledReportsRes.ok) {
+        const scheduledResults = await scheduledReportsRes.json()
+        console.log(`✅ Processed ${scheduledResults.processed} scheduled reports`)
+      }
+    } catch (scheduledError: any) {
+      console.error('⚠️ Error processing scheduled reports:', scheduledError.message)
+      // Don't fail the entire automation if scheduled reports fail
     }
 
     return NextResponse.json({

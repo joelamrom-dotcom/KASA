@@ -62,6 +62,9 @@ export async function PUT(
     // Build query - each user sees only their own settings
     const query: any = { _id: params.id, userId: user.userId }
     
+    // Get old plan data for audit log
+    const oldPlan = await PaymentPlan.findOne(query)
+    
     const plan = await PaymentPlan.findOneAndUpdate(
       query,
       body,
@@ -73,6 +76,43 @@ export async function PUT(
         { error: 'Payment plan not found' },
         { status: 404 }
       )
+    }
+
+    // Create audit log entry
+    if (oldPlan && Object.keys(body).length > 0) {
+      try {
+        const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+        const changedFields: any = {}
+        
+        Object.keys(body).forEach(key => {
+          const oldValue = (oldPlan as any)[key]
+          const newValue = body[key]
+          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            changedFields[key] = { from: oldValue, to: newValue }
+          }
+        })
+        
+        if (Object.keys(changedFields).length > 0) {
+          await createAuditLog({
+            userId: user.userId,
+            userEmail: user.email,
+            userRole: user.role,
+            action: 'payment_plan_update',
+            entityType: 'payment_plan',
+            entityId: params.id,
+            entityName: plan.name,
+            changes: changedFields,
+            description: `Updated payment plan "${plan.name}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+            ipAddress: getIpAddress(request),
+            userAgent: getUserAgent(request),
+            metadata: {
+              planName: plan.name,
+            }
+          })
+        }
+      } catch (auditError: any) {
+        console.error('Error creating audit log:', auditError)
+      }
     }
 
     return NextResponse.json(plan)
@@ -111,6 +151,29 @@ export async function DELETE(
         { error: 'Payment plan not found' },
         { status: 404 }
       )
+    }
+
+    // Create audit log entry
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'payment_plan_delete',
+        entityType: 'payment_plan',
+        entityId: params.id,
+        entityName: plan.name,
+        description: `Deleted payment plan "${plan.name}"`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          planName: plan.name,
+          yearlyPrice: plan.yearlyPrice,
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
     }
 
     return NextResponse.json({ message: 'Payment plan deleted successfully' })

@@ -130,6 +130,9 @@ export async function PUT(
       updateData.completedAt = null
     }
 
+    // Get old task data for audit log
+    const oldTask = await Task.findById(params.id)
+    
     const updatedTask = await Task.findByIdAndUpdate(
       params.id,
       updateData,
@@ -144,6 +147,47 @@ export async function PUT(
         { error: 'Task not found' },
         { status: 404 }
       )
+    }
+
+    // Create audit log entry
+    if (oldTask && Object.keys(updateData).length > 0) {
+      try {
+        const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+        const changedFields: any = {}
+        
+        Object.keys(updateData).forEach(key => {
+          const oldValue = (oldTask as any)[key]
+          const newValue = updateData[key]
+          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            changedFields[key] = { from: oldValue, to: newValue }
+          }
+        })
+        
+        if (Object.keys(changedFields).length > 0) {
+          const action = status === 'completed' ? 'task_complete' : 'task_update'
+          await createAuditLog({
+            userId: user.userId,
+            userEmail: user.email,
+            userRole: user.role,
+            action,
+            entityType: 'task',
+            entityId: params.id,
+            entityName: updatedTask.title || oldTask.title,
+            changes: changedFields,
+            description: status === 'completed' 
+              ? `Completed task "${updatedTask.title || oldTask.title}"`
+              : `Updated task "${updatedTask.title || oldTask.title}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+            ipAddress: getIpAddress(request),
+            userAgent: getUserAgent(request),
+            metadata: {
+              title: updatedTask.title || oldTask.title,
+              status: updatedTask.status,
+            }
+          })
+        }
+      } catch (auditError: any) {
+        console.error('Error creating audit log:', auditError)
+      }
     }
 
     return NextResponse.json(updatedTask)
@@ -188,6 +232,29 @@ export async function DELETE(
         { error: 'Forbidden - You do not have access to this task' },
         { status: 403 }
       )
+    }
+    
+    // Create audit log entry before deletion
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'task_delete',
+        entityType: 'task',
+        entityId: params.id,
+        entityName: task.title,
+        description: `Deleted task "${task.title}"`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          title: task.title,
+          status: task.status,
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
     }
     
     await Task.findByIdAndDelete(params.id)

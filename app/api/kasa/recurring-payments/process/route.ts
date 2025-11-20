@@ -4,12 +4,16 @@ import { RecurringPayment, SavedPaymentMethod, Payment, Family, AutomationSettin
 import { createPaymentDeclinedTask } from '@/lib/task-helpers'
 import { getUserStripe, getUserStripeAccountId } from '@/lib/stripe-helpers'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { updateOverdueStatus } from '@/lib/overdue-helpers'
 
 // POST - Process all due recurring payments
 // Can be called manually (with auth) or by cron job (without auth)
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    // Update overdue status before processing payments
+    await updateOverdueStatus()
     
     const user = getAuthenticatedUser(request)
     const mongoose = require('mongoose')

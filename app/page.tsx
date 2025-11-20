@@ -17,6 +17,7 @@ import {
   CalculatorIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import EnhancedDashboard from './components/EnhancedDashboard'
 
 interface DashboardStats {
   totalFamilies: number
@@ -187,6 +188,11 @@ export default function Home() {
             isBalance={true}
             isPositive={stats.balance >= 0}
           />
+        </div>
+
+        {/* Enhanced Analytics Dashboard */}
+        <div className="mb-8">
+          <EnhancedDashboard />
         </div>
 
         {/* Main Content Grid */}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { LifecycleEventPayment, LifecycleEvent } from '@/lib/models'
+import { LifecycleEventPayment, LifecycleEvent, Family } from '@/lib/models'
+import { getAuthenticatedUser } from '@/lib/middleware'
 
 // GET - Get all lifecycle events for a family
 export async function GET(
@@ -59,6 +60,38 @@ export async function POST(
       year: parseInt(year),
       notes: notes || undefined
     })
+
+    // Create audit log entry
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      const user = getAuthenticatedUser(request)
+      const family = await Family.findById(params.id)
+      
+      if (user) {
+        await createAuditLog({
+          userId: user.userId,
+          userEmail: user.email,
+          userRole: user.role,
+          action: 'lifecycle_event_create',
+          entityType: 'lifecycle_event',
+          entityId: event._id.toString(),
+          entityName: `${eventType} - $${eventAmount}`,
+          description: `Created lifecycle event "${eventType}" ($${eventAmount})${family ? ` for family "${family.name}"` : ''}`,
+          ipAddress: getIpAddress(request),
+          userAgent: getUserAgent(request),
+          metadata: {
+            eventType: eventType.toLowerCase(),
+            amount: parseFloat(eventAmount),
+            eventDate: new Date(eventDate),
+            year: parseInt(year),
+            familyId: params.id,
+            familyName: family?.name,
+          }
+        })
+      }
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
+    }
 
     return NextResponse.json(event, { status: 201 })
   } catch (error: any) {

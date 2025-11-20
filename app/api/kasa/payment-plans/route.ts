@@ -126,6 +126,30 @@ export async function POST(request: NextRequest) {
       planNumber: finalPlanNumber
     })
 
+    // Create audit log entry
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'payment_plan_create',
+        entityType: 'payment_plan',
+        entityId: plan._id.toString(),
+        entityName: name,
+        description: `Created payment plan "${name}" ($${yearlyPrice}/year)`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          planName: name,
+          yearlyPrice,
+          planNumber: finalPlanNumber,
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
+    }
+
     return NextResponse.json(plan, { status: 201 })
   } catch (error: any) {
     console.error('Error creating payment plan:', error)

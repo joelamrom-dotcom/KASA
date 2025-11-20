@@ -140,6 +140,9 @@ export async function PUT(
       )
     }
 
+    // Get old member data for audit log
+    const oldMember = await FamilyMember.findById(params.memberId)
+    
     // Mongoose automatically converts string IDs to ObjectIds, so we don't need explicit conversion
     const member = await FamilyMember.findOneAndUpdate(
       { _id: params.memberId, familyId: params.id },
@@ -176,6 +179,47 @@ export async function PUT(
       } catch (planError: any) {
         console.error('Error auto-assigning payment plan:', planError)
         // Don't fail the update if plan assignment fails
+      }
+    }
+
+    // Create audit log entry for member update
+    if (oldMember) {
+      try {
+        const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+        const changedFields: any = {}
+        
+        // Track changes
+        Object.keys(updateData).forEach(key => {
+          const oldValue = (oldMember as any)[key]
+          const newValue = updateData[key]
+          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            changedFields[key] = { from: oldValue, to: newValue }
+          }
+        })
+        
+        if (Object.keys(changedFields).length > 0) {
+          const family = await Family.findById(params.id)
+          await createAuditLog({
+            userId: user.userId,
+            userEmail: user.email,
+            userRole: user.role,
+            action: 'member_update',
+            entityType: 'member',
+            entityId: params.memberId,
+            entityName: `${member.firstName} ${member.lastName}`,
+            changes: changedFields,
+            description: `Updated member "${member.firstName} ${member.lastName}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+            ipAddress: getIpAddress(request),
+            userAgent: getUserAgent(request),
+            metadata: {
+              familyId: params.id,
+              familyName: family?.name,
+              memberName: `${member.firstName} ${member.lastName}`,
+            }
+          })
+        }
+      } catch (auditError: any) {
+        console.error('Error creating audit log:', auditError)
       }
     }
 
@@ -320,6 +364,30 @@ export async function DELETE(
         { error: 'Member not found' },
         { status: 404 }
       )
+    }
+
+    // Create audit log entry before deletion
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'member_delete',
+        entityType: 'member',
+        entityId: params.memberId,
+        entityName: `${member.firstName} ${member.lastName}`,
+        description: `Deleted member "${member.firstName} ${member.lastName}" from family "${family.name}"`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          familyId: params.id,
+          familyName: family.name,
+          memberName: `${member.firstName} ${member.lastName}`,
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
     }
 
     // Move to recycle bin

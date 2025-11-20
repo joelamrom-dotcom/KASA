@@ -6,10 +6,18 @@ import {
   CreditCardIcon,
   CurrencyDollarIcon,
   DocumentTextIcon,
-  BoltIcon
+  BoltIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import Pagination from '@/app/components/Pagination'
 import TableImportExport from '@/app/components/TableImportExport'
+import FilterBuilder, { FilterGroup } from '@/app/components/FilterBuilder'
+import SavedViews from '@/app/components/SavedViews'
+import { applyFilters } from '@/app/utils/filterUtils'
+import { showToast } from '@/app/components/Toast'
+import { useBulkSelection } from '@/app/hooks/useBulkSelection'
+import BulkActionBar from '@/app/components/BulkActionBar'
+import BulkEditModal from '@/app/components/BulkEditModal'
 
 interface Payment {
   _id: string
@@ -68,20 +76,54 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
   const [filters, setFilters] = useState({
     year: '',
     paymentMethod: '',
     type: '',
-    search: '' // Search by last 4 digits, check number, or date
   })
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false)
 
-  const applyFilters = () => {
+  // Define filter fields for payments
+  const paymentFilterFields = [
+    { id: 'amount', label: 'Amount', type: 'number' as const },
+    { id: 'paymentDate', label: 'Payment Date', type: 'date' as const },
+    { id: 'year', label: 'Year', type: 'number' as const },
+    { 
+      id: 'paymentMethod', 
+      label: 'Payment Method', 
+      type: 'select' as const,
+      options: [
+        { value: 'cash', label: 'Cash' },
+        { value: 'credit_card', label: 'Credit Card' },
+        { value: 'check', label: 'Check' },
+        { value: 'quick_pay', label: 'Quick Pay' },
+      ]
+    },
+    { 
+      id: 'type', 
+      label: 'Payment Type', 
+      type: 'select' as const,
+      options: [
+        { value: 'membership', label: 'Membership' },
+        { value: 'donation', label: 'Donation' },
+        { value: 'other', label: 'Other' },
+      ]
+    },
+  ]
+
+  const applySearchFilter = () => {
     let filtered = [...allPayments]
 
     // Apply search filter
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase().trim()
+    if (searchQuery) {
+      const searchTerm = searchQuery.toLowerCase().trim()
       filtered = filtered.filter((payment) => {
+        // Search by family name
+        if (payment.familyId?.name?.toLowerCase().includes(searchTerm)) {
+          return true
+        }
         // Search by last 4 digits of credit card
         if (payment.ccInfo?.last4 && payment.ccInfo.last4.toLowerCase().includes(searchTerm)) {
           return true
@@ -96,11 +138,17 @@ export default function PaymentsPage() {
         if (paymentDate.includes(searchTerm) || isoDate.includes(searchTerm)) {
           return true
         }
+        // Search by amount
+        if (payment.amount.toString().includes(searchTerm)) {
+          return true
+        }
         return false
       })
     }
 
-    setPayments(filtered)
+    // Apply advanced filters
+    const advancedFiltered = applyFilters(filtered, filterGroups)
+    setPayments(advancedFiltered)
     setCurrentPage(1) // Reset to first page when filters change
   }
 
@@ -109,9 +157,9 @@ export default function PaymentsPage() {
   }, [filters.year, filters.paymentMethod, filters.type])
 
   useEffect(() => {
-    // Apply search filter when search term changes or allPayments updates
-    applyFilters()
-  }, [filters.search, allPayments])
+    // Apply search and advanced filters when they change or allPayments updates
+    applySearchFilter()
+  }, [searchQuery, filterGroups, allPayments])
 
   const fetchPayments = async () => {
     try {
@@ -167,6 +215,139 @@ export default function PaymentsPage() {
     return Array.from(years).sort((a, b) => b - a)
   }
 
+  // Bulk selection (after payments are filtered)
+  const bulkSelection = useBulkSelection({
+    items: payments,
+    getItemId: (item) => item._id,
+  })
+
+  // Bulk edit fields for payments
+  const bulkEditFields = [
+    { 
+      id: 'type', 
+      label: 'Payment Type', 
+      type: 'select' as const,
+      options: [
+        { value: 'membership', label: 'Membership' },
+        { value: 'donation', label: 'Donation' },
+        { value: 'other', label: 'Other' },
+      ]
+    },
+    { id: 'year', label: 'Year', type: 'number' as const },
+    { id: 'notes', label: 'Notes', type: 'text' as const },
+  ]
+
+  // Bulk operation handlers
+  const handleBulkUpdate = async (updates: Record<string, any>) => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/bulk/payments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'update',
+          paymentIds: selectedIds,
+          updates,
+        }),
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        showToast(result.message || 'Payments updated successfully', 'success')
+        bulkSelection.clearSelection()
+        fetchPayments()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to update payments', 'error')
+      }
+    } catch (error) {
+      console.error('Error updating payments:', error)
+      showToast('Error updating payments', 'error')
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/bulk/payments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'delete',
+          paymentIds: selectedIds,
+        }),
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        showToast(result.message || 'Payments deleted successfully', 'success')
+        bulkSelection.clearSelection()
+        fetchPayments()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to delete payments', 'error')
+      }
+    } catch (error) {
+      console.error('Error deleting payments:', error)
+      showToast('Error deleting payments', 'error')
+    }
+  }
+
+  const handleBulkExport = async () => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/bulk/payments?ids=${selectedIds.join(',')}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        // Convert to CSV
+        const headers = ['Date', 'Family', 'Amount', 'Type', 'Payment Method', 'Year', 'Notes']
+        const csv = [
+          headers.join(','),
+          ...data.map((p: any) => [
+            p.paymentDate ? new Date(p.paymentDate).toLocaleDateString() : '',
+            typeof p.familyId === 'object' ? p.familyId.name : 'Unknown',
+            p.amount || 0,
+            p.type || '',
+            p.paymentMethod || '',
+            p.year || '',
+            p.notes || '',
+          ].join(','))
+        ].join('\n')
+
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `payments-export-${Date.now()}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+
+        showToast(`Exported ${data.length} payments`, 'success')
+      }
+    } catch (error) {
+      console.error('Error exporting payments:', error)
+      showToast('Error exporting payments', 'error')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen p-8">
@@ -214,64 +395,69 @@ export default function PaymentsPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="glass-strong rounded-2xl shadow-xl p-6 mb-6 border border-white/30">
-          {/* Search Bar */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2 text-gray-700">Search</label>
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              placeholder="Search by last 4 digits, check number, or date (MM/DD/YYYY)"
-              className="w-full border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        <div className="mb-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by family name, amount, date, card last 4, or check number..."
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <span className="text-sm">Clear</span>
+                </button>
+              )}
+            </div>
+            <FilterBuilder
+              fields={paymentFilterFields}
+              filters={filterGroups}
+              onChange={setFilterGroups}
+              onApply={() => {
+                setCurrentPage(1)
+                showToast('Filters applied', 'success')
+              }}
+              onClear={() => {
+                setFilterGroups([])
+                setCurrentPage(1)
+                showToast('Filters cleared', 'info')
+              }}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Search by credit card last 4 digits, check number, or payment date
-            </p>
+            <SavedViews
+              entityType="payment"
+              currentFilters={filterGroups}
+              onLoadView={(filters) => {
+                setFilterGroups(filters)
+                setCurrentPage(1)
+                showToast('View loaded', 'success')
+              }}
+            />
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">Year</label>
-              <select
-                value={filters.year}
-                onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-                className="w-full border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              >
-                <option value="">All Years</option>
-                {getAvailableYears().map(year => (
-                  <option key={year} value={year.toString()}>{year}</option>
-                ))}
-              </select>
+          {(searchQuery || filterGroups.length > 0) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {searchQuery && (
+                <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-full text-sm">
+                  Search: "{searchQuery}"
+                </span>
+              )}
+              {filterGroups.length > 0 && (
+                <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300 rounded-full text-sm">
+                  {filterGroups.reduce((sum, g) => sum + g.conditions.length, 0)} filter{filterGroups.reduce((sum, g) => sum + g.conditions.length, 0) !== 1 ? 's' : ''} active
+                </span>
+              )}
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {payments.length} of {allPayments.length} {payments.length === 1 ? 'payment' : 'payments'}
+              </span>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">Payment Method</label>
-              <select
-                value={filters.paymentMethod}
-                onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
-                className="w-full border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              >
-                <option value="">All Methods</option>
-                <option value="cash">Cash</option>
-                <option value="credit_card">Credit Card</option>
-                <option value="check">Check</option>
-                <option value="quick_pay">Quick Pay</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">Type</label>
-              <select
-                value={filters.type}
-                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                className="w-full border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              >
-                <option value="">All Types</option>
-                <option value="membership">Membership</option>
-                <option value="donation">Donation</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Payments Table */}
@@ -279,6 +465,19 @@ export default function PaymentsPage() {
           <table className="min-w-full divide-y divide-white/20">
             <thead className="bg-white/20 backdrop-blur-sm">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                  <input
+                    type="checkbox"
+                    checked={bulkSelection.isAllSelected}
+                    onChange={bulkSelection.toggleSelectAll}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = bulkSelection.isIndeterminate
+                      }
+                    }}
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Family</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
@@ -291,7 +490,7 @@ export default function PaymentsPage() {
             <tbody className="bg-white/10 divide-y divide-white/20">
               {payments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No payments found
                   </td>
                 </tr>
@@ -299,7 +498,16 @@ export default function PaymentsPage() {
                 payments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((payment) => {
                   const MethodIcon = paymentMethodIcons[payment.paymentMethod as keyof typeof paymentMethodIcons] || CurrencyDollarIcon
                   return (
-                    <tr key={payment._id} className="hover:bg-white/20 transition-colors">
+                    <tr key={payment._id} className={`hover:bg-white/20 transition-colors ${bulkSelection.isSelected(payment._id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={bulkSelection.isSelected(payment._id)}
+                          onChange={() => bulkSelection.toggleSelection(payment._id)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {new Date(payment.paymentDate).toLocaleDateString()}
                       </td>

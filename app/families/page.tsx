@@ -18,6 +18,14 @@ import ConfirmationDialog from '@/app/components/ConfirmationDialog'
 import { TableSkeleton } from '@/app/components/LoadingSkeleton'
 import EmptyState from '@/app/components/EmptyState'
 import TableImportExport from '@/app/components/TableImportExport'
+import FilterBuilder, { FilterGroup } from '@/app/components/FilterBuilder'
+import SavedViews from '@/app/components/SavedViews'
+import { applyFilters } from '@/app/utils/filterUtils'
+import { useBulkSelection } from '@/app/hooks/useBulkSelection'
+import BulkActionBar from '@/app/components/BulkActionBar'
+import BulkEditModal from '@/app/components/BulkEditModal'
+import BulkTagModal from '@/app/components/BulkTagModal'
+import BulkMessageModal from '@/app/components/BulkMessageModal'
 
 // QWERTY to Hebrew keyboard mapping
 const qwertyToHebrew: { [key: string]: string } = {
@@ -125,13 +133,39 @@ export default function FamiliesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; familyId: string | null; familyName: string }>({
     isOpen: false,
     familyId: null,
     familyName: ''
   })
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false)
+  const [showBulkTagModal, setShowBulkTagModal] = useState(false)
+  const [showBulkEmailModal, setShowBulkEmailModal] = useState(false)
+  const [showBulkSMSModal, setShowBulkSMSModal] = useState(false)
   const itemsPerPage = 10
+
+  // Define filter fields for families
+  const familyFilterFields = [
+    { id: 'name', label: 'Family Name', type: 'text' as const },
+    { id: 'hebrewName', label: 'Hebrew Name', type: 'text' as const },
+    { id: 'email', label: 'Email', type: 'text' as const },
+    { id: 'phone', label: 'Phone', type: 'text' as const },
+    { id: 'city', label: 'City', type: 'text' as const },
+    { id: 'state', label: 'State', type: 'text' as const },
+    { id: 'zip', label: 'ZIP Code', type: 'text' as const },
+    { id: 'weddingDate', label: 'Wedding Date', type: 'date' as const },
+    { 
+      id: 'paymentPlanId', 
+      label: 'Payment Plan', 
+      type: 'select' as const,
+      options: paymentPlans.map(p => ({ value: p._id, label: p.name }))
+    },
+    { id: 'memberCount', label: 'Member Count', type: 'number' as const },
+    { id: 'openBalance', label: 'Open Balance', type: 'number' as const },
+    { id: 'currentPayment', label: 'Current Payment', type: 'number' as const },
+  ]
   const [formData, setFormData] = useState({
     name: '',
     hebrewName: '',
@@ -397,7 +431,7 @@ export default function FamiliesPage() {
   }
 
   // Filter families based on search query - searches across all fields
-  const filteredFamilies = families.filter((family) => {
+  const searchFilteredFamilies = families.filter((family) => {
     if (!searchQuery.trim()) return true
     
     const query = searchQuery.toLowerCase().trim()
@@ -432,6 +466,9 @@ export default function FamiliesPage() {
       field && field.toString().toLowerCase().includes(query)
     )
   })
+
+  // Apply advanced filters
+  const filteredFamilies = applyFilters(searchFilteredFamilies, filterGroups)
 
   // Sort families based on selected column
   const sortedFamilies = [...filteredFamilies].sort((a, b) => {
@@ -475,6 +512,242 @@ export default function FamiliesPage() {
     return 0
   })
 
+  // Bulk selection (after sortedFamilies is defined)
+  const bulkSelection = useBulkSelection({
+    items: sortedFamilies,
+    getItemId: (item) => item._id,
+  })
+
+  // Bulk edit fields
+  const bulkEditFields = [
+    { 
+      id: 'paymentPlanId', 
+      label: 'Payment Plan', 
+      type: 'select' as const,
+      options: paymentPlans.map(p => ({ value: p._id, label: p.name }))
+    },
+    { id: 'city', label: 'City', type: 'text' as const },
+    { id: 'state', label: 'State', type: 'text' as const },
+    { id: 'zip', label: 'ZIP Code', type: 'text' as const },
+    { id: 'currentPayment', label: 'Current Payment', type: 'number' as const },
+    { id: 'receiveEmails', label: 'Receive Emails', type: 'boolean' as const },
+    { id: 'receiveSMS', label: 'Receive SMS', type: 'boolean' as const },
+  ]
+
+  // Bulk operation handlers
+  const handleBulkUpdate = async (updates: Record<string, any>) => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/bulk/families', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'update',
+          familyIds: selectedIds,
+          updates,
+        }),
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        showToast(result.message || 'Families updated successfully', 'success')
+        bulkSelection.clearSelection()
+        fetchFamilies()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to update families', 'error')
+      }
+    } catch (error) {
+      console.error('Error updating families:', error)
+      showToast('Error updating families', 'error')
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/bulk/families', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'delete',
+          familyIds: selectedIds,
+        }),
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        showToast(result.message || 'Families deleted successfully', 'success')
+        bulkSelection.clearSelection()
+        fetchFamilies()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to delete families', 'error')
+      }
+    } catch (error) {
+      console.error('Error deleting families:', error)
+      showToast('Error deleting families', 'error')
+    }
+  }
+
+  const handleBulkExport = async () => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/bulk/families?ids=${selectedIds.join(',')}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        // Convert to CSV
+        const headers = ['Name', 'Email', 'Phone', 'City', 'State', 'ZIP', 'Wedding Date', 'Members', 'Balance']
+        const csv = [
+          headers.join(','),
+          ...data.map((f: any) => [
+            f.name || '',
+            f.email || '',
+            f.phone || '',
+            f.city || '',
+            f.state || '',
+            f.zip || '',
+            f.weddingDate ? new Date(f.weddingDate).toLocaleDateString() : '',
+            f.memberCount || 0,
+            f.openBalance || 0,
+          ].join(','))
+        ].join('\n')
+
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `families-export-${Date.now()}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+
+        showToast(`Exported ${data.length} families`, 'success')
+      }
+    } catch (error) {
+      console.error('Error exporting families:', error)
+      showToast('Error exporting families', 'error')
+    }
+  }
+
+  const handleBulkTag = async (tags: string[], action: 'add' | 'remove') => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/bulk/families', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: action === 'add' ? 'tag' : 'untag',
+          familyIds: selectedIds,
+          updates: { tags },
+        }),
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        showToast(result.message || `Tags ${action === 'add' ? 'added' : 'removed'} successfully`, 'success')
+        bulkSelection.clearSelection()
+        fetchFamilies()
+      } else {
+        const error = await res.json()
+        showToast(error.error || `Failed to ${action} tags`, 'error')
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing tags:`, error)
+      showToast(`Error ${action}ing tags`, 'error')
+    }
+  }
+
+  const handleBulkEmail = async (subject: string, message: string) => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          type: 'email',
+          familyIds: selectedIds,
+          subject,
+          message,
+        }),
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        showToast(result.message || 'Emails sent successfully', 'success')
+        bulkSelection.clearSelection()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to send emails', 'error')
+      }
+    } catch (error) {
+      console.error('Error sending emails:', error)
+      showToast('Error sending emails', 'error')
+    }
+  }
+
+  const handleBulkSMS = async (subject: string, message: string) => {
+    const selectedIds = bulkSelection.getSelectedIds()
+    if (selectedIds.length === 0) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          type: 'sms',
+          familyIds: selectedIds,
+          message, // SMS doesn't use subject
+        }),
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        showToast(result.message || 'SMS messages sent successfully', 'success')
+        bulkSelection.clearSelection()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to send SMS messages', 'error')
+      }
+    } catch (error) {
+      console.error('Error sending SMS:', error)
+      showToast('Error sending SMS messages', 'error')
+    }
+  }
+
   // Handle column header click for sorting
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -488,10 +761,10 @@ export default function FamiliesPage() {
     setCurrentPage(1) // Reset to first page when sorting
   }
 
-  // Reset to page 1 when search query or sort changes
+  // Reset to page 1 when search query, filters, or sort changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, sortColumn, sortDirection])
+  }, [searchQuery, filterGroups, sortColumn, sortDirection])
 
   if (loading) {
     return (
@@ -602,32 +875,69 @@ export default function FamiliesPage() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+        {/* Search and Filters Bar */}
+        <div className="mb-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search families by name, email, phone, address, plan, or any field..."
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <span className="text-sm">Clear</span>
+                </button>
+              )}
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search families by name, email, phone, address, plan, or any field..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+            <FilterBuilder
+              fields={familyFilterFields}
+              filters={filterGroups}
+              onChange={setFilterGroups}
+              onApply={() => {
+                setCurrentPage(1)
+                showToast('Filters applied', 'success')
+              }}
+              onClear={() => {
+                setFilterGroups([])
+                setCurrentPage(1)
+                showToast('Filters cleared', 'info')
+              }}
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                <span className="text-sm">Clear</span>
-              </button>
-            )}
+            <SavedViews
+              entityType="family"
+              currentFilters={filterGroups}
+              onLoadView={(filters) => {
+                setFilterGroups(filters)
+                setCurrentPage(1)
+                showToast('View loaded', 'success')
+              }}
+            />
           </div>
-          {searchQuery && (
-            <p className="mt-2 text-sm text-gray-500">
-              Found {sortedFamilies.length} {sortedFamilies.length === 1 ? 'family' : 'families'} matching "{searchQuery}"
-            </p>
+          {(searchQuery || filterGroups.length > 0) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {searchQuery && (
+                <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-full text-sm">
+                  Search: "{searchQuery}"
+                </span>
+              )}
+              {filterGroups.length > 0 && (
+                <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300 rounded-full text-sm">
+                  {filterGroups.reduce((sum, g) => sum + g.conditions.length, 0)} filter{filterGroups.reduce((sum, g) => sum + g.conditions.length, 0) !== 1 ? 's' : ''} active
+                </span>
+              )}
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {sortedFamilies.length} of {families.length} {sortedFamilies.length === 1 ? 'family' : 'families'}
+              </span>
+            </div>
           )}
         </div>
 
@@ -635,6 +945,19 @@ export default function FamiliesPage() {
           <table className="min-w-full divide-y divide-white/20">
             <thead className="bg-white/20 backdrop-blur-sm">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                  <input
+                    type="checkbox"
+                    checked={bulkSelection.isAllSelected}
+                    onChange={bulkSelection.toggleSelectAll}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = bulkSelection.isIndeterminate
+                      }
+                    }}
+                  />
+                </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-white/30 transition-colors select-none"
                   onClick={() => handleSort('name')}
@@ -731,11 +1054,13 @@ export default function FamiliesPage() {
                       icon={searchQuery ? 'search' : 'inbox'}
                       title={searchQuery ? `No families found matching "${searchQuery}"` : 'No families found'}
                       description={searchQuery ? 'Try adjusting your search terms or clear the search to see all families.' : 'Get started by adding your first family to the system.'}
-                      actionLabel={searchQuery ? undefined : 'Add Family'}
-                      onAction={searchQuery ? undefined : () => {
-                        resetForm()
-                        setEditingFamily(null)
-                        setShowModal(true)
+                      action={searchQuery ? undefined : {
+                        label: 'Add Family',
+                        onClick: () => {
+                          resetForm()
+                          setEditingFamily(null)
+                          setShowModal(true)
+                        }
                       }}
                     />
                     {searchQuery && (
@@ -752,7 +1077,16 @@ export default function FamiliesPage() {
                 </tr>
               ) : (
                 sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
-                <tr key={family._id} className="hover:bg-white/20 transition-colors">
+                <tr key={family._id} className={`hover:bg-white/20 transition-colors ${bulkSelection.isSelected(family._id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={bulkSelection.isSelected(family._id)}
+                      onChange={() => bulkSelection.toggleSelection(family._id)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
                       href={`/families/${family._id}`}
@@ -812,6 +1146,65 @@ export default function FamiliesPage() {
           )}
         </div>
 
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={bulkSelection.selectedCount}
+          totalCount={sortedFamilies.length}
+          onSelectAll={bulkSelection.selectAll}
+          onSelectNone={bulkSelection.selectNone}
+          onBulkEdit={() => setShowBulkEditModal(true)}
+          onBulkDelete={handleBulkDelete}
+          onBulkTag={() => setShowBulkTagModal(true)}
+          onBulkEmail={() => setShowBulkEmailModal(true)}
+          onBulkSMS={() => setShowBulkSMSModal(true)}
+          onBulkExport={handleBulkExport}
+          availableActions={{
+            edit: true,
+            delete: true,
+            tag: true,
+            email: true,
+            sms: true,
+            export: true,
+          }}
+        />
+
+        {/* Bulk Edit Modal */}
+        <BulkEditModal
+          isOpen={showBulkEditModal}
+          onClose={() => setShowBulkEditModal(false)}
+          selectedCount={bulkSelection.selectedCount}
+          entityType="family"
+          fields={bulkEditFields}
+          onSave={handleBulkUpdate}
+        />
+
+        {/* Bulk Tag Modal */}
+        <BulkTagModal
+          isOpen={showBulkTagModal}
+          onClose={() => setShowBulkTagModal(false)}
+          selectedCount={bulkSelection.selectedCount}
+          entityType="family"
+          onSave={handleBulkTag}
+        />
+
+        {/* Bulk Email Modal */}
+        <BulkMessageModal
+          isOpen={showBulkEmailModal}
+          onClose={() => setShowBulkEmailModal(false)}
+          selectedCount={bulkSelection.selectedCount}
+          messageType="email"
+          onSend={handleBulkEmail}
+        />
+
+        {/* Bulk SMS Modal */}
+        <BulkMessageModal
+          isOpen={showBulkSMSModal}
+          onClose={() => setShowBulkSMSModal(false)}
+          selectedCount={bulkSelection.selectedCount}
+          messageType="sms"
+          onSend={handleBulkSMS}
+        />
+
         {/* Confirmation Dialog */}
         <ConfirmationDialog
           isOpen={deleteConfirm.isOpen}
@@ -820,8 +1213,9 @@ export default function FamiliesPage() {
           confirmText={isDeleting ? 'Deleting...' : 'Delete'}
           cancelText="Cancel"
           onConfirm={handleDeleteConfirm}
-          onCancel={handleDeleteCancel}
-          variant="danger"
+          onClose={handleDeleteCancel}
+          type="danger"
+          isLoading={isDeleting}
         />
 
         {showModal && (

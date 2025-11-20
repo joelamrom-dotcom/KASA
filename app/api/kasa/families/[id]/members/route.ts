@@ -138,6 +138,32 @@ export async function POST(
       paymentPlanAssigned: false
     })
 
+    // Create audit log entry
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'member_create',
+        entityType: 'member',
+        entityId: member._id.toString(),
+        entityName: `${firstName} ${lastName}`,
+        description: `Created member "${firstName} ${lastName}" for family "${family.name}"`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          familyId: params.id,
+          familyName: family.name,
+          memberName: `${firstName} ${lastName}`,
+          gender,
+          birthDate: new Date(birthDate),
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
+    }
+
     // Auto-assign payment plan (Plan 3 - Bucher Plan) when male turns 13 in Hebrew years
     if (gender === 'male' && finalHebrewBirthDate && finalHebrewBirthDate.trim() && hasReachedBarMitzvahAge(finalHebrewBirthDate)) {
       try {

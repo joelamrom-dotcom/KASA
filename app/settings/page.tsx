@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
 
@@ -26,7 +26,7 @@ interface PaymentPlan {
   families?: Family[]
 }
 
-type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations'
+type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations' | 'templates'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('email')
@@ -107,6 +107,27 @@ export default function SettingsPage() {
     reminderDaysBefore: [3, 1],
   })
 
+  // Invoice Template state
+  const [templates, setTemplates] = useState<any[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(true)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<any>(null)
+  const [templateFormData, setTemplateFormData] = useState({
+    templateType: 'invoice' as 'invoice' | 'receipt',
+    templateName: 'Default',
+    headerLogo: '',
+    headerText: 'KASA',
+    headerSubtext: 'Family Management',
+    headerColor: '#333333',
+    primaryColor: '#333333',
+    secondaryColor: '#666666',
+    fontFamily: 'Arial, sans-serif',
+    footerText: 'Thank you for your business!',
+    footerSubtext: 'Kasa Family Management',
+    customCSS: '',
+    isDefault: false
+  })
+
   useEffect(() => {
     // Fetch user role first to determine which tabs to show
     const fetchUserRole = async () => {
@@ -163,6 +184,7 @@ export default function SettingsPage() {
     fetchKevittelData()
     fetchCycleConfig()
     fetchAutomationSettings()
+    fetchTemplates()
   }, [])
 
   // Refresh Kevittel data when switching to the Kevittel tab
@@ -507,6 +529,116 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: 'Error saving automation settings' })
     } finally {
       setAutomationSaving(false)
+    }
+  }
+
+  // Template functions
+  const fetchTemplates = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/invoice-templates', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setTemplates(data)
+      } else {
+        setTemplates([])
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error)
+      setTemplates([])
+    } finally {
+      setTemplatesLoading(false)
+    }
+  }
+
+  const handleEditTemplate = (template: any) => {
+    setEditingTemplate(template)
+    setTemplateFormData({
+      templateType: template.templateType,
+      templateName: template.templateName || 'Default',
+      headerLogo: template.headerLogo || '',
+      headerText: template.headerText || 'KASA',
+      headerSubtext: template.headerSubtext || 'Family Management',
+      headerColor: template.headerColor || '#333333',
+      primaryColor: template.primaryColor || '#333333',
+      secondaryColor: template.secondaryColor || '#666666',
+      fontFamily: template.fontFamily || 'Arial, sans-serif',
+      footerText: template.footerText || 'Thank you for your business!',
+      footerSubtext: template.footerSubtext || 'Kasa Family Management',
+      customCSS: template.customCSS || '',
+      isDefault: template.isDefault || false
+    })
+    setShowTemplateModal(true)
+  }
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this template?')) return
+    
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/invoice-templates/${id}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        fetchTemplates()
+        setMessage({ type: 'success', text: 'Template deleted successfully!' })
+      } else {
+        const error = await res.json()
+        setMessage({ type: 'error', text: error.error || 'Failed to delete template' })
+      }
+    } catch (error) {
+      console.error('Error deleting template:', error)
+      setMessage({ type: 'error', text: 'Failed to delete template' })
+    }
+  }
+
+  const handleSubmitTemplate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/invoice-templates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(templateFormData)
+      })
+
+      const result = await res.json()
+
+      if (res.ok) {
+        setShowTemplateModal(false)
+        setEditingTemplate(null)
+        setTemplateFormData({
+          templateType: 'invoice',
+          templateName: 'Default',
+          headerLogo: '',
+          headerText: 'KASA',
+          headerSubtext: 'Family Management',
+          headerColor: '#333333',
+          primaryColor: '#333333',
+          secondaryColor: '#666666',
+          fontFamily: 'Arial, sans-serif',
+          footerText: 'Thank you for your business!',
+          footerSubtext: 'Kasa Family Management',
+          customCSS: '',
+          isDefault: false
+        })
+        fetchTemplates()
+        setMessage({ 
+          type: 'success', 
+          text: editingTemplate ? 'Template updated successfully!' : 'Template created successfully!' 
+        })
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to save template' })
+      }
+    } catch (error) {
+      console.error('Error saving template:', error)
+      setMessage({ type: 'error', text: 'Failed to save template' })
     }
   }
 
@@ -1060,6 +1192,19 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2">
                       <Cog6ToothIcon className="h-5 w-5" />
                       Automations
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'templates'
+                        ? 'border-teal-600 text-teal-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <DocumentTextIcon className="h-5 w-5" />
+                      Templates
                     </div>
                   </button>
                 </>

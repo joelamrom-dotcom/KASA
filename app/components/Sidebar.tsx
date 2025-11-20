@@ -3,6 +3,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getUser, logout, setAuth } from '@/lib/auth'
+import PushNotificationManager from './PushNotificationManager'
+import GlobalSearch from './GlobalSearch'
+import NotificationCenter from './NotificationCenter'
+import DarkModeToggle from './DarkModeToggle'
 import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useState, useRef, useEffect } from 'react'
 import { 
@@ -20,8 +24,15 @@ import {
   ClipboardDocumentListIcon,
   ChartPieIcon,
   ArrowUpTrayIcon,
+  ArrowDownTrayIcon,
   TrashIcon,
-  UsersIcon
+  UsersIcon,
+  ClipboardDocumentCheckIcon,
+  ExclamationTriangleIcon,
+  TagIcon,
+  LinkIcon,
+  DocumentChartBarIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -37,8 +48,15 @@ import {
   ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
   ChartPieIcon as ChartPieIconSolid,
   ArrowUpTrayIcon as ArrowUpTrayIconSolid,
+  ArrowDownTrayIcon as ArrowDownTrayIconSolid,
   TrashIcon as TrashIconSolid,
-  UsersIcon as UsersIconSolid
+  UsersIcon as UsersIconSolid,
+  ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconSolid,
+  ExclamationTriangleIcon as ExclamationTriangleIconSolid,
+  TagIcon as TagIconSolid,
+  LinkIcon as LinkIconSolid,
+  DocumentChartBarIcon as DocumentChartBarIconSolid,
+  ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -71,15 +89,31 @@ export default function Sidebar() {
       { href: '/', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
       { href: '/families', label: 'Families', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
       { href: '/payments', label: 'Payments', icon: CurrencyDollarIcon, iconSolid: CurrencyDollarIconSolid },
+      ...(user?.role === 'admin' || user?.role === 'super_admin' ? [
+        { href: '/overdue-payments', label: 'Overdue Payments', icon: ExclamationTriangleIcon, iconSolid: ExclamationTriangleIconSolid }
+      ] : []),
       { href: '/tasks', label: 'Tasks', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
       { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
       { href: '/events', label: 'Events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
       { href: '/reports', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
+      { href: '/reports/custom', label: 'Custom Reports', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
       { href: '/statements', label: 'Statements', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
+      ...(user?.role === 'admin' || user?.role === 'super_admin' ? [
+        { href: '/family-tags', label: 'Family Tags', icon: TagIcon, iconSolid: TagIconSolid },
+        { href: '/family-groups', label: 'Family Groups', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
+        { href: '/payment-links', label: 'Payment Links', icon: LinkIcon, iconSolid: LinkIconSolid },
+        { href: '/payment-analytics', label: 'Payment Analytics', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
+        { href: '/backup', label: 'Backup & Restore', icon: ArrowDownTrayIcon, iconSolid: ArrowDownTrayIconSolid }
+      ] : []),
+      { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
+      { href: '/communication', label: 'Communication', icon: ChatBubbleLeftRightIcon, iconSolid: ChatBubbleLeftRightIconSolid },
       { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
-      // Show Users page only for super_admin
+      // Show Audit Logs and Users pages only for admins
+      ...(user?.role === 'admin' || user?.role === 'super_admin' ? [
+        { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardDocumentCheckIcon, iconSolid: ClipboardDocumentCheckIconSolid }
+      ] : []),
       ...(user?.role === 'super_admin' ? [{ href: '/users', label: 'Users', icon: UsersIcon, iconSolid: UsersIconSolid }] : []),
     ]
 
@@ -96,10 +130,15 @@ export default function Sidebar() {
               <h1 className="text-xl font-bold text-gray-900">Kasa</h1>
               <p className="text-xs text-gray-600">Family Management</p>
             </div>
-          </div>
+            </div>
         </div>
 
-        {/* Navigation */}
+            {/* Global Search */}
+            <div className="px-4 pb-4 border-b border-white/10">
+              <GlobalSearch />
+            </div>
+
+            {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href))
@@ -143,6 +182,11 @@ export default function Sidebar() {
                 <div className="flex-1 text-left">
                   <p className="font-medium text-sm">{user.firstName} {user.lastName}</p>
                   <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DarkModeToggle />
+                  <NotificationCenter />
+                  <PushNotificationManager />
                 </div>
                 <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
               </button>

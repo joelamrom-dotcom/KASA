@@ -142,6 +142,34 @@ export async function POST(request: NextRequest) {
     })
 
     const taskObj = task.toObject ? task.toObject() : task
+    
+    // Create audit log entry
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      const family = relatedFamilyId ? await Family.findById(relatedFamilyId) : null
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'task_create',
+        entityType: 'task',
+        entityId: taskObj._id.toString(),
+        entityName: title,
+        description: `Created task "${title}"${family ? ` for family "${family.name}"` : ''}`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          title,
+          status: status || 'pending',
+          priority: priority || 'medium',
+          dueDate: new Date(dueDate),
+          relatedFamilyId,
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
+    }
+    
     return NextResponse.json(taskObj, { status: 201 })
   } catch (error: any) {
     console.error('Error creating task:', error)

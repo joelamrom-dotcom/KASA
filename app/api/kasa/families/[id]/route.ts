@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
+import { invalidateCache, CacheKeys } from '@/lib/cache'
 import { Family, FamilyMember, Payment, Withdrawal, LifecycleEventPayment, PaymentPlan } from '@/lib/models'
 import { calculateFamilyBalance } from '@/lib/calculations'
 import { moveToRecycleBin } from '@/lib/recycle-bin'
@@ -105,31 +106,39 @@ export async function PUT(
     const body = await request.json()
     console.log('PUT /api/kasa/families/[id] - Received body:', JSON.stringify(body, null, 2))
     
+    // Store old values for audit log
+    const oldValues: any = {}
+    const newValues: any = {}
+    const changedFields: any = {}
+    
     // Build update object explicitly to ensure all fields are included
     const updateData: any = {}
     
     // Handle all string fields - include them as-is (including empty strings)
     // This ensures Hebrew names and other fields are saved correctly
-    if ('name' in body) updateData.name = body.name
-    if ('hebrewName' in body) updateData.hebrewName = body.hebrewName
-    if ('husbandFirstName' in body) updateData.husbandFirstName = body.husbandFirstName
-    if ('husbandHebrewName' in body) updateData.husbandHebrewName = body.husbandHebrewName
-    if ('husbandFatherHebrewName' in body) updateData.husbandFatherHebrewName = body.husbandFatherHebrewName
-    if ('wifeFirstName' in body) updateData.wifeFirstName = body.wifeFirstName
-    if ('wifeHebrewName' in body) updateData.wifeHebrewName = body.wifeHebrewName
-    if ('wifeFatherHebrewName' in body) updateData.wifeFatherHebrewName = body.wifeFatherHebrewName
-    if ('husbandCellPhone' in body) updateData.husbandCellPhone = body.husbandCellPhone
-    if ('wifeCellPhone' in body) updateData.wifeCellPhone = body.wifeCellPhone
-    if ('address' in body) updateData.address = body.address
-    if ('street' in body) updateData.street = body.street
-    if ('phone' in body) updateData.phone = body.phone
-    if ('email' in body) updateData.email = body.email
-    if ('city' in body) updateData.city = body.city
-    if ('state' in body) updateData.state = body.state
-    if ('zip' in body) updateData.zip = body.zip
-    if ('currentPayment' in body) updateData.currentPayment = body.currentPayment || 0
-    if ('receiveEmails' in body) updateData.receiveEmails = body.receiveEmails !== false
-    if ('receiveSMS' in body) updateData.receiveSMS = body.receiveSMS !== false
+    // Track changes for audit log
+    const fieldsToTrack = [
+      'name', 'hebrewName', 'husbandFirstName', 'husbandHebrewName', 'husbandFatherHebrewName',
+      'wifeFirstName', 'wifeHebrewName', 'wifeFatherHebrewName', 'husbandCellPhone', 'wifeCellPhone',
+      'address', 'street', 'phone', 'email', 'city', 'state', 'zip', 'currentPayment',
+      'receiveEmails', 'receiveSMS'
+    ]
+    
+    fieldsToTrack.forEach(field => {
+      if (field in body) {
+        const oldValue = (family as any)[field]
+        const newValue = field === 'receiveEmails' || field === 'receiveSMS' 
+          ? body[field] !== false 
+          : body[field] || 0
+        
+        if (oldValue !== newValue) {
+          oldValues[field] = oldValue
+          newValues[field] = newValue
+          changedFields[field] = { from: oldValue, to: newValue }
+        }
+        updateData[field] = newValue
+      }
+    })
     
     // Convert weddingDate to Date object if provided
     if ('weddingDate' in body && body.weddingDate) {
@@ -183,6 +192,36 @@ export async function PUT(
       wifeHebrewName: familyObj.wifeHebrewName,
       wifeFatherHebrewName: familyObj.wifeFatherHebrewName
     }, null, 2))
+
+    // Create audit log entry
+    if (Object.keys(changedFields).length > 0) {
+      try {
+        const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+        const { User } = await import('@/lib/models')
+        const userDoc = await User.findById(user.userId)
+        
+        await createAuditLog({
+          userId: user.userId,
+          userEmail: user.email,
+          userRole: user.role,
+          action: 'family_update',
+          entityType: 'family',
+          entityId: params.id,
+          entityName: updatedFamily.name,
+          changes: changedFields,
+          description: `Updated family "${updatedFamily.name}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+          ipAddress: getIpAddress(request),
+          userAgent: getUserAgent(request),
+          metadata: {
+            familyName: updatedFamily.name,
+            changedFields: Object.keys(changedFields),
+          }
+        })
+      } catch (auditError: any) {
+        console.error('Error creating audit log:', auditError)
+        // Don't fail the update if audit logging fails
+      }
+    }
 
     return NextResponse.json(updatedFamily)
   } catch (error: any) {
@@ -251,6 +290,31 @@ export async function DELETE(
     // Move family to recycle bin
     await moveToRecycleBin('family', params.id, family.toObject())
     
+    // Create audit log entry before deletion
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'family_delete',
+        entityType: 'family',
+        entityId: params.id,
+        entityName: family.name,
+        description: `Deleted family "${family.name}" and moved to recycle bin`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          familyName: family.name,
+          membersCount: members.length,
+          paymentsCount: payments.length,
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
+      // Don't fail deletion if audit logging fails
+    }
+
     // Now delete from database
     await FamilyMember.deleteMany({ familyId: params.id })
     await Payment.deleteMany({ familyId: params.id })

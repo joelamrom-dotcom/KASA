@@ -171,6 +171,34 @@ export async function POST(
     // Convert to plain object to ensure all fields are included
     const paymentObj = payment.toObject ? payment.toObject() : payment
     
+    // Create audit log entry
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'payment_create',
+        entityType: 'payment',
+        entityId: paymentObj._id.toString(),
+        entityName: `Payment of $${amount}`,
+        description: `Created payment of $${amount} for family "${family.name}"`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          familyId: params.id,
+          familyName: family.name,
+          amount,
+          paymentMethod: finalPaymentMethod,
+          paymentDate: new Date(paymentDate),
+          type: type || 'membership',
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
+      // Don't fail payment creation if audit logging fails
+    }
+    
     console.log('Payment created successfully:', {
       _id: paymentObj._id,
       paymentMethod: paymentObj.paymentMethod,
@@ -324,6 +352,43 @@ export async function POST(
       }
     } catch (thankYouSmsError: any) {
       console.error(`⚠️ Failed to send thank you SMS:`, thankYouSmsError.message)
+    }
+
+    // Auto-send receipt (if enabled and family wants emails)
+    try {
+      if (family && family.email && family.userId) {
+        const { AutomationSettings } = await import('@/lib/models')
+        const mongoose = require('mongoose')
+        const adminObjectId = new mongoose.Types.ObjectId(family.userId)
+        const automationSettings = await AutomationSettings.findOne({ userId: adminObjectId })
+        
+        const shouldAutoSendReceipt = automationSettings?.enablePaymentEmails !== false && family.receiveEmails !== false
+        if (shouldAutoSendReceipt) {
+          // Call receipt endpoint with autoSend=true
+          const baseUrl = request.nextUrl.origin || 
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+            process.env.NEXT_PUBLIC_BASE_URL || 
+            'http://localhost:3000'
+          
+          try {
+            const receiptRes = await fetch(`${baseUrl}/api/kasa/payments/${paymentObj._id.toString()}/receipt?autoSend=true`, {
+              method: 'GET',
+              headers: {
+                'Authorization': request.headers.get('Authorization') || ''
+              }
+            })
+            if (receiptRes.ok) {
+              console.log(`✅ Receipt auto-sent to ${family.email}`)
+            }
+          } catch (receiptError: any) {
+            console.error(`⚠️ Failed to auto-send receipt:`, receiptError.message)
+            // Don't fail payment creation if receipt sending fails
+          }
+        }
+      }
+    } catch (receiptError: any) {
+      console.error(`⚠️ Failed to auto-send receipt:`, receiptError.message)
+      // Don't fail payment creation if receipt sending fails
     }
 
     return NextResponse.json(paymentObj, { status: 201 })

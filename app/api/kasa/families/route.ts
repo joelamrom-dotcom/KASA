@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, FamilyMember, PaymentPlan, User } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { getCachedData, setCachedData, CacheKeys, invalidateCache } from '@/lib/cache'
+import { performanceMonitor } from '@/lib/performance'
+import { getFamiliesWithPaymentsPipeline } from '@/lib/db-optimization'
 
 // GET - Get all families (filtered by user)
 export async function GET(request: NextRequest) {
@@ -71,46 +74,56 @@ export async function GET(request: NextRequest) {
       console.log('GET /api/kasa/families - Regular user: showing families for userId', user.userId)
     }
     
-    const families = await Family.find(query).sort({ name: 1 })
-    
-    // Get member counts and ensure paymentPlanId is set for each family
-    const familiesWithMembers = await Promise.all(
-      families.map(async (family) => {
-        const members = await FamilyMember.find({ familyId: family._id })
-        const familyObj = family.toObject()
-        
-        // If paymentPlanId is missing but currentPlan exists, find and set paymentPlanId
-        if (!familyObj.paymentPlanId && familyObj.currentPlan) {
-          try {
-            const paymentPlan = await PaymentPlan.findOne({ planNumber: familyObj.currentPlan })
-            if (paymentPlan) {
-              // Update the family in database
-              await Family.findByIdAndUpdate(family._id, { paymentPlanId: paymentPlan._id })
-              familyObj.paymentPlanId = paymentPlan._id.toString()
-              console.log(`✅ Fixed family ${family.name}: set paymentPlanId to ${paymentPlan._id}`)
-            }
-          } catch (error) {
-            console.error(`Error fixing paymentPlanId for family ${family._id}:`, error)
-          }
-        }
-        
-        // Ensure all ObjectId fields are converted to strings
-        // Explicitly include all fields to ensure Hebrew names are included
-        return {
-          ...familyObj,
-          _id: familyObj._id?.toString() || familyObj._id,
-          paymentPlanId: familyObj.paymentPlanId?.toString() || familyObj.paymentPlanId,
-          parentFamilyId: familyObj.parentFamilyId?.toString() || familyObj.parentFamilyId, // Include parentFamilyId
-          memberCount: members.length,
-          // Explicitly include Hebrew name fields
-          hebrewName: familyObj.hebrewName,
-          husbandHebrewName: familyObj.husbandHebrewName,
-          husbandFatherHebrewName: familyObj.husbandFatherHebrewName,
-          wifeHebrewName: familyObj.wifeHebrewName,
-          wifeFatherHebrewName: familyObj.wifeFatherHebrewName
-        }
-      })
+    // Check cache first
+    const cacheKey = CacheKeys.families(user.userId)
+    const cached = getCachedData(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
+
+    const end = performanceMonitor.start('fetch:families')
+
+    // Optimized: Use aggregation pipeline with $lookup for member counts
+    const familyIds = await Family.find(query).select('_id').lean()
+    const familyIdArray = familyIds.map(f => f._id)
+
+    // Get all members in one query
+    const membersByFamily = await FamilyMember.aggregate([
+      { $match: { familyId: { $in: familyIdArray } } },
+      {
+        $group: {
+          _id: '$familyId',
+          count: { $sum: 1 },
+        },
+      },
+    ])
+
+    const memberCountMap = new Map(
+      membersByFamily.map((m: any) => [m._id.toString(), m.count])
     )
+
+    // Fetch families with optimized query
+    const families = await Family.find(query).sort({ name: 1 }).lean()
+    
+    // Process families in batch
+    const familiesWithMembers = families.map((family: any) => {
+      const familyObj = { ...family }
+      
+      // Set member count from map
+      familyObj.memberCount = memberCountMap.get(family._id.toString()) || 0
+      
+      // Ensure all ObjectId fields are converted to strings
+      familyObj._id = familyObj._id?.toString() || familyObj._id
+      familyObj.paymentPlanId = familyObj.paymentPlanId?.toString() || familyObj.paymentPlanId
+      familyObj.parentFamilyId = familyObj.parentFamilyId?.toString() || familyObj.parentFamilyId
+      
+      return familyObj
+    })
+
+    // Cache the result (2 minutes TTL)
+    setCachedData(cacheKey, familiesWithMembers, 2 * 60 * 1000)
+
+    end({ count: familiesWithMembers.length })
     
     return NextResponse.json(familiesWithMembers)
   } catch (error: any) {
@@ -219,6 +232,31 @@ export async function POST(request: NextRequest) {
       receiveEmails: body.receiveEmails !== false, // Default to true
       receiveSMS: body.receiveSMS !== false // Default to true
     })
+
+    // Create audit log entry
+    try {
+      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      await createAuditLog({
+        userId: user.userId,
+        userEmail: user.email,
+        userRole: user.role,
+        action: 'family_create',
+        entityType: 'family',
+        entityId: family._id.toString(),
+        entityName: family.name,
+        description: `Created new family "${family.name}"`,
+        ipAddress: getIpAddress(request),
+        userAgent: getUserAgent(request),
+        metadata: {
+          familyName: family.name,
+          email: family.email,
+          paymentPlanId: paymentPlanId,
+        }
+      })
+    } catch (auditError: any) {
+      console.error('Error creating audit log:', auditError)
+      // Don't fail family creation if audit logging fails
+    }
 
     // Auto-create Stripe Customer for the family
     try {
@@ -360,6 +398,9 @@ export async function POST(request: NextRequest) {
         console.error(`⚠️ Failed to send welcome SMS to ${phoneNumber}:`, smsError.message)
       }
     }
+
+    // Invalidate cache
+    invalidateCache('families')
 
     return NextResponse.json(family, { status: 201 })
   } catch (error: any) {
