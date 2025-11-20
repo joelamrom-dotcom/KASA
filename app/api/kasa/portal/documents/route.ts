@@ -42,7 +42,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const familyId = String(family._id)
+    // Type assertion for lean() result
+    const familyDoc = family as { _id: unknown }
+    const familyId = String(familyDoc._id)
     const searchParams = request.nextUrl.searchParams
     const category = searchParams.get('category')
     const search = searchParams.get('search')

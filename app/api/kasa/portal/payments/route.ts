@@ -42,12 +42,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Type assertion for lean() result
+    const familyDoc = family as { _id: unknown }
+
     const searchParams = request.nextUrl.searchParams
     const year = searchParams.get('year')
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    const familyId = String(family._id)
+    const familyId = String(familyDoc._id)
     
     // Build query
     const query: any = { familyId }
