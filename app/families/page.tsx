@@ -964,7 +964,8 @@ export default function FamiliesPage() {
 
         <div className="glass-strong rounded-2xl shadow-xl overflow-hidden border border-white/30">
           {viewType === 'table' && (
-          <table className="min-w-full divide-y divide-white/20">
+            <>
+            <table className="min-w-full divide-y divide-white/20">
             <thead className="bg-white/20 backdrop-blur-sm">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
@@ -1166,6 +1167,7 @@ export default function FamiliesPage() {
               onPageChange={setCurrentPage}
             />
           )}
+            </>
           )}
 
           {viewType === 'kanban' && (
