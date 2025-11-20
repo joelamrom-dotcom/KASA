@@ -160,8 +160,12 @@ export default function PaymentPortalPage() {
             <StripePaymentForm
               amount={amount}
               familyId={linkData?.familyId}
+              paymentDate={new Date().toISOString()}
+              year={new Date().getFullYear()}
+              type="membership"
+              notes={linkData?.description || 'Payment via link'}
               onSuccess={handlePaymentSuccess}
-              description={linkData?.description || 'Payment via link'}
+              onError={(error) => alert(error)}
             />
           )}
 
