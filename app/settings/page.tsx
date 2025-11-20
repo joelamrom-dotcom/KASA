@@ -9,6 +9,7 @@ import { getUser } from '@/lib/auth'
 import Modal from '@/app/components/Modal'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
 import { showToast } from '@/app/components/Toast'
+import VariablePicker from '@/app/components/VariablePicker'
 
 interface LifecycleEventType {
   _id: string
@@ -3330,22 +3331,42 @@ export default function SettingsPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium mb-1">Header Text</label>
-                            <input
-                              type="text"
-                              value={templateFormData.headerText}
-                              onChange={(e) => setTemplateFormData({ ...templateFormData, headerText: e.target.value })}
-                              className="w-full border rounded-lg px-3 py-2"
-                            />
+                            <label className="block text-sm font-medium mb-1">
+                              Header Text
+                              <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={templateFormData.headerText}
+                                onChange={(e) => setTemplateFormData({ ...templateFormData, headerText: e.target.value })}
+                                className="flex-1 border rounded-lg px-3 py-2"
+                                placeholder="e.g., {{organizationName}}"
+                              />
+                              <VariablePicker
+                                onSelectVariable={(varName) => setTemplateFormData({ ...templateFormData, headerText: templateFormData.headerText + varName })}
+                                type="email"
+                              />
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium mb-1">Header Subtext</label>
-                            <input
-                              type="text"
-                              value={templateFormData.headerSubtext}
-                              onChange={(e) => setTemplateFormData({ ...templateFormData, headerSubtext: e.target.value })}
-                              className="w-full border rounded-lg px-3 py-2"
-                            />
+                            <label className="block text-sm font-medium mb-1">
+                              Header Subtext
+                              <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={templateFormData.headerSubtext}
+                                onChange={(e) => setTemplateFormData({ ...templateFormData, headerSubtext: e.target.value })}
+                                className="flex-1 border rounded-lg px-3 py-2"
+                                placeholder="e.g., Invoice for {{familyName}}"
+                              />
+                              <VariablePicker
+                                onSelectVariable={(varName) => setTemplateFormData({ ...templateFormData, headerSubtext: templateFormData.headerSubtext + varName })}
+                                type="email"
+                              />
+                            </div>
                           </div>
                         </div>
                         <div>

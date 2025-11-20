@@ -1,5 +1,6 @@
 import { Payment, Family, FamilyMember, InvoiceTemplate } from './models'
 import connectDB from './database'
+import { replaceVariables, buildFamilyVariables } from './template-variables'
 
 export interface InvoiceData {
   invoiceNumber: string
@@ -129,6 +130,23 @@ export async function generateInvoiceHTML(data: InvoiceData, userId?: string, te
     }
   }
 
+  // Replace variables in template fields
+  const variables = buildFamilyVariables(data.family, {
+    amount: data.total,
+    paymentDate: data.invoiceDate,
+    type: 'membership',
+    paymentMethod: data.paymentMethod || '',
+    year: new Date(data.invoiceDate).getFullYear()
+  })
+
+  const processedTemplate = {
+    ...templateData,
+    headerText: replaceVariables(templateData.headerText || '', variables, { fallback: templateData.headerText || 'KASA' }),
+    headerSubtext: replaceVariables(templateData.headerSubtext || '', variables, { fallback: templateData.headerSubtext || 'Family Management' }),
+    footerText: replaceVariables(templateData.footerText || '', variables, { fallback: templateData.footerText || 'Thank you for your business!' }),
+    footerSubtext: replaceVariables(templateData.footerSubtext || '', variables, { fallback: templateData.footerSubtext || 'Kasa Family Management' })
+  }
+
   return `
 <!DOCTYPE html>
 <html>
@@ -163,8 +181,8 @@ export async function generateInvoiceHTML(data: InvoiceData, userId?: string, te
 <body>
       <div class="invoice-container">
         <div class="header">
-          ${templateData.headerLogo ? `<img src="${templateData.headerLogo}" alt="Logo" style="max-height: 60px;" />` : ''}
-          <div class="logo">${templateData.headerText || 'KASA'}</div>
+          ${processedTemplate.headerLogo ? `<img src="${processedTemplate.headerLogo}" alt="Logo" style="max-height: 60px;" />` : ''}
+          <div class="logo">${processedTemplate.headerText || 'KASA'}</div>
       <div class="invoice-info">
         <h1>INVOICE</h1>
         <p><strong>Invoice #:</strong> ${data.invoiceNumber}</p>
@@ -239,11 +257,11 @@ export async function generateInvoiceHTML(data: InvoiceData, userId?: string, te
     ` : ''}
 
         <div class="footer">
-          <p>${templateData.footerText || 'Thank you for your business!'}</p>
-          <p>${templateData.footerSubtext || 'Kasa Family Management'}</p>
+          <p>${processedTemplate.footerText || 'Thank you for your business!'}</p>
+          <p>${processedTemplate.footerSubtext || 'Kasa Family Management'}</p>
         </div>
       </div>
-      ${templateData.customCSS ? `<style>${templateData.customCSS}</style>` : ''}
+      ${processedTemplate.customCSS ? `<style>${processedTemplate.customCSS}</style>` : ''}
     </body>
     </html>
   `
@@ -288,6 +306,23 @@ export async function generateReceiptHTML(data: ReceiptData, userId?: string, te
     }
   }
 
+  // Replace variables in template fields
+  const variables = buildFamilyVariables(data.family, {
+    amount: data.payment.amount,
+    paymentDate: data.payment.paymentDate,
+    type: 'membership',
+    paymentMethod: data.payment.paymentMethod || '',
+    year: new Date(data.payment.paymentDate).getFullYear()
+  })
+
+  const processedTemplate = {
+    ...templateData,
+    headerText: replaceVariables(templateData.headerText || '', variables, { fallback: templateData.headerText || 'KASA' }),
+    headerSubtext: replaceVariables(templateData.headerSubtext || '', variables, { fallback: templateData.headerSubtext || 'Family Management' }),
+    footerText: replaceVariables(templateData.footerText || '', variables, { fallback: templateData.footerText || 'Thank you for your payment!' }),
+    footerSubtext: replaceVariables(templateData.footerSubtext || '', variables, { fallback: templateData.footerSubtext || 'Kasa Family Management' })
+  }
+
   return `
 <!DOCTYPE html>
 <html>
@@ -295,10 +330,10 @@ export async function generateReceiptHTML(data: ReceiptData, userId?: string, te
   <meta charset="utf-8">
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: ${templateData.fontFamily}; font-size: 12px; color: ${templateData.primaryColor}; background: #fff; padding: 20px; }
+      body { font-family: ${processedTemplate.fontFamily}; font-size: 12px; color: ${processedTemplate.primaryColor}; background: #fff; padding: 20px; }
       .receipt-container { max-width: 600px; margin: 0 auto; background: #fff; }
-      .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid ${templateData.headerColor}; }
-      .header h1 { font-size: 36px; margin-bottom: 10px; color: ${templateData.headerColor}; }
+      .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid ${processedTemplate.headerColor}; }
+      .header h1 { font-size: 36px; margin-bottom: 10px; color: ${processedTemplate.headerColor}; }
     .header p { color: #666; }
     .receipt-info { text-align: center; margin-bottom: 20px; }
     .receipt-info p { margin: 5px 0; color: #666; }
@@ -320,9 +355,9 @@ export async function generateReceiptHTML(data: ReceiptData, userId?: string, te
 <body>
       <div class="receipt-container">
         <div class="header">
-          ${templateData.headerLogo ? `<img src="${templateData.headerLogo}" alt="Logo" style="max-height: 60px; margin-bottom: 10px;" />` : ''}
+          ${processedTemplate.headerLogo ? `<img src="${processedTemplate.headerLogo}" alt="Logo" style="max-height: 60px; margin-bottom: 10px;" />` : ''}
           <h1>RECEIPT</h1>
-          <p>${templateData.headerSubtext || 'Kasa Family Management'}</p>
+          <p>${processedTemplate.headerSubtext || 'Kasa Family Management'}</p>
         </div>
 
     <div class="receipt-info">
@@ -376,12 +411,12 @@ export async function generateReceiptHTML(data: ReceiptData, userId?: string, te
     ` : ''}
 
         <div class="footer">
-          <p>${templateData.footerText || 'Thank you for your payment!'}</p>
-          <p>${templateData.footerSubtext || 'Kasa Family Management'}</p>
+          <p>${processedTemplate.footerText || 'Thank you for your payment!'}</p>
+          <p>${processedTemplate.footerSubtext || 'Kasa Family Management'}</p>
           <p style="margin-top: 10px;">This is a computer-generated receipt. No signature required.</p>
         </div>
       </div>
-      ${templateData.customCSS ? `<style>${templateData.customCSS}</style>` : ''}
+      ${processedTemplate.customCSS ? `<style>${processedTemplate.customCSS}</style>` : ''}
     </body>
     </html>
   `
