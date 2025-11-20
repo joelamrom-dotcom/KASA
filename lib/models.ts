@@ -857,6 +857,50 @@ SavedViewSchema.index({ userId: 1, entityType: 1 })
 SavedViewSchema.index({ userId: 1, isDefault: 1 })
 SavedViewSchema.index({ isPublic: 1, entityType: 1 })
 
+// Support Ticket Schema
+const SupportTicketSchema = new Schema({
+  familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User' }, // User who created the ticket (family user)
+  subject: { type: String, required: true },
+  description: { type: String, required: true },
+  category: {
+    type: String,
+    enum: ['billing', 'payment', 'account', 'technical', 'general', 'other'],
+    default: 'general'
+  },
+  priority: {
+    type: String,
+    enum: ['low', 'medium', 'high', 'urgent'],
+    default: 'medium'
+  },
+  status: {
+    type: String,
+    enum: ['open', 'in_progress', 'resolved', 'closed'],
+    default: 'open'
+  },
+  assignedTo: { type: Schema.Types.ObjectId, ref: 'User' }, // Admin user assigned to handle ticket
+  messages: [{
+    from: { type: String, enum: ['family', 'admin'], required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    message: { type: String, required: true },
+    attachments: [{
+      filename: String,
+      url: String,
+      size: Number
+    }],
+    createdAt: { type: Date, default: Date.now }
+  }],
+  resolvedAt: Date,
+  resolvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  resolutionNotes: String,
+}, { timestamps: true })
+
+SupportTicketSchema.index({ familyId: 1, createdAt: -1 })
+SupportTicketSchema.index({ userId: 1, createdAt: -1 })
+SupportTicketSchema.index({ status: 1, priority: -1 })
+SupportTicketSchema.index({ assignedTo: 1, status: 1 })
+
 export const MessageTemplate = mongoose.models.MessageTemplate || mongoose.model('MessageTemplate', MessageTemplateSchema)
 export const MessageHistory = mongoose.models.MessageHistory || mongoose.model('MessageHistory', MessageHistorySchema)
 export const SavedView = mongoose.models.SavedView || mongoose.model('SavedView', SavedViewSchema)
+export const SupportTicket = mongoose.models.SupportTicket || mongoose.model('SupportTicket', SupportTicketSchema)

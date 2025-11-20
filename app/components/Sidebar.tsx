@@ -7,7 +7,7 @@ import PushNotificationManager from './PushNotificationManager'
 import GlobalSearch from './GlobalSearch'
 import NotificationCenter from './NotificationCenter'
 import DarkModeToggle from './DarkModeToggle'
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon, ArrowPathIcon, Squares2X2Icon } from '@heroicons/react/24/outline'
 import { useState, useRef, useEffect } from 'react'
 import { 
   HomeIcon,
@@ -32,11 +32,13 @@ import {
   TagIcon,
   LinkIcon,
   DocumentChartBarIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  Squares2X2Icon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
   UserGroupIcon as UserGroupIconSolid,
+  Squares2X2Icon as Squares2X2IconSolid,
   CalculatorIcon as CalculatorIconSolid,
   DocumentTextIcon as DocumentTextIconSolid,
   ChartBarIcon as ChartBarIconSolid,
@@ -56,7 +58,8 @@ import {
   TagIcon as TagIconSolid,
   LinkIcon as LinkIconSolid,
   DocumentChartBarIcon as DocumentChartBarIconSolid,
-  ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid
+  ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid,
+  Squares2X2Icon as Squares2X2IconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -87,7 +90,11 @@ export default function Sidebar() {
 
     const navItems = [
       { href: '/', label: 'Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
-      { href: '/families', label: 'Families', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
+      ...(user?.role === 'family' ? [
+        { href: '/portal', label: 'My Portal', icon: Squares2X2Icon, iconSolid: Squares2X2IconSolid }
+      ] : [
+        { href: '/families', label: 'Families', icon: UserGroupIcon, iconSolid: UserGroupIconSolid }
+      ]),
       { href: '/payments', label: 'Payments', icon: CurrencyDollarIcon, iconSolid: CurrencyDollarIconSolid },
       ...(user?.role === 'admin' || user?.role === 'super_admin' ? [
         { href: '/overdue-payments', label: 'Overdue Payments', icon: ExclamationTriangleIcon, iconSolid: ExclamationTriangleIconSolid }
