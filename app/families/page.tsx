@@ -20,6 +20,7 @@ import EmptyState from '@/app/components/EmptyState'
 import TableImportExport from '@/app/components/TableImportExport'
 import FilterBuilder, { FilterGroup } from '@/app/components/FilterBuilder'
 import SavedViews from '@/app/components/SavedViews'
+import QuickFilters from '@/app/components/QuickFilters'
 import { applyFilters } from '@/app/utils/filterUtils'
 import { useBulkSelection } from '@/app/hooks/useBulkSelection'
 import BulkActionBar from '@/app/components/BulkActionBar'
@@ -898,6 +899,14 @@ export default function FamiliesPage() {
                 </button>
               )}
             </div>
+            <QuickFilters
+              entityType="family"
+              onApplyFilter={(filters) => {
+                setFilterGroups(filters)
+                setCurrentPage(1)
+                showToast('Quick filter applied', 'success')
+              }}
+            />
             <FilterBuilder
               fields={familyFilterFields}
               filters={filterGroups}

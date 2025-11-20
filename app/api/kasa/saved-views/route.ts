@@ -51,8 +51,39 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, filters, entityType, isDefault, isPublic } = body
+    const { id, name, description, filters, entityType, isDefault, isPublic } = body
 
+    // If id is provided, update existing view
+    if (id) {
+      const view = await SavedView.findById(id)
+      if (!view) {
+        return NextResponse.json({ error: 'View not found' }, { status: 404 })
+      }
+
+      // Check ownership
+      if (view.userId.toString() !== user.userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+
+      // If setting as default, unset other defaults for this entity type
+      if (isDefault) {
+        await SavedView.updateMany(
+          { userId: user.userId, entityType: view.entityType, isDefault: true, _id: { $ne: id } },
+          { $set: { isDefault: false } }
+        )
+      }
+
+      if (name) view.name = name
+      if (description !== undefined) view.description = description
+      if (filters) view.filters = filters
+      if (isDefault !== undefined) view.isDefault = isDefault
+      if (isPublic !== undefined) view.isPublic = isPublic
+
+      await view.save()
+      return NextResponse.json(view)
+    }
+
+    // Create new view
     if (!name || !entityType) {
       return NextResponse.json(
         { error: 'Name and entityType are required' },

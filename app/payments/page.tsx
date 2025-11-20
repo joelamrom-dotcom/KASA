@@ -13,6 +13,7 @@ import Pagination from '@/app/components/Pagination'
 import TableImportExport from '@/app/components/TableImportExport'
 import FilterBuilder, { FilterGroup } from '@/app/components/FilterBuilder'
 import SavedViews from '@/app/components/SavedViews'
+import QuickFilters from '@/app/components/QuickFilters'
 import { applyFilters } from '@/app/utils/filterUtils'
 import { showToast } from '@/app/components/Toast'
 import { useBulkSelection } from '@/app/hooks/useBulkSelection'
@@ -417,6 +418,14 @@ export default function PaymentsPage() {
                 </button>
               )}
             </div>
+            <QuickFilters
+              entityType="payment"
+              onApplyFilter={(filters) => {
+                setFilterGroups(filters)
+                setCurrentPage(1)
+                showToast('Quick filter applied', 'success')
+              }}
+            />
             <FilterBuilder
               fields={paymentFilterFields}
               filters={filterGroups}

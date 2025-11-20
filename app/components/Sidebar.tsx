@@ -33,7 +33,8 @@ import {
   LinkIcon,
   DocumentChartBarIcon,
   ChatBubbleLeftRightIcon,
-  Squares2X2Icon
+  Squares2X2Icon,
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -58,7 +59,8 @@ import {
   TagIcon as TagIconSolid,
   LinkIcon as LinkIconSolid,
   DocumentChartBarIcon as DocumentChartBarIconSolid,
-  ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid
+  ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid,
+  CalendarDaysIcon as CalendarDaysIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -99,6 +101,7 @@ export default function Sidebar() {
         { href: '/overdue-payments', label: 'Overdue Payments', icon: ExclamationTriangleIcon, iconSolid: ExclamationTriangleIconSolid }
       ] : []),
       { href: '/tasks', label: 'Tasks', icon: ClipboardDocumentListIcon, iconSolid: ClipboardDocumentListIconSolid },
+      { href: '/calendar', label: 'Calendar', icon: CalendarDaysIcon, iconSolid: CalendarDaysIconSolid },
       { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
       { href: '/events', label: 'Events', icon: CalendarIcon, iconSolid: CalendarIconSolid },
       { href: '/reports', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
