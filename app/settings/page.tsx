@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon, XMarkIcon, ShieldCheckIcon, TagIcon, ArrowDownTrayIcon, ComputerDesktopIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon, XMarkIcon, ShieldCheckIcon, TagIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, ComputerDesktopIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
 import TwoFactorAuth from '@/app/components/TwoFactorAuth'
@@ -165,7 +165,7 @@ export default function SettingsPage() {
   const [groupsLoading, setGroupsLoading] = useState(false)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [editingGroup, setEditingGroup] = useState<any>(null)
-  const [groupFormData, setGroupFormData] = useState({ name: '', color: '#3b82f6', description: '', families: [] })
+  const [groupFormData, setGroupFormData] = useState<{ name: string; color: string; description: string; families: Array<{ _id: string; name: string }> }>({ name: '', color: '#3b82f6', description: '', families: [] })
   const [allFamilies, setAllFamilies] = useState<any[]>([])
 
   // Backup state
@@ -3342,6 +3342,583 @@ export default function SettingsPage() {
             ) : (
               <div className="text-center py-8 text-gray-500">Loading user data...</div>
             )}
+          </div>
+        )}
+
+        {/* Roles & Permissions Tab - Embedded from /roles page */}
+        {activeTab === 'roles' && (userRole === 'admin' || userRole === 'super_admin') && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Roles & Permissions</h2>
+              <p className="text-gray-600">Manage user roles and their permissions</p>
+            </div>
+            {rolesLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading...</div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>Roles & Permissions management interface</p>
+                <Link href="/roles" className="text-blue-600 hover:underline mt-2 inline-block">
+                  Go to full Roles & Permissions page →
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Audit Logs Tab - Embedded from /audit-logs page */}
+        {activeTab === 'auditLogs' && userRole === 'super_admin' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Audit Logs</h2>
+              <p className="text-gray-600">View system activity and changes</p>
+            </div>
+            {auditLogsLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading...</div>
+            ) : auditLogs.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No audit logs found</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {auditLogs.slice(0, 20).map((log: any) => (
+                      <tr key={log._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {log.userId?.firstName} {log.userId?.lastName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 capitalize">
+                          {log.entityType}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="mt-4 text-center">
+              <Link href="/audit-logs" className="text-blue-600 hover:underline">
+                View all audit logs →
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Sessions Tab - Embedded from /sessions page */}
+        {activeTab === 'sessions' && (userRole === 'admin' || userRole === 'super_admin') && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Active Sessions</h2>
+              <p className="text-gray-600">Manage active user sessions</p>
+            </div>
+            {sessionsLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading...</div>
+            ) : sessions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No active sessions</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sessions.filter((s: any) => s.isActive && !s.revokedAt).map((session: any) => (
+                  <div key={session._id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <ComputerDesktopIcon className="h-5 w-5 text-blue-600" />
+                        <span className="font-semibold">{session.ipAddress || 'Unknown'}</span>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (confirm('Revoke this session?')) {
+                            const token = localStorage.getItem('token')
+                            await fetch(`/api/sessions/${session._id}`, {
+                              method: 'DELETE',
+                              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                            })
+                            fetchSessions()
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <div>Last Activity: {new Date(session.lastActivity).toLocaleString()}</div>
+                      <div>Expires: {new Date(session.expiresAt).toLocaleString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 text-center">
+              <Link href="/sessions" className="text-blue-600 hover:underline">
+                View all sessions →
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Family Tags Tab - Embedded from /family-tags page */}
+        {activeTab === 'familyTags' && (userRole === 'admin' || userRole === 'super_admin') && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Family Tags</h2>
+                <p className="text-gray-600">Create and manage tags for organizing families</p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingTag(null)
+                  setTagFormData({ name: '', color: '#3b82f6', description: '' })
+                  setShowTagModal(true)
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <PlusIcon className="h-5 w-5" />
+                New Tag
+              </button>
+            </div>
+            {tagsLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading...</div>
+            ) : familyTags.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <TagIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p>No tags found. Create your first tag to get started.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {familyTags.map((tag: any) => (
+                  <div
+                    key={tag._id}
+                    className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+                    style={{ borderLeftColor: tag.color, borderLeftWidth: '4px' }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: tag.color }} />
+                        <h3 className="font-semibold text-gray-800">{tag.name}</h3>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingTag(tag)
+                            setTagFormData(tag)
+                            setShowTagModal(true)
+                          }}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm('Delete this tag?')) {
+                              const token = localStorage.getItem('token')
+                              await fetch(`/api/kasa/family-tags?id=${tag._id}`, {
+                                method: 'DELETE',
+                                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                              })
+                              fetchFamilyTags()
+                            }
+                          }}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {tag.description && <p className="text-sm text-gray-600 mt-2">{tag.description}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {showTagModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+                  <div className="p-6 border-b flex justify-between items-center">
+                    <h2 className="text-2xl font-bold">{editingTag ? 'Edit Tag' : 'Create New Tag'}</h2>
+                    <button onClick={() => setShowTagModal(false)} className="p-2 hover:bg-gray-100 rounded">
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault()
+                    const token = localStorage.getItem('token')
+                    const res = await fetch('/api/kasa/family-tags', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                      },
+                      body: JSON.stringify({ ...tagFormData, _id: editingTag?._id })
+                    })
+                    if (res.ok) {
+                      setShowTagModal(false)
+                      setEditingTag(null)
+                      setTagFormData({ name: '', color: '#3b82f6', description: '' })
+                      fetchFamilyTags()
+                    }
+                  }} className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tag Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={tagFormData.name}
+                        onChange={(e) => setTagFormData({ ...tagFormData, name: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                      <input
+                        type="color"
+                        value={tagFormData.color}
+                        onChange={(e) => setTagFormData({ ...tagFormData, color: e.target.value })}
+                        className="w-full h-10 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <textarea
+                        value={tagFormData.description}
+                        onChange={(e) => setTagFormData({ ...tagFormData, description: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                      <button type="button" onClick={() => setShowTagModal(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                        Cancel
+                      </button>
+                      <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        {editingTag ? 'Update Tag' : 'Create Tag'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Family Groups Tab - Embedded from /family-groups page */}
+        {activeTab === 'familyGroups' && (userRole === 'admin' || userRole === 'super_admin') && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Family Groups</h2>
+                <p className="text-gray-600">Organize families into groups</p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingGroup(null)
+                  setGroupFormData({ name: '', color: '#3b82f6', description: '', families: [] })
+                  setShowGroupModal(true)
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <PlusIcon className="h-5 w-5" />
+                New Group
+              </button>
+            </div>
+            {groupsLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading...</div>
+            ) : familyGroups.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <UserGroupIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p>No groups found. Create your first group to get started.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {familyGroups.map((group: any) => (
+                  <div
+                    key={group._id}
+                    className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+                    style={{ borderLeftColor: group.color, borderLeftWidth: '4px' }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: group.color }} />
+                        <h3 className="font-semibold text-gray-800">{group.name}</h3>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingGroup(group)
+                            setGroupFormData(group)
+                            setShowGroupModal(true)
+                          }}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm('Delete this group?')) {
+                              const token = localStorage.getItem('token')
+                              await fetch(`/api/kasa/family-groups?id=${group._id}`, {
+                                method: 'DELETE',
+                                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                              })
+                              fetchFamilyGroups()
+                            }
+                          }}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {group.description && <p className="text-sm text-gray-600 mt-2 mb-2">{group.description}</p>}
+                    <p className="text-xs text-gray-500">{group.families?.length || 0} families</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showGroupModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6 border-b flex justify-between items-center">
+                    <h2 className="text-2xl font-bold">{editingGroup ? 'Edit Group' : 'Create New Group'}</h2>
+                    <button onClick={() => setShowGroupModal(false)} className="p-2 hover:bg-gray-100 rounded">
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault()
+                    const token = localStorage.getItem('token')
+                    const res = await fetch('/api/kasa/family-groups', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                      },
+                      body: JSON.stringify({
+                        ...groupFormData,
+                        _id: editingGroup?._id,
+                        families: groupFormData.families?.map((f: any) => f._id) || []
+                      })
+                    })
+                    if (res.ok) {
+                      setShowGroupModal(false)
+                      setEditingGroup(null)
+                      setGroupFormData({ name: '', color: '#3b82f6', description: '', families: [] })
+                      fetchFamilyGroups()
+                    }
+                  }} className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Group Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={groupFormData.name}
+                        onChange={(e) => setGroupFormData({ ...groupFormData, name: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                      <input
+                        type="color"
+                        value={groupFormData.color}
+                        onChange={(e) => setGroupFormData({ ...groupFormData, color: e.target.value })}
+                        className="w-full h-10 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <textarea
+                        value={groupFormData.description}
+                        onChange={(e) => setGroupFormData({ ...groupFormData, description: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2"
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Families</label>
+                      <div className="border rounded-lg p-4 max-h-60 overflow-y-auto">
+                        {allFamilies.map((family: any) => {
+                          const isSelected = groupFormData.families?.some((f: any) => f._id === family._id)
+                          return (
+                            <label key={family._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  if (isSelected) {
+                                    setGroupFormData({
+                                      ...groupFormData,
+                                      families: groupFormData.families?.filter((f: any) => f._id !== family._id) || []
+                                    })
+                                  } else {
+                                    setGroupFormData({
+                                      ...groupFormData,
+                                      families: [...(groupFormData.families || []), { _id: family._id, name: family.name }]
+                                    })
+                                  }
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm">{family.name}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                      <button type="button" onClick={() => setShowGroupModal(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                        Cancel
+                      </button>
+                      <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        {editingGroup ? 'Update Group' : 'Create Group'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Backup & Restore Tab - Embedded from /backup page */}
+        {activeTab === 'backup' && (userRole === 'admin' || userRole === 'super_admin') && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Backup & Restore</h2>
+              <p className="text-gray-600">Create backups and restore data</p>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Create Backup</h3>
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Backup Type</label>
+                    <select
+                      value={backupType}
+                      onChange={(e) => setBackupType(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2"
+                    >
+                      <option value="full">Full Backup</option>
+                      <option value="families">Families Only</option>
+                      <option value="payments">Payments Only</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setCreatingBackup(true)
+                      try {
+                        const token = localStorage.getItem('token')
+                        const res = await fetch('/api/kasa/backup', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                          },
+                          body: JSON.stringify({ backupType, includeData: true })
+                        })
+                        if (res.ok) {
+                          const data = await res.json()
+                          const blob = new Blob([data.data], { type: 'application/json' })
+                          const url = window.URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = data.filename
+                          a.click()
+                          window.URL.revokeObjectURL(url)
+                          fetchBackups()
+                        }
+                      } finally {
+                        setCreatingBackup(false)
+                      }
+                    }}
+                    disabled={creatingBackup}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <ArrowDownTrayIcon className="h-5 w-5" />
+                    {creatingBackup ? 'Creating...' : 'Create Backup'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Import Data</h3>
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select JSON File</label>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!importFile) return
+                      setImporting(true)
+                      try {
+                        const text = await importFile.text()
+                        const data = JSON.parse(text)
+                        const token = localStorage.getItem('token')
+                        await fetch('/api/kasa/backup/import', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                          },
+                          body: JSON.stringify({ data, validateOnly: false })
+                        })
+                        setImportFile(null)
+                      } finally {
+                        setImporting(false)
+                      }
+                    }}
+                    disabled={!importFile || importing}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    {importing ? 'Importing...' : 'Import Data'}
+                  </button>
+                </div>
+              </div>
+              {backupLoading ? (
+                <div className="text-center py-8 text-gray-500">Loading backup history...</div>
+              ) : backups.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Backup History</h3>
+                  <div className="space-y-2">
+                    {backups.slice(0, 10).map((backup: any) => (
+                      <div key={backup._id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <p className="font-semibold">{backup.filename}</p>
+                          <p className="text-sm text-gray-600">
+                            {backup.backupType} • {new Date(backup.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          backup.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          backup.status === 'failed' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {backup.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
