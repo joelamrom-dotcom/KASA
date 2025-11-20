@@ -138,6 +138,8 @@ export default function SettingsPage() {
   const [roles, setRoles] = useState<any[]>([])
   const [permissions, setPermissions] = useState<any[]>([])
   const [rolesLoading, setRolesLoading] = useState(false)
+  const [permissionsLoading, setPermissionsLoading] = useState(false)
+  const [loadingRolePermissions, setLoadingRolePermissions] = useState(false)
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const [selectedRolePermissions, setSelectedRolePermissions] = useState<Set<string>>(new Set())
   const [savingPermissions, setSavingPermissions] = useState(false)
@@ -396,6 +398,7 @@ export default function SettingsPage() {
 
   const fetchPermissions = async () => {
     try {
+      setPermissionsLoading(true)
       const token = localStorage.getItem('token')
       const res = await fetch('/api/permissions', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -403,14 +406,23 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json()
         setPermissions(data.permissions || data || [])
+      } else {
+        const error = await res.json()
+        console.error('Error fetching permissions:', error)
+        showToast(error.error || 'Failed to load permissions', 'error')
       }
     } catch (error) {
       console.error('Error fetching permissions:', error)
+      showToast('Error loading permissions', 'error')
+    } finally {
+      setPermissionsLoading(false)
     }
   }
 
   const loadRolePermissions = async (roleId: string) => {
     try {
+      setLoadingRolePermissions(true)
+      
       // Ensure permissions are loaded first
       if (permissions.length === 0) {
         await fetchPermissions()
@@ -451,10 +463,16 @@ export default function SettingsPage() {
       } else {
         const error = await res.json()
         showToast(error.error || 'Failed to load role permissions', 'error')
+        setSelectedRoleId(null)
+        setSelectedRolePermissions(new Set())
       }
     } catch (error) {
       console.error('Error loading role permissions:', error)
       showToast('Error loading role permissions', 'error')
+      setSelectedRoleId(null)
+      setSelectedRolePermissions(new Set())
+    } finally {
+      setLoadingRolePermissions(false)
     }
   }
 
@@ -3570,8 +3588,35 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-            {rolesLoading || permissions.length === 0 ? (
+            {permissionsLoading || loadingRolePermissions ? (
               <div className="text-center py-8 text-gray-500">Loading permissions...</div>
+            ) : permissions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No permissions found. Please initialize permissions first.</p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('token')
+                      const res = await fetch('/api/permissions/init', {
+                        method: 'POST',
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                      })
+                      if (res.ok) {
+                        showToast('Permissions initialized', 'success')
+                        await fetchPermissions()
+                      } else {
+                        const error = await res.json()
+                        showToast(error.error || 'Failed to initialize permissions', 'error')
+                      }
+                    } catch (error) {
+                      showToast('Error initializing permissions', 'error')
+                    }
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Initialize Permissions
+                </button>
+              </div>
             ) : !selectedRoleId ? (
               <div className="text-center py-8 text-gray-500">
                 <ShieldCheckIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
