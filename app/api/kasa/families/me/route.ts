@@ -44,14 +44,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Get recent payments (last 10)
-    const recentPayments = await Payment.find({ familyId: family._id })
+    const familyId = typeof family._id === 'string' ? family._id : String(family._id)
+    const recentPayments = await Payment.find({ familyId })
       .sort({ paymentDate: -1 })
       .limit(10)
       .lean()
 
     // Get upcoming recurring payments
     const upcomingRecurringPayments = await RecurringPayment.find({
-      familyId: family._id,
+      familyId,
       isActive: true,
       nextPaymentDate: { $gte: new Date() }
     })
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
       .lean()
 
     // Get recent statements (last 5)
-    const recentStatements = await Statement.find({ familyId: family._id })
+    const recentStatements = await Statement.find({ familyId })
       .sort({ date: -1 })
       .limit(5)
       .lean()
@@ -68,14 +69,14 @@ export async function GET(request: NextRequest) {
     // Calculate total paid this year
     const currentYear = new Date().getFullYear()
     const paymentsThisYear = await Payment.aggregate([
-      { $match: { familyId: family._id, year: currentYear } },
+      { $match: { familyId, year: currentYear } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ])
     const totalPaidThisYear = paymentsThisYear.length > 0 ? paymentsThisYear[0].total : 0
 
     return NextResponse.json({
       family: {
-        _id: family._id,
+        _id: familyId,
         name: family.name,
         hebrewName: family.hebrewName,
         email: family.email,
