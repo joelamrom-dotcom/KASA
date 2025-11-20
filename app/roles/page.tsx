@@ -541,7 +541,7 @@ export default function RolesPage() {
         {/* Roles Grid */}
         {filteredRoles.length === 0 ? (
           <EmptyState
-            icon={ShieldCheckIcon}
+            icon={<ShieldCheckIcon className="h-16 w-16 text-gray-400 dark:text-gray-600" />}
             title="No roles found"
             description={searchQuery ? "Try adjusting your search or filters" : "Create your first role to get started"}
             action={!searchQuery ? {
