@@ -86,6 +86,7 @@ export async function GET(
     
     const targetUser = await User.findById(params.id)
       .select('-password -resetPasswordToken -resetPasswordExpires -emailVerificationToken -emailVerificationExpires')
+      .populate('customRoleId', 'name displayName description')
       .lean()
     
     if (!targetUser) {
@@ -192,7 +193,7 @@ export async function PUT(
     console.log('PUT /api/users/[id] - ✅ Access granted, proceeding with update')
     
     const body = await request.json()
-    const { firstName, lastName, email, role, isActive } = body
+    const { firstName, lastName, email, role, isActive, customRoleId } = body
     
     // Prevent changing your own role (security measure)
     const targetUser = await User.findById(params.id)
@@ -232,6 +233,23 @@ export async function PUT(
       updateData.role = role
     }
     if (isActive !== undefined) updateData.isActive = isActive
+    if (customRoleId !== undefined) {
+      // If customRoleId is null or empty string, remove custom role
+      if (customRoleId === null || customRoleId === '') {
+        updateData.customRoleId = null
+      } else {
+        // Validate that the role exists
+        const { Role } = await import('@/lib/models')
+        const customRole = await Role.findById(customRoleId)
+        if (!customRole) {
+          return NextResponse.json(
+            { error: 'Custom role not found' },
+            { status: 400 }
+          )
+        }
+        updateData.customRoleId = customRoleId
+      }
+    }
     
     const oldUser = { ...targetUser.toObject() }
     
@@ -239,7 +257,9 @@ export async function PUT(
       params.id,
       { $set: updateData },
       { new: true, runValidators: true }
-    ).select('-password -resetPasswordToken -resetPasswordExpires -emailVerificationToken -emailVerificationExpires')
+    )
+    .select('-password -resetPasswordToken -resetPasswordExpires -emailVerificationToken -emailVerificationExpires')
+    .populate('customRoleId', 'name displayName description')
     
     // Create audit log entry
     if (Object.keys(updateData).length > 0) {

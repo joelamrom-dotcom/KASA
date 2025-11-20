@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
     // Get all users, excluding passwords
     const users = await User.find({})
       .select('-password -resetPasswordToken -resetPasswordExpires -emailVerificationToken -emailVerificationExpires')
+      .populate('customRoleId', 'name displayName description')
       .sort({ createdAt: -1 })
       .lean()
     

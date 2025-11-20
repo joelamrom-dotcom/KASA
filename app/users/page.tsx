@@ -22,13 +22,19 @@ interface User {
   firstName: string
   lastName: string
   email: string
-  role: 'super_admin' | 'admin' | 'user' | 'viewer'
+  role: 'super_admin' | 'admin' | 'user' | 'viewer' | 'family'
   isActive: boolean
   emailVerified: boolean
   createdAt: string
   updatedAt: string
   lastLogin?: string
   profilePicture?: string
+  customRoleId?: {
+    _id: string
+    name: string
+    displayName: string
+    description?: string
+  } | string | null
 }
 
 const ROLES = {
@@ -56,10 +62,13 @@ export default function UsersPage() {
     lastName: '',
     email: '',
     role: 'admin' as User['role'],
-    isActive: true
+    isActive: true,
+    customRoleId: '' as string | null
   })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [roles, setRoles] = useState<any[]>([])
+  const [rolesLoading, setRolesLoading] = useState(false)
 
   useEffect(() => {
     const checkAndRefresh = async () => {
@@ -77,10 +86,29 @@ export default function UsersPage() {
       // So we can proceed directly to fetch users
       setCurrentUser(user)
       fetchUsers()
+      fetchRoles()
     }
     
     checkAndRefresh()
   }, [])
+
+  const fetchRoles = async () => {
+    try {
+      setRolesLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/roles', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setRoles(data.roles || data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error)
+    } finally {
+      setRolesLoading(false)
+    }
+  }
 
   const fetchUsers = async () => {
     try {
@@ -128,12 +156,18 @@ export default function UsersPage() {
 
   const handleEdit = (user: User) => {
     setEditingUserId(user._id)
+    const customRoleId = typeof user.customRoleId === 'object' && user.customRoleId?._id 
+      ? user.customRoleId._id 
+      : typeof user.customRoleId === 'string' 
+        ? user.customRoleId 
+        : null
     setEditForm({
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       role: user.role,
-      isActive: user.isActive
+      isActive: user.isActive,
+      customRoleId: customRoleId || null
     })
   }
 
@@ -144,7 +178,8 @@ export default function UsersPage() {
       lastName: '',
       email: '',
       role: 'admin',
-      isActive: true
+      isActive: true,
+      customRoleId: null
     })
   }
 
@@ -411,21 +446,53 @@ export default function UsersPage() {
                       <div className="text-sm text-gray-900">{user.email}</div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4">
                       {editingUserId === user._id ? (
-                        <select
-                          value={editForm.role}
-                          onChange={(e) => setEditForm({ ...editForm, role: e.target.value as User['role'] })}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          {Object.entries(ROLES).map(([key, label]) => (
-                            <option key={key} value={key}>{label}</option>
-                          ))}
-                        </select>
+                        <div className="space-y-2">
+                          <select
+                            value={editForm.role}
+                            onChange={(e) => setEditForm({ ...editForm, role: e.target.value as User['role'] })}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            {Object.entries(ROLES).map(([key, label]) => (
+                              <option key={key} value={key}>{label}</option>
+                            ))}
+                          </select>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Custom Role (Optional)</label>
+                            <select
+                              value={editForm.customRoleId || ''}
+                              onChange={(e) => setEditForm({ ...editForm, customRoleId: e.target.value || null })}
+                              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">-- Use Base Role --</option>
+                              {roles.map((role: any) => (
+                                <option key={role._id} value={role._id}>
+                                  {role.displayName || role.name} {role.isSystem ? '(System)' : ''}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Custom role overrides base role permissions
+                            </p>
+                          </div>
+                        </div>
                       ) : (
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${ROLE_COLORS[user.role] || ROLE_COLORS.user}`}>
-                          {ROLES[user.role] || user.role}
-                        </span>
+                        <div className="space-y-1">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${ROLE_COLORS[user.role] || ROLE_COLORS.user}`}>
+                            {ROLES[user.role] || user.role}
+                          </span>
+                          {user.customRoleId && (
+                            <div>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                                {typeof user.customRoleId === 'object' && user.customRoleId?.displayName
+                                  ? user.customRoleId.displayName
+                                  : 'Custom Role'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
