@@ -411,22 +411,50 @@ export default function SettingsPage() {
 
   const loadRolePermissions = async (roleId: string) => {
     try {
+      // Ensure permissions are loaded first
+      if (permissions.length === 0) {
+        await fetchPermissions()
+      }
+
       const token = localStorage.getItem('token')
       const res = await fetch(`/api/roles/${roleId}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       })
       if (res.ok) {
-        const role = await res.json()
-        const permissionIds = role.permissions?.map((p: any) => typeof p === 'object' ? p._id || p.name : p) || []
+        const data = await res.json()
+        const role = data.role || data
+        
+        // Handle permissions - they come as populated objects with _id
+        const permissionIds = role.permissions?.map((p: any) => {
+          if (typeof p === 'object' && p._id) {
+            return p._id.toString()
+          }
+          return typeof p === 'string' ? p : p.toString()
+        }) || []
+        
+        // Match permissions by _id (as string) or by name
         const permissionNames = permissions
-          .filter(p => permissionIds.includes(p._id) || permissionIds.includes(p.name))
+          .filter(p => {
+            const permId = p._id?.toString() || p._id
+            const permName = p.name
+            return permissionIds.some((id: string) => {
+              const idStr = id.toString()
+              return idStr === permId || idStr === permName || 
+                     (typeof p === 'object' && p._id && idStr === p._id.toString())
+            })
+          })
           .map(p => p.name)
+        
         setSelectedRolePermissions(new Set(permissionNames))
         setSelectedRoleId(roleId)
         setEditingRole(role)
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to load role permissions', 'error')
       }
     } catch (error) {
       console.error('Error loading role permissions:', error)
+      showToast('Error loading role permissions', 'error')
     }
   }
 
@@ -3542,12 +3570,38 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-            {rolesLoading ? (
-              <div className="text-center py-8 text-gray-500">Loading...</div>
+            {rolesLoading || permissions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">Loading permissions...</div>
             ) : !selectedRoleId ? (
               <div className="text-center py-8 text-gray-500">
                 <ShieldCheckIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                 <p>Please select a role to manage permissions</p>
+              </div>
+            ) : Object.keys(permissionsByModule).length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No permissions found. Please initialize permissions first.</p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('token')
+                      const res = await fetch('/api/permissions/init', {
+                        method: 'POST',
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                      })
+                      if (res.ok) {
+                        showToast('Permissions initialized', 'success')
+                        fetchPermissions()
+                      } else {
+                        showToast('Failed to initialize permissions', 'error')
+                      }
+                    } catch (error) {
+                      showToast('Error initializing permissions', 'error')
+                    }
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Initialize Permissions
+                </button>
               </div>
             ) : (
               <div className="overflow-x-auto border border-gray-300 rounded-lg">
