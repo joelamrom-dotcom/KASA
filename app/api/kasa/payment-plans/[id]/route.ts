@@ -144,7 +144,8 @@ export async function DELETE(
     // Build query - each user sees only their own settings
     const query: any = { _id: params.id, userId: user.userId }
     
-    const plan = await PaymentPlan.findOneAndDelete(query)
+    // Get plan data before deleting for audit log
+    const plan = await PaymentPlan.findOne(query).lean()
     
     if (!plan) {
       return NextResponse.json(
@@ -153,9 +154,13 @@ export async function DELETE(
       )
     }
 
+    // Delete the plan
+    await PaymentPlan.findOneAndDelete(query)
+
     // Create audit log entry
     try {
       const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
+      const planDoc = plan as { name: string; yearlyPrice?: number }
       await createAuditLog({
         userId: user.userId,
         userEmail: user.email,
@@ -163,13 +168,13 @@ export async function DELETE(
         action: 'payment_plan_delete',
         entityType: 'payment_plan',
         entityId: params.id,
-        entityName: plan.name,
-        description: `Deleted payment plan "${plan.name}"`,
+        entityName: planDoc.name,
+        description: `Deleted payment plan "${planDoc.name}"`,
         ipAddress: getIpAddress(request),
         userAgent: getUserAgent(request),
         metadata: {
-          planName: plan.name,
-          yearlyPrice: plan.yearlyPrice,
+          planName: planDoc.name,
+          yearlyPrice: planDoc.yearlyPrice,
         }
       })
     } catch (auditError: any) {
