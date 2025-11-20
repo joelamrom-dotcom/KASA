@@ -76,7 +76,7 @@ export default function PushNotificationManager() {
         },
         body: JSON.stringify({
           subscription: subscription.toJSON(),
-          userId: user?.userId
+          userId: user?.id
         })
       })
 
@@ -108,7 +108,7 @@ export default function PushNotificationManager() {
             ...(user ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
           },
           body: JSON.stringify({
-            userId: user?.userId
+            userId: user?.id
           })
         })
 
