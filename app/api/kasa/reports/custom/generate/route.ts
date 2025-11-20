@@ -131,13 +131,13 @@ export async function POST(request: NextRequest) {
           return typeof val === 'number' ? val : parseFloat(val) || 0
         })
 
-        switch (field.aggregate) {
-          case 'sum':
-            summary[field.label] = values.reduce((a, b) => a + b, 0)
-            break
-          case 'avg':
-            summary[field.label] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0
-            break
+          switch (field.aggregate) {
+            case 'sum':
+              summary[field.label] = values.reduce((a: number, b: number) => a + b, 0)
+              break
+            case 'avg':
+              summary[field.label] = values.length > 0 ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0
+              break
           case 'count':
             summary[field.label] = values.length
             break
@@ -214,10 +214,10 @@ export async function POST(request: NextRequest) {
 
           switch (field.aggregate) {
             case 'sum':
-              compareSummary[field.label] = values.reduce((a, b) => a + b, 0)
+              compareSummary[field.label] = values.reduce((a: number, b: number) => a + b, 0)
               break
             case 'avg':
-              compareSummary[field.label] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0
+              compareSummary[field.label] = values.length > 0 ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0
               break
             case 'count':
               compareSummary[field.label] = values.length
