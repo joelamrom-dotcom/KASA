@@ -573,6 +573,59 @@ const ScheduledReportSchema = new Schema({
 ScheduledReportSchema.index({ userId: 1, isActive: 1 })
 ScheduledReportSchema.index({ nextRun: 1, isActive: 1 })
 
+// Permission Schema (Granular permissions)
+const PermissionSchema = new Schema({
+  name: { type: String, required: true, unique: true }, // e.g., 'families.view', 'payments.create'
+  displayName: { type: String, required: true }, // e.g., 'View Families', 'Create Payments'
+  module: { 
+    type: String, 
+    required: true,
+    enum: ['families', 'members', 'payments', 'lifecycle_events', 'statements', 'reports', 'users', 'roles', 'settings', 'documents', 'tasks', 'calendar', 'communication', 'analytics']
+  },
+  action: { 
+    type: String, 
+    required: true,
+    enum: ['view', 'create', 'update', 'delete', 'export', 'import', 'manage']
+  },
+  description: String,
+}, { timestamps: true })
+
+PermissionSchema.index({ module: 1, action: 1 })
+
+// Role Schema (Custom roles with permissions)
+const RoleSchema = new Schema({
+  name: { type: String, required: true, unique: true }, // e.g., 'accountant', 'manager'
+  displayName: { type: String, required: true }, // e.g., 'Accountant', 'Manager'
+  description: String,
+  isSystem: { type: Boolean, default: false }, // System roles cannot be deleted
+  isDefault: { type: Boolean, default: false }, // Default role for new users
+  permissions: [{ type: Schema.Types.ObjectId, ref: 'Permission' }], // Array of permission IDs
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+}, { timestamps: true })
+
+RoleSchema.index({ name: 1 })
+RoleSchema.index({ isSystem: 1 })
+
+// Session Schema (Session management)
+const SessionSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  token: { type: String, required: true, unique: true }, // JWT token or session token
+  ipAddress: { type: String },
+  userAgent: { type: String },
+  deviceInfo: { type: Schema.Types.Mixed }, // Device type, OS, browser
+  location: { type: Schema.Types.Mixed }, // Geographic location if available
+  isActive: { type: Boolean, default: true },
+  lastActivity: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true },
+  revokedAt: Date, // When session was manually revoked
+  revokedBy: { type: Schema.Types.ObjectId, ref: 'User' }, // Who revoked the session
+}, { timestamps: true })
+
+SessionSchema.index({ userId: 1, isActive: 1 })
+SessionSchema.index({ token: 1 })
+SessionSchema.index({ expiresAt: 1 })
+
 // User Schema (for authentication)
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -584,6 +637,7 @@ const UserSchema = new Schema({
     enum: ['super_admin', 'admin', 'user', 'viewer', 'family'], 
     default: 'admin' 
   },
+  customRoleId: { type: Schema.Types.ObjectId, ref: 'Role' }, // Custom role (overrides default role permissions)
   familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: false }, // Link to family for family users
   phoneNumber: { type: String, required: false }, // Phone number for phone-based authentication
   isActive: { type: Boolean, default: true },
@@ -593,12 +647,23 @@ const UserSchema = new Schema({
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   lastLogin: Date,
+  // Two-Factor Authentication (2FA)
+  twoFactorEnabled: { type: Boolean, default: false },
+  twoFactorSecret: String, // TOTP secret key
+  twoFactorBackupCodes: [String], // Backup codes for 2FA
+  twoFactorVerified: { type: Boolean, default: false }, // Whether 2FA setup is verified
   // Google OAuth fields
   googleId: { type: String, unique: true, sparse: true }, // Google user ID (sparse index allows multiple nulls)
   profilePicture: String, // Profile picture URL from Google
   // Push Notifications
   pushSubscription: Schema.Types.Mixed, // Push subscription object
   pushEnabled: { type: Boolean, default: false }, // Whether push notifications are enabled
+  // Team management
+  invitedBy: { type: Schema.Types.ObjectId, ref: 'User' }, // Who invited this user
+  invitationToken: String, // Token for accepting invitation
+  invitationExpires: Date,
+  // IP Whitelist
+  allowedIPs: [String], // Array of allowed IP addresses (empty = all IPs allowed)
 }, { timestamps: true })
 
 // Add index for familyId for better query performance
@@ -775,6 +840,9 @@ export const FamilyRelationship = mongoose.models.FamilyRelationship || mongoose
 export const PaymentLink = mongoose.models.PaymentLink || mongoose.model('PaymentLink', PaymentLinkSchema)
 export const PaymentAnalytics = mongoose.models.PaymentAnalytics || mongoose.model('PaymentAnalytics', PaymentAnalyticsSchema)
 export const Backup = mongoose.models.Backup || mongoose.model('Backup', BackupSchema)
+export const Permission = mongoose.models.Permission || mongoose.model('Permission', PermissionSchema)
+export const Role = mongoose.models.Role || mongoose.model('Role', RoleSchema)
+export const Session = mongoose.models.Session || mongoose.model('Session', SessionSchema)
 export const User = mongoose.models.User || mongoose.model('User', UserSchema)
 export const FamilyNote = mongoose.models.FamilyNote || mongoose.model('FamilyNote', FamilyNoteSchema)
 export const RecycleBin = mongoose.models.RecycleBin || mongoose.model('RecycleBin', RecycleBinSchema)

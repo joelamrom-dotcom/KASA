@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { PaymentLink, Family } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -16,13 +18,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check permission - users with payments.view see all payment links, others see only their own
+    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
+    
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
 
     const { searchParams } = new URL(request.url)
     const familyId = searchParams.get('familyId')
 
-    const query: any = { userId: userObjectId }
+    const query: any = canViewAll ? {} : { userId: userObjectId }
     if (familyId) {
       query.familyId = new mongoose.Types.ObjectId(familyId)
     }
@@ -58,6 +63,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.PAYMENTS_CREATE))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const {
       familyId,
@@ -91,6 +101,24 @@ export async function POST(request: NextRequest) {
     })
 
     const linkUrl = `${request.nextUrl.origin}/pay/${linkId}`
+    
+    // Get family for audit log
+    const family = await Family.findById(familyId)
+
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'payment_link_create', 'payment_link', {
+      entityId: paymentLink._id.toString(),
+      entityName: `Payment link for ${family?.name || familyId}`,
+      description: `Created payment link for ${amount ? `$${amount}` : 'payment plan'}${family ? ` for family "${family.name}"` : ''}`,
+      metadata: {
+        linkId,
+        amount,
+        familyId,
+        familyName: family?.name,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+        maxUses,
+      }
+    })
 
     return NextResponse.json({
       ...paymentLink.toObject(),
@@ -123,18 +151,47 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Payment link ID required' }, { status: 400 })
     }
 
+    // Check permission or ownership
+    const canDeleteAll = await hasPermission(user, PERMISSIONS.PAYMENTS_DELETE)
+    
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
 
-    const link = await PaymentLink.findOneAndUpdate(
-      { _id: id, userId: userObjectId },
+    // Build query based on permissions
+    const query: any = canDeleteAll ? { _id: id } : { _id: id, userId: userObjectId }
+    
+    // Get link before deleting for audit log
+    const link = await PaymentLink.findOne(query).populate('familyId', 'name')
+    
+    if (!link) {
+      return NextResponse.json({ error: 'Payment link not found' }, { status: 404 })
+    }
+    
+    // Check ownership if user doesn't have delete permission
+    if (!canDeleteAll && link.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have permission to delete this payment link' },
+        { status: 403 }
+      )
+    }
+
+    await PaymentLink.findOneAndUpdate(
+      query,
       { isActive: false },
       { new: true }
     )
 
-    if (!link) {
-      return NextResponse.json({ error: 'Payment link not found' }, { status: 404 })
-    }
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'payment_link_delete', 'payment_link', {
+      entityId: id,
+      entityName: `Payment link ${link.linkId}`,
+      description: `Deleted payment link ${link.linkId}${link.familyId ? ` for family "${(link.familyId as any).name}"` : ''}`,
+      metadata: {
+        linkId: link.linkId,
+        familyId: link.familyId?.toString(),
+        familyName: (link.familyId as any)?.name,
+      }
+    })
 
     return NextResponse.json({ message: 'Payment link deleted successfully' })
   } catch (error: any) {

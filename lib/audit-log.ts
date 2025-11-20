@@ -1,5 +1,12 @@
+/**
+ * Audit Logging System
+ * Tracks all user actions and changes in the system
+ */
+
 import connectDB from './database'
 import { AuditLog } from './models'
+import { AuthenticatedRequest } from './middleware'
+import { NextRequest } from 'next/server'
 
 export interface AuditLogData {
   userId: string
@@ -9,11 +16,11 @@ export interface AuditLogData {
   entityType: string
   entityId?: string
   entityName?: string
-  changes?: any
+  changes?: Record<string, { old?: any; new?: any }>
   description?: string
   ipAddress?: string
   userAgent?: string
-  metadata?: any
+  metadata?: Record<string, any>
 }
 
 /**
@@ -22,6 +29,7 @@ export interface AuditLogData {
 export async function createAuditLog(data: AuditLogData): Promise<void> {
   try {
     await connectDB()
+    
     await AuditLog.create({
       userId: data.userId,
       userEmail: data.userEmail,
@@ -36,14 +44,65 @@ export async function createAuditLog(data: AuditLogData): Promise<void> {
       userAgent: data.userAgent,
       metadata: data.metadata,
     })
-  } catch (error: any) {
-    // Don't fail the main operation if audit logging fails
+  } catch (error) {
     console.error('Error creating audit log:', error)
+    // Don't throw - audit logging should not break the main flow
   }
 }
 
 /**
- * Get audit logs with filters
+ * Extract IP address and user agent from request
+ */
+export function getRequestInfo(request: NextRequest): { ipAddress?: string; userAgent?: string } {
+  const ipAddress = 
+    request.headers.get('x-forwarded-for')?.split(',')[0] ||
+    request.headers.get('x-real-ip') ||
+    request.ip ||
+    undefined
+  
+  const userAgent = request.headers.get('user-agent') || undefined
+  
+  return { ipAddress, userAgent }
+}
+
+/**
+ * Create audit log from request and user
+ */
+export async function auditLogFromRequest(
+  request: NextRequest,
+  user: AuthenticatedRequest | null,
+  action: string,
+  entityType: string,
+  options: {
+    entityId?: string
+    entityName?: string
+    changes?: Record<string, { old?: any; new?: any }>
+    description?: string
+    metadata?: Record<string, any>
+  } = {}
+): Promise<void> {
+  if (!user) return
+  
+  const { ipAddress, userAgent } = getRequestInfo(request)
+  
+  await createAuditLog({
+    userId: user.userId,
+    userEmail: user.email,
+    userRole: user.role,
+    action,
+    entityType,
+    entityId: options.entityId,
+    entityName: options.entityName,
+    changes: options.changes,
+    description: options.description,
+    ipAddress,
+    userAgent,
+    metadata: options.metadata,
+  })
+}
+
+/**
+ * Get audit logs with filtering
  */
 export async function getAuditLogs(filters: {
   userId?: string
@@ -59,84 +118,20 @@ export async function getAuditLogs(filters: {
   
   const query: any = {}
   
-  if (filters.userId) {
-    query.userId = filters.userId
-  }
-  
-  if (filters.entityType) {
-    query.entityType = filters.entityType
-  }
-  
-  if (filters.entityId) {
-    query.entityId = filters.entityId
-  }
-  
-  if (filters.action) {
-    query.action = filters.action
-  }
-  
+  if (filters.userId) query.userId = filters.userId
+  if (filters.entityType) query.entityType = filters.entityType
+  if (filters.entityId) query.entityId = filters.entityId
+  if (filters.action) query.action = filters.action
   if (filters.startDate || filters.endDate) {
     query.createdAt = {}
-    if (filters.startDate) {
-      query.createdAt.$gte = filters.startDate
-    }
-    if (filters.endDate) {
-      query.createdAt.$lte = filters.endDate
-    }
+    if (filters.startDate) query.createdAt.$gte = filters.startDate
+    if (filters.endDate) query.createdAt.$lte = filters.endDate
   }
   
-  const logs = await AuditLog.find(query)
+  return AuditLog.find(query)
+    .populate('userId', 'email firstName lastName')
     .sort({ createdAt: -1 })
     .limit(filters.limit || 100)
     .skip(filters.skip || 0)
     .lean()
-  
-  const total = await AuditLog.countDocuments(query)
-  
-  return { logs, total }
 }
-
-/**
- * Get audit logs for a specific entity
- */
-export async function getEntityAuditLogs(entityType: string, entityId: string, limit: number = 50) {
-  await connectDB()
-  
-  const logs = await AuditLog.find({
-    entityType,
-    entityId
-  })
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .lean()
-  
-  return logs
-}
-
-/**
- * Helper to get IP address from request
- */
-export function getIpAddress(request: any): string {
-  const forwarded = request.headers.get('x-forwarded-for')
-  const realIp = request.headers.get('x-real-ip')
-  const remoteAddress = request.headers.get('remote-addr')
-  
-  if (forwarded) {
-    return forwarded.split(',')[0].trim()
-  }
-  if (realIp) {
-    return realIp
-  }
-  if (remoteAddress) {
-    return remoteAddress
-  }
-  return 'unknown'
-}
-
-/**
- * Helper to get user agent from request
- */
-export function getUserAgent(request: any): string {
-  return request.headers.get('user-agent') || 'unknown'
-}
-

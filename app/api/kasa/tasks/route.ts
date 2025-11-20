@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Task, Family, FamilyMember } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,8 +28,10 @@ export async function GET(request: NextRequest) {
     
     const query: any = {}
     
-    // Filter by user - admin sees all, regular users only their tasks
-    if (!isAdmin(user)) {
+    // Check permission - users with tasks.view see all, others see only their tasks
+    const canViewAll = await hasPermission(user, PERMISSIONS.TASKS_VIEW)
+    
+    if (!canViewAll) {
       query.userId = user.userId
     }
     
@@ -84,6 +88,11 @@ export async function POST(request: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       )
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.TASKS_CREATE))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
     const body = await request.json()
@@ -144,31 +153,19 @@ export async function POST(request: NextRequest) {
     const taskObj = task.toObject ? task.toObject() : task
     
     // Create audit log entry
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      const family = relatedFamilyId ? await Family.findById(relatedFamilyId) : null
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'task_create',
-        entityType: 'task',
-        entityId: taskObj._id.toString(),
-        entityName: title,
-        description: `Created task "${title}"${family ? ` for family "${family.name}"` : ''}`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          title,
-          status: status || 'pending',
-          priority: priority || 'medium',
-          dueDate: new Date(dueDate),
-          relatedFamilyId,
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-    }
+    const family = relatedFamilyId ? await Family.findById(relatedFamilyId) : null
+    await auditLogFromRequest(request, user, 'task_create', 'task', {
+      entityId: taskObj._id.toString(),
+      entityName: title,
+      description: `Created task "${title}"${family ? ` for family "${family.name}"` : ''}`,
+      metadata: {
+        title,
+        status: status || 'pending',
+        priority: priority || 'medium',
+        dueDate: new Date(dueDate),
+        relatedFamilyId,
+      }
+    })
     
     return NextResponse.json(taskObj, { status: 201 })
   } catch (error: any) {

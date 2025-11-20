@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { StripeConfig } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 import Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
@@ -22,8 +23,13 @@ export async function GET(request: NextRequest) {
     }
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
-      return NextResponse.redirect(new URL('/login?redirect=/settings&error=Admin access required', request.url))
+    if (!user) {
+      return NextResponse.redirect(new URL('/login?redirect=/settings&error=Unauthorized', request.url))
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.SETTINGS_UPDATE))) {
+      return NextResponse.redirect(new URL('/settings?error=Forbidden - Settings update permission required', request.url))
     }
     
     const searchParams = request.nextUrl.searchParams

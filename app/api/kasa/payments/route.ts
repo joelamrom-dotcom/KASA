@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Payment, Family } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,8 +40,10 @@ export async function GET(request: NextRequest) {
       .sort({ paymentDate: -1 })
       .lean()
 
-    // Filter by user ownership - admin sees all, regular users only their families' payments
-    if (!isAdmin(user)) {
+    // Check permission - users with payments.view see all, others see only their families' payments
+    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
+    
+    if (!canViewAll) {
       // Get user's family IDs
       const userFamilies = await Family.find({ userId: user.userId }).select('_id')
       const userFamilyIds = userFamilies.map(f => f._id.toString())

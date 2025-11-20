@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { ScheduledReport, CustomReport } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,10 +17,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check permission - users with reports.view see all scheduled reports, others see only their own
+    const canViewAll = await hasPermission(user, PERMISSIONS.REPORTS_VIEW)
+    
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
     
-    const scheduledReports = await ScheduledReport.find({ userId: userObjectId, isActive: true })
+    const query = canViewAll ? { isActive: true } : { userId: userObjectId, isActive: true }
+    const scheduledReports = await ScheduledReport.find(query)
       .populate('reportId')
       .sort({ createdAt: -1 })
       .lean()
@@ -45,6 +51,11 @@ export async function POST(request: NextRequest) {
     const user = getAuthenticatedUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.REPORTS_CREATE))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -82,6 +93,19 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Scheduled report not found' }, { status: 404 })
       }
 
+      // Create audit log entry
+      await auditLogFromRequest(request, user, 'scheduled_report_update', 'scheduled_report', {
+        entityId: _id,
+        entityName: name,
+        description: `Updated scheduled report "${name}"`,
+        metadata: {
+          reportId,
+          schedule,
+          recipients: recipients?.length || 0,
+          exportFormat,
+        }
+      })
+
       return NextResponse.json({
         ...scheduledReport.toObject(),
         _id: scheduledReport._id.toString()
@@ -96,6 +120,19 @@ export async function POST(request: NextRequest) {
         recipients,
         exportFormat,
         nextRun
+      })
+      
+      // Create audit log entry
+      await auditLogFromRequest(request, user, 'scheduled_report_create', 'scheduled_report', {
+        entityId: scheduledReport._id.toString(),
+        entityName: name,
+        description: `Created scheduled report "${name}"`,
+        metadata: {
+          reportId,
+          schedule,
+          recipients: recipients?.length || 0,
+          exportFormat,
+        }
       })
 
       return NextResponse.json({
@@ -129,18 +166,45 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Scheduled report ID required' }, { status: 400 })
     }
 
+    // Check permission or ownership
+    const canDeleteAll = await hasPermission(user, PERMISSIONS.REPORTS_DELETE)
+    
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
 
-    const scheduledReport = await ScheduledReport.findOneAndUpdate(
-      { _id: id, userId: userObjectId },
+    // Build query based on permissions
+    const query: any = canDeleteAll ? { _id: id } : { _id: id, userId: userObjectId }
+    
+    const scheduledReport = await ScheduledReport.findOne(query)
+    
+    if (!scheduledReport) {
+      return NextResponse.json({ error: 'Scheduled report not found' }, { status: 404 })
+    }
+    
+    // Check ownership if user doesn't have delete permission
+    if (!canDeleteAll && scheduledReport.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have permission to delete this scheduled report' },
+        { status: 403 }
+      )
+    }
+
+    await ScheduledReport.findOneAndUpdate(
+      query,
       { isActive: false },
       { new: true }
     )
 
-    if (!scheduledReport) {
-      return NextResponse.json({ error: 'Scheduled report not found' }, { status: 404 })
-    }
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'scheduled_report_delete', 'scheduled_report', {
+      entityId: id,
+      entityName: scheduledReport.name,
+      description: `Deleted scheduled report "${scheduledReport.name}"`,
+      metadata: {
+        reportId: scheduledReport.reportId?.toString(),
+        schedule: scheduledReport.schedule,
+      }
+    })
 
     return NextResponse.json({ message: 'Scheduled report deleted successfully' })
   } catch (error: any) {

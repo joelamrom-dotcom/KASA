@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, FamilyMember } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 import { invalidateCache, CacheKeys } from '@/lib/cache'
 import { performanceMonitor } from '@/lib/performance'
 
@@ -30,9 +32,13 @@ export async function POST(request: NextRequest) {
 
     const end = performanceMonitor.start('bulk:families')
 
-    // Build query based on user role
+    // Check permission - users with families.update can update all families
+    const canUpdateAll = await hasPermission(user, PERMISSIONS.FAMILIES_UPDATE)
+    const canDeleteAll = await hasPermission(user, PERMISSIONS.FAMILIES_DELETE)
+    
+    // Build query based on permissions
     let query: any = { _id: { $in: familyIds } }
-    if (!isAdmin(user) && user.role !== 'super_admin') {
+    if (!canUpdateAll && !canDeleteAll && user.role !== 'super_admin') {
       query.userId = user.userId
     }
 
@@ -84,6 +90,20 @@ export async function POST(request: NextRequest) {
           deletedCount++
         }
 
+        // Create audit log entry
+        if (deletedCount > 0) {
+          await auditLogFromRequest(request, user, 'bulk_family_delete', 'family', {
+            entityId: familyIds[0], // Use first ID as representative
+            entityName: `Bulk delete ${deletedCount} families`,
+            description: `Bulk deleted ${deletedCount} families`,
+            metadata: {
+              action: 'delete',
+              deletedCount,
+              familyIds: familyIds.slice(0, 10), // First 10 IDs
+            }
+          })
+        }
+        
         result = {
           success: true,
           deleted: deletedCount,

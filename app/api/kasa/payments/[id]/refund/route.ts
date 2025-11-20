@@ -3,9 +3,9 @@ import connectDB from '@/lib/database'
 import { Payment, Refund, Family, AutomationSettings } from '@/lib/models'
 import { getUserStripe, getUserStripeAccountId } from '@/lib/stripe-helpers'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 import { sendRefundConfirmationEmail } from '@/lib/refund-email'
-import { getIpAddress, getUserAgent } from '@/lib/audit-log'
-import { createAuditLog } from '@/lib/audit-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +18,18 @@ export async function POST(
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.PAYMENTS_REFUND))) {
+      return NextResponse.json(
+        { error: 'Forbidden - Refund permission required' },
+        { status: 403 }
       )
     }
     
@@ -33,9 +41,12 @@ export async function POST(
       )
     }
     
-    // Check if payment belongs to user's families
+    // Check if payment belongs to user's families (unless user has global refund permission)
     const family = payment.familyId as any
-    if (family.userId?.toString() !== user.userId && user.role !== 'super_admin') {
+    const canRefundAll = await hasPermission(user, PERMISSIONS.PAYMENTS_REFUND)
+    
+    // If user doesn't have global refund permission, check ownership
+    if (!canRefundAll && family.userId?.toString() !== user.userId) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this payment' },
         { status: 403 }
@@ -166,31 +177,21 @@ export async function POST(
     await payment.save()
     
     // Create audit log entry
-    try {
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'payment_refund',
-        entityType: 'payment',
-        entityId: params.id,
-        entityName: `Refund of $${refundAmount}`,
-        description: `Processed refund of $${refundAmount} for payment of $${payment.amount}${reason ? ` - Reason: ${reason}` : ''}`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          paymentId: params.id,
-          familyId: family._id.toString(),
-          familyName: family.name,
-          refundAmount,
-          originalAmount: payment.amount,
-          reason,
-          stripeRefundId,
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-    }
+    await auditLogFromRequest(request, user, 'payment_refund', 'payment', {
+      entityId: params.id,
+      entityName: `Refund of $${refundAmount}`,
+      description: `Processed refund of $${refundAmount} for payment of $${payment.amount}${reason ? ` - Reason: ${reason}` : ''}`,
+      metadata: {
+        paymentId: params.id,
+        familyId: family._id.toString(),
+        familyName: family.name,
+        refundAmount,
+        originalAmount: payment.amount,
+        reason,
+        stripeRefundId,
+        refundStatus,
+      }
+    })
     
     // Send refund confirmation email (if enabled and family wants emails)
     try {
@@ -252,10 +253,18 @@ export async function GET(
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW))) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       )
     }
     
@@ -268,8 +277,9 @@ export async function GET(
     }
     
     // Check if payment belongs to user's families
+    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
     const family = payment.familyId as any
-    if (family.userId?.toString() !== user.userId && user.role !== 'super_admin') {
+    if (!canViewAll && family.userId?.toString() !== user.userId) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this payment' },
         { status: 403 }

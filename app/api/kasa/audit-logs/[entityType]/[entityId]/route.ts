@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { getEntityAuditLogs } from '@/lib/audit-log'
+import { getAuditLogs } from '@/lib/audit-log'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,17 +15,36 @@ export async function GET(
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission - users with roles.view can view audit logs
+    const canViewAll = await hasPermission(user, PERMISSIONS.ROLES_VIEW)
+    
+    if (!canViewAll && user.role !== 'super_admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Permission required' },
+        { status: 403 }
       )
     }
     
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     
-    const logs = await getEntityAuditLogs(params.entityType, params.entityId, limit)
+    // If user doesn't have view all permission, only show logs for their own userId
+    const userId = (canViewAll || user.role === 'super_admin') ? undefined : user.userId
+    
+    const logs = await getAuditLogs({
+      userId,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      limit,
+      skip: 0,
+    })
     
     return NextResponse.json({ logs })
   } catch (error: any) {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Report } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,8 +21,9 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Build query - admin sees all, regular users see only their reports
-    const query = isAdmin(user) ? {} : { userId: user.userId }
+    // Check permission - users with reports.view see all, others see only their reports
+    const canViewAll = await hasPermission(user, PERMISSIONS.REPORTS_VIEW)
+    const query = canViewAll ? {} : { userId: user.userId }
 
     const reports = await Report.find(query)
       .sort({ createdAt: -1 })
@@ -53,6 +56,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.REPORTS_CREATE))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { title, question, answer, reportType, metadata, tags, notes } = body
 
@@ -72,6 +80,17 @@ export async function POST(request: NextRequest) {
       metadata: metadata || {},
       tags: tags || [],
       notes: notes || ''
+    })
+
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'report_create', 'report', {
+      entityId: report._id.toString(),
+      entityName: title,
+      description: `Created report "${title}"`,
+      metadata: {
+        reportType: reportType || 'chat',
+        tags: tags || [],
+      }
     })
 
     return NextResponse.json({

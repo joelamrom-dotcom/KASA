@@ -3,6 +3,8 @@ import connectDB from '@/lib/database'
 import { Statement, Family, Payment, Withdrawal, LifecycleEventPayment } from '@/lib/models'
 import { calculateFamilyBalance } from '@/lib/calculations'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get all statements or filter by family (filtered by user)
 export async function GET(request: NextRequest) {
@@ -28,8 +30,10 @@ export async function GET(request: NextRequest) {
     
     let statements = await Statement.find(query).sort({ date: -1 }).lean()
     
-    // Filter by user ownership - admin sees all, regular users only their families' statements
-    if (!isAdmin(user)) {
+    // Check permission - users with statements.view see all, others see only their families' statements
+    const canViewAll = await hasPermission(user, PERMISSIONS.STATEMENTS_VIEW)
+    
+    if (!canViewAll) {
       let userFamilyIds: string[] = []
       
       if (user.role === 'family' && user.familyId) {
@@ -90,13 +94,14 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Check ownership - admin, family owner, or family user accessing their own family
+    // Check permission or ownership
+    const canCreateAll = await hasPermission(user, PERMISSIONS.STATEMENTS_CREATE)
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === familyId
     
-    if (!isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
+    if (!canCreateAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have access to this family' },
+        { error: 'Forbidden - You do not have permission to create statements for this family' },
         { status: 403 }
       )
     }
@@ -147,6 +152,22 @@ export async function POST(request: NextRequest) {
       withdrawals: totalWithdrawals,
       expenses: totalExpenses,
       closingBalance
+    })
+
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'statement_create', 'statement', {
+      entityId: statement._id.toString(),
+      entityName: statementNumber,
+      description: `Generated statement ${statementNumber} for family "${family.name}" (${fromDate.toISOString().split('T')[0]} to ${toDate.toISOString().split('T')[0]})`,
+      metadata: {
+        statementNumber,
+        familyId,
+        familyName: family.name,
+        fromDate: from.toISOString(),
+        toDate: to.toISOString(),
+        openingBalance,
+        closingBalance,
+      }
     })
 
     return NextResponse.json(statement, { status: 201 })

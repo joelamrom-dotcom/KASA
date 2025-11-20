@@ -4,6 +4,8 @@ import { FamilyMember, Family } from '@/lib/models'
 import { convertToHebrewDate, calculateBarMitzvahDate, hasReachedBarMitzvahAge } from '@/lib/hebrew-date'
 import { LifecycleEventPayment } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 import mongoose from 'mongoose'
 
 // PUT - Update a member
@@ -149,6 +151,26 @@ export async function PUT(
       )
     }
 
+    // Check if family exists and user has permission
+    const family = await Family.findById(params.id)
+    if (!family) {
+      return NextResponse.json(
+        { error: 'Family not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check permission or ownership
+    const canUpdateAll = await hasPermission(user, PERMISSIONS.MEMBERS_UPDATE)
+    const isFamilyOwner = family.userId?.toString() === user.userId
+    
+    if (!canUpdateAll && !isFamilyOwner) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have permission to update this member' },
+        { status: 403 }
+      )
+    }
+
     // Get old member data for audit log
     const oldMember = await FamilyMember.findById(params.memberId)
     
@@ -193,42 +215,29 @@ export async function PUT(
 
     // Create audit log entry for member update
     if (oldMember) {
-      try {
-        const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-        const changedFields: any = {}
-        
-        // Track changes
-        Object.keys(updateData).forEach(key => {
-          const oldValue = (oldMember as any)[key]
-          const newValue = updateData[key]
-          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-            changedFields[key] = { from: oldValue, to: newValue }
+      const changedFields: any = {}
+      
+      // Track changes
+      Object.keys(updateData).forEach(key => {
+        const oldValue = (oldMember as any)[key]
+        const newValue = updateData[key]
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+          changedFields[key] = { old: oldValue, new: newValue }
+        }
+      })
+      
+      if (Object.keys(changedFields).length > 0) {
+        await auditLogFromRequest(request, user, 'member_update', 'member', {
+          entityId: params.memberId,
+          entityName: `${member.firstName} ${member.lastName}`,
+          changes: changedFields,
+          description: `Updated member "${member.firstName} ${member.lastName}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+          metadata: {
+            familyId: params.id,
+            familyName: family?.name,
+            memberName: `${member.firstName} ${member.lastName}`,
           }
         })
-        
-        if (Object.keys(changedFields).length > 0) {
-          const family = await Family.findById(params.id)
-          await createAuditLog({
-            userId: user.userId,
-            userEmail: user.email,
-            userRole: user.role,
-            action: 'member_update',
-            entityType: 'member',
-            entityId: params.memberId,
-            entityName: `${member.firstName} ${member.lastName}`,
-            changes: changedFields,
-            description: `Updated member "${member.firstName} ${member.lastName}" - Changed: ${Object.keys(changedFields).join(', ')}`,
-            ipAddress: getIpAddress(request),
-            userAgent: getUserAgent(request),
-            metadata: {
-              familyId: params.id,
-              familyName: family?.name,
-              memberName: `${member.firstName} ${member.lastName}`,
-            }
-          })
-        }
-      } catch (auditError: any) {
-        console.error('Error creating audit log:', auditError)
       }
     }
 
@@ -316,49 +325,14 @@ export async function DELETE(
       )
     }
     
-    // Check ownership - admin, super_admin, family owner, or family user accessing their own family
+    // Check permission or ownership
+    const canDeleteAll = await hasPermission(user, PERMISSIONS.MEMBERS_DELETE)
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === params.id
     
-    // ALWAYS check DB for current user's role (bypass stale token)
-    let hasSuperAdminAccess = false
-    let dbUser = null
-    
-    // Try to find current user in DB by userId first (most reliable)
-    if (user.userId) {
-      try {
-        const { User } = await import('@/lib/models')
-        dbUser = await User.findById(user.userId)
-        if (dbUser && dbUser.role === 'super_admin') {
-          hasSuperAdminAccess = true
-        }
-      } catch (err) {
-        // Continue to email lookup
-      }
-    }
-    
-    // If not found by userId, try by email
-    if (!hasSuperAdminAccess && !dbUser && user.email) {
-      try {
-        const { User } = await import('@/lib/models')
-        const userEmailLower = user.email.toLowerCase().trim()
-        dbUser = await User.findOne({ email: userEmailLower })
-        if (dbUser && dbUser.role === 'super_admin') {
-          hasSuperAdminAccess = true
-        }
-      } catch (err) {
-        // Continue to fallback
-      }
-    }
-    
-    // Fallback to token role if DB lookup failed
-    if (!hasSuperAdminAccess && !dbUser) {
-      hasSuperAdminAccess = user.role === 'super_admin'
-    }
-    
-    if (!hasSuperAdminAccess && !isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
+    if (!canDeleteAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have access to this family' },
+        { error: 'Forbidden - You do not have permission to delete this member' },
         { status: 403 }
       )
     }
@@ -376,28 +350,16 @@ export async function DELETE(
     }
 
     // Create audit log entry before deletion
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'member_delete',
-        entityType: 'member',
-        entityId: params.memberId,
-        entityName: `${member.firstName} ${member.lastName}`,
-        description: `Deleted member "${member.firstName} ${member.lastName}" from family "${family.name}"`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          familyId: params.id,
-          familyName: family.name,
-          memberName: `${member.firstName} ${member.lastName}`,
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-    }
+    await auditLogFromRequest(request, user, 'member_delete', 'member', {
+      entityId: params.memberId,
+      entityName: `${member.firstName} ${member.lastName}`,
+      description: `Deleted member "${member.firstName} ${member.lastName}" from family "${family.name}"`,
+      metadata: {
+        familyId: params.id,
+        familyName: family.name,
+        memberName: `${member.firstName} ${member.lastName}`,
+      }
+    })
 
     // Move to recycle bin
     const { moveToRecycleBin } = await import('@/lib/recycle-bin')

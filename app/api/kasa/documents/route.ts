@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Document } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
@@ -18,6 +20,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check permission - users with documents.view see all, others see only their documents
+    const canViewAll = await hasPermission(user, PERMISSIONS.DOCUMENTS_VIEW)
+    
     const searchParams = request.nextUrl.searchParams
     const category = searchParams.get('category')
     const familyId = searchParams.get('familyId')
@@ -26,7 +31,7 @@ export async function GET(request: NextRequest) {
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
-    const query: any = { userId }
+    const query: any = canViewAll ? {} : { userId }
     
     if (category) {
       query.category = category
@@ -67,6 +72,11 @@ export async function POST(request: NextRequest) {
     const user = getAuthenticatedUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.DOCUMENTS_CREATE))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const formData = await request.formData()

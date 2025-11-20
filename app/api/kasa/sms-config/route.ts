@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { SmsConfig } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get SMS configuration
 export async function GET(request: NextRequest) {
@@ -13,6 +15,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.SETTINGS_VIEW))) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       )
     }
     
@@ -52,10 +62,18 @@ export async function POST(request: NextRequest) {
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.SETTINGS_UPDATE))) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       )
     }
     
@@ -80,11 +98,38 @@ export async function POST(request: NextRequest) {
       updateData.isActive = isActive
     }
     
+    const oldConfig = await SmsConfig.findOne({ userId: userObjectId })
     const config = await SmsConfig.findOneAndUpdate(
       { userId: userObjectId },
       updateData,
       { new: true, upsert: true }
     )
+    
+    // Create audit log entry
+    if (oldConfig && Object.keys(updateData).length > 0) {
+      const changedFields: any = {}
+      Object.keys(updateData).forEach(key => {
+        if (key !== 'lastUpdated' && key !== 'userId') {
+          const oldValue = (oldConfig as any)[key]
+          const newValue = updateData[key]
+          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            changedFields[key] = { old: oldValue, new: newValue }
+          }
+        }
+      })
+      
+      if (Object.keys(changedFields).length > 0) {
+        await auditLogFromRequest(request, user, 'sms_config_update', 'settings', {
+          entityId: config._id.toString(),
+          entityName: 'SMS Configuration',
+          changes: changedFields,
+          description: `Updated SMS configuration - Changed: ${Object.keys(changedFields).join(', ')}`,
+          metadata: {
+            changedFields: Object.keys(changedFields),
+          }
+        })
+      }
+    }
     
     return NextResponse.json({
       defaultGateway: config.defaultGateway,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Notification } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 

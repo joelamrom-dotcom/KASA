@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { StripeConfig } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,10 +12,18 @@ export async function GET(request: NextRequest) {
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required. Only admins and super admins can manage Stripe connections.' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.SETTINGS_VIEW))) {
+      return NextResponse.json(
+        { error: 'Forbidden - Settings view permission required' },
+        { status: 403 }
       )
     }
     

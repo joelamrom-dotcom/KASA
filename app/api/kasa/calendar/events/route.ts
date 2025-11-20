@@ -9,6 +9,7 @@ import {
   FamilyMember
 } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,9 +57,12 @@ export async function GET(request: NextRequest) {
     const start = new Date(startDate)
     const end = new Date(endDate)
 
+    // Check permission - users with calendar.view see all, others see only their families
+    const canViewAll = await hasPermission(user, PERMISSIONS.CALENDAR_VIEW)
+    
     // Build query for user's families
     let familyQuery: any = {}
-    if (!isAdmin(user)) {
+    if (!canViewAll) {
       const userFamilies = await Family.find({ userId: user.userId }).select('_id')
       const userFamilyIds = userFamilies.map(f => f._id)
       familyQuery = { familyId: { $in: userFamilyIds } }

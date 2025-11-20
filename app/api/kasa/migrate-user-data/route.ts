@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, Task, Report, User } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 /**
  * Migration endpoint to assign existing data to users
@@ -14,10 +16,20 @@ export async function POST(request: NextRequest) {
     
     // Get authenticated user
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission - only super_admin or users with users.update can migrate data
+    const canManageUsers = await hasPermission(user, PERMISSIONS.USERS_UPDATE)
+    
+    if (!canManageUsers && user.role !== 'super_admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - User management permission required' },
+        { status: 403 }
       )
     }
     
@@ -66,6 +78,17 @@ export async function POST(request: NextRequest) {
       await Report.findByIdAndUpdate(report._id, { userId: assignToUserId })
       migrated.reports++
     }
+    
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'data_migration', 'system', {
+      entityName: 'User Data Migration',
+      description: `Migrated ${migrated.families} families, ${migrated.tasks} tasks, and ${migrated.reports} reports to user ${targetUser.email}`,
+      metadata: {
+        assignedToUserId: assignToUserId,
+        assignedToEmail: targetUser.email,
+        migrated,
+      }
+    })
     
     return NextResponse.json({
       message: 'Migration completed',

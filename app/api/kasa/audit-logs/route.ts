@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuditLogs } from '@/lib/audit-log'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,10 +12,22 @@ export async function GET(request: NextRequest) {
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission - users with roles.view can view audit logs
+    // Note: Audit logs permission is typically part of roles management
+    // For now, we'll use ROLES_VIEW as a proxy, but ideally there should be AUDIT_LOGS_VIEW permission
+    const canViewAll = await hasPermission(user, PERMISSIONS.ROLES_VIEW)
+    
+    if (!canViewAll && user.role !== 'super_admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Permission required' },
+        { status: 403 }
       )
     }
     
@@ -27,10 +40,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100')
     const skip = parseInt(searchParams.get('skip') || '0')
     
-    // If not super_admin, only show logs for their own userId
-    const userId = user.role === 'super_admin' ? undefined : user.userId
+    // If user doesn't have view all permission, only show logs for their own userId
+    const userId = (canViewAll || user.role === 'super_admin') ? undefined : user.userId
     
-    const { logs, total } = await getAuditLogs({
+    const logs = await getAuditLogs({
       userId,
       entityType,
       entityId,
@@ -40,6 +53,17 @@ export async function GET(request: NextRequest) {
       limit,
       skip,
     })
+    
+    // Get total count for pagination (without limit/skip)
+    const allLogs = await getAuditLogs({
+      userId,
+      entityType,
+      entityId,
+      action,
+      startDate,
+      endDate,
+    })
+    const total = allLogs.length
     
     return NextResponse.json({
       logs,

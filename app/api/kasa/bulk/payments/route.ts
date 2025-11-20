@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Payment, Family } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 import { invalidateCache } from '@/lib/cache'
 import { performanceMonitor } from '@/lib/performance'
 
@@ -30,10 +32,14 @@ export async function POST(request: NextRequest) {
 
     const end = performanceMonitor.start('bulk:payments')
 
+    // Check permission - users with payments.update can update all payments
+    const canUpdateAll = await hasPermission(user, PERMISSIONS.PAYMENTS_UPDATE)
+    const canDeleteAll = await hasPermission(user, PERMISSIONS.PAYMENTS_DELETE)
+    
     // Build query - get user's families first
     let query: any = { _id: { $in: paymentIds } }
     
-    if (!isAdmin(user) && user.role !== 'super_admin') {
+    if (!canUpdateAll && !canDeleteAll && user.role !== 'super_admin') {
       // Get user's families
       const userFamilies = await Family.find({ userId: user.userId }).select('_id').lean()
       const userFamilyIds = userFamilies.map(f => f._id)
@@ -57,6 +63,22 @@ export async function POST(request: NextRequest) {
         if (updates.notes !== undefined) updateData.notes = updates.notes
 
         const updateResult = await Payment.updateMany(query, { $set: updateData })
+        
+        // Create audit log entry
+        if (updateResult.modifiedCount > 0) {
+          await auditLogFromRequest(request, user, 'bulk_payment_update', 'payment', {
+            entityId: paymentIds[0], // Use first ID as representative
+            entityName: `Bulk update ${updateResult.modifiedCount} payments`,
+            description: `Bulk updated ${updateResult.modifiedCount} payments`,
+            metadata: {
+              action: 'update',
+              updatedCount: updateResult.modifiedCount,
+              updates: updateData,
+              paymentIds: paymentIds.slice(0, 10), // First 10 IDs
+            }
+          })
+        }
+        
         result = {
           success: true,
           updated: updateResult.modifiedCount,
@@ -67,6 +89,21 @@ export async function POST(request: NextRequest) {
       case 'delete':
         // Hard delete payments (or move to recycle bin if you prefer)
         const deleteResult = await Payment.deleteMany(query)
+        
+        // Create audit log entry
+        if (deleteResult.deletedCount > 0) {
+          await auditLogFromRequest(request, user, 'bulk_payment_delete', 'payment', {
+            entityId: paymentIds[0], // Use first ID as representative
+            entityName: `Bulk delete ${deleteResult.deletedCount} payments`,
+            description: `Bulk deleted ${deleteResult.deletedCount} payments`,
+            metadata: {
+              action: 'delete',
+              deletedCount: deleteResult.deletedCount,
+              paymentIds: paymentIds.slice(0, 10), // First 10 IDs
+            }
+          })
+        }
+        
         result = {
           success: true,
           deleted: deleteResult.deletedCount,

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { AutomationSettings } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get automation settings for current user
 export async function GET(request: NextRequest) {
@@ -9,10 +11,18 @@ export async function GET(request: NextRequest) {
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.SETTINGS_VIEW))) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       )
     }
     
@@ -73,10 +83,18 @@ export async function POST(request: NextRequest) {
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.SETTINGS_VIEW))) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
       )
     }
     
@@ -156,11 +174,38 @@ export async function POST(request: NextRequest) {
       updateData.reminderDaysBefore = reminderDaysBefore
     }
     
+    const oldSettings = await AutomationSettings.findOne({ userId: userObjectId })
     const settings = await AutomationSettings.findOneAndUpdate(
       { userId: userObjectId },
       updateData,
       { new: true, upsert: true }
     )
+    
+    // Create audit log entry
+    if (oldSettings && Object.keys(updateData).length > 0) {
+      const changedFields: any = {}
+      Object.keys(updateData).forEach(key => {
+        if (key !== 'lastUpdated') {
+          const oldValue = (oldSettings as any)[key]
+          const newValue = updateData[key]
+          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            changedFields[key] = { old: oldValue, new: newValue }
+          }
+        }
+      })
+      
+      if (Object.keys(changedFields).length > 0) {
+        await auditLogFromRequest(request, user, 'automation_settings_update', 'settings', {
+          entityId: settings._id.toString(),
+          entityName: 'Automation Settings',
+          changes: changedFields,
+          description: `Updated automation settings - Changed: ${Object.keys(changedFields).join(', ')}`,
+          metadata: {
+            changedFields: Object.keys(changedFields),
+          }
+        })
+      }
+    }
     
     return NextResponse.json({
       enableMonthlyPayments: settings.enableMonthlyPayments,

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon, XMarkIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
+import TwoFactorAuth from '@/app/components/TwoFactorAuth'
 
 interface LifecycleEventType {
   _id: string
@@ -26,7 +27,7 @@ interface PaymentPlan {
   families?: Family[]
 }
 
-type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations' | 'templates'
+type TabType = 'email' | 'eventTypes' | 'paymentPlans' | 'kevittel' | 'cycle' | 'stripe' | 'automations' | 'templates' | 'security'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('email')
@@ -35,6 +36,7 @@ export default function SettingsPage() {
   const [stripeConfig, setStripeConfig] = useState<any>(null)
   const [stripeLoading, setStripeLoading] = useState(true)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<any>(null)
   
   // Email Configuration state
   const [loading, setLoading] = useState(true)
@@ -157,6 +159,7 @@ export default function SettingsPage() {
         if (userRes.ok) {
           const userData = await userRes.json()
           setUserRole(userData.role)
+          setCurrentUser(userData)
           console.log('📋 User role from API:', userData.role)
         } else {
           // Fallback: try to get role from token
@@ -1205,6 +1208,19 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2">
                       <DocumentTextIcon className="h-5 w-5" />
                       Templates
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('security')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'security'
+                        ? 'border-red-600 text-red-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ShieldCheckIcon className="h-5 w-5" />
+                      Security
                     </div>
                   </button>
                 </>
@@ -2989,6 +3005,48 @@ export default function SettingsPage() {
                   </form>
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Security Tab */}
+        {activeTab === 'security' && (userRole === 'admin' || userRole === 'super_admin') && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <ShieldCheckIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Security Settings</h2>
+                <p className="text-sm text-gray-600">Manage your account security and two-factor authentication</p>
+              </div>
+            </div>
+
+            {currentUser ? (
+              <TwoFactorAuth
+                userId={currentUser._id || currentUser.id}
+                twoFactorEnabled={currentUser.twoFactorEnabled || false}
+                onUpdate={async () => {
+                  // Refresh user data after 2FA update
+                  try {
+                    const token = localStorage.getItem('token')
+                    const res = await fetch('/api/users/me', {
+                      headers: token ? {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                      } : {}
+                    })
+                    if (res.ok) {
+                      const userData = await res.json()
+                      setCurrentUser(userData)
+                    }
+                  } catch (error) {
+                    console.error('Error refreshing user data:', error)
+                  }
+                }}
+              />
+            ) : (
+              <div className="text-center py-8 text-gray-500">Loading user data...</div>
             )}
           </div>
         )}

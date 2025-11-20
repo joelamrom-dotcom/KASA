@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Payment, Family } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get all payments for a family
 export async function GET(
@@ -29,11 +31,12 @@ export async function GET(
       )
     }
     
-    // Check ownership - admin, family owner, or family user accessing their own family
+    // Check permission or ownership
+    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === params.id
     
-    if (!isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
+    if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this family' },
         { status: 403 }
@@ -91,11 +94,12 @@ export async function POST(
       )
     }
     
-    // Check ownership - admin, family owner, or family user accessing their own family
+    // Check permission or ownership
+    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === params.id
     
-    if (!isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
+    if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this family' },
         { status: 403 }
@@ -172,32 +176,19 @@ export async function POST(
     const paymentObj = payment.toObject ? payment.toObject() : payment
     
     // Create audit log entry
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'payment_create',
-        entityType: 'payment',
-        entityId: paymentObj._id.toString(),
-        entityName: `Payment of $${amount}`,
-        description: `Created payment of $${amount} for family "${family.name}"`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          familyId: params.id,
-          familyName: family.name,
-          amount,
-          paymentMethod: finalPaymentMethod,
-          paymentDate: new Date(paymentDate),
-          type: type || 'membership',
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-      // Don't fail payment creation if audit logging fails
-    }
+    await auditLogFromRequest(request, user, 'payment_create', 'payment', {
+      entityId: paymentObj._id.toString(),
+      entityName: `Payment of $${amount}`,
+      description: `Created payment of $${amount} for family "${family.name}"`,
+      metadata: {
+        familyId: params.id,
+        familyName: family.name,
+        amount,
+        paymentMethod: finalPaymentMethod,
+        paymentDate: new Date(paymentDate),
+        type: type || 'membership',
+      }
+    })
     
     console.log('Payment created successfully:', {
       _id: paymentObj._id,

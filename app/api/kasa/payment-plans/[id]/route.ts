@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { PaymentPlan } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get payment plan by ID
 export async function GET(
@@ -19,8 +21,11 @@ export async function GET(
       )
     }
     
-    // Build query - each user sees only their own settings
-    const query: any = { _id: params.id, userId: user.userId }
+    // Check permission or ownership
+    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENT_PLANS_VIEW)
+    
+    // Build query - each user sees only their own settings unless they have permission
+    const query: any = canViewAll ? { _id: params.id } : { _id: params.id, userId: user.userId }
     
     const plan = await PaymentPlan.findOne(query)
     
@@ -57,13 +62,31 @@ export async function PUT(
       )
     }
     
-    const body = await request.json()
+    // Check permission or ownership
+    const canUpdateAll = await hasPermission(user, PERMISSIONS.PAYMENT_PLANS_UPDATE)
     
-    // Build query - each user sees only their own settings
-    const query: any = { _id: params.id, userId: user.userId }
+    // Build query - each user sees only their own settings unless they have permission
+    const query: any = canUpdateAll ? { _id: params.id } : { _id: params.id, userId: user.userId }
     
     // Get old plan data for audit log
     const oldPlan = await PaymentPlan.findOne(query)
+    
+    if (!oldPlan) {
+      return NextResponse.json(
+        { error: 'Payment plan not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check ownership if user doesn't have update permission
+    if (!canUpdateAll && oldPlan.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have permission to update this payment plan' },
+        { status: 403 }
+      )
+    }
+    
+    const body = await request.json()
     
     const plan = await PaymentPlan.findOneAndUpdate(
       query,
@@ -79,39 +102,28 @@ export async function PUT(
     }
 
     // Create audit log entry
-    if (oldPlan && Object.keys(body).length > 0) {
-      try {
-        const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-        const changedFields: any = {}
-        
-        Object.keys(body).forEach(key => {
-          const oldValue = (oldPlan as any)[key]
-          const newValue = body[key]
-          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-            changedFields[key] = { from: oldValue, to: newValue }
+    if (Object.keys(body).length > 0) {
+      const changedFields: any = {}
+      
+      Object.keys(body).forEach(key => {
+        const oldValue = (oldPlan as any)[key]
+        const newValue = body[key]
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+          changedFields[key] = { old: oldValue, new: newValue }
+        }
+      })
+      
+      if (Object.keys(changedFields).length > 0) {
+        await auditLogFromRequest(request, user, 'payment_plan_update', 'payment_plan', {
+          entityId: params.id,
+          entityName: plan.name,
+          changes: changedFields,
+          description: `Updated payment plan "${plan.name}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+          metadata: {
+            planName: plan.name,
+            changedFields: Object.keys(changedFields),
           }
         })
-        
-        if (Object.keys(changedFields).length > 0) {
-          await createAuditLog({
-            userId: user.userId,
-            userEmail: user.email,
-            userRole: user.role,
-            action: 'payment_plan_update',
-            entityType: 'payment_plan',
-            entityId: params.id,
-            entityName: plan.name,
-            changes: changedFields,
-            description: `Updated payment plan "${plan.name}" - Changed: ${Object.keys(changedFields).join(', ')}`,
-            ipAddress: getIpAddress(request),
-            userAgent: getUserAgent(request),
-            metadata: {
-              planName: plan.name,
-            }
-          })
-        }
-      } catch (auditError: any) {
-        console.error('Error creating audit log:', auditError)
       }
     }
 
@@ -141,8 +153,11 @@ export async function DELETE(
       )
     }
     
-    // Build query - each user sees only their own settings
-    const query: any = { _id: params.id, userId: user.userId }
+    // Check permission or ownership
+    const canDeleteAll = await hasPermission(user, PERMISSIONS.PAYMENT_PLANS_DELETE)
+    
+    // Build query - each user sees only their own settings unless they have permission
+    const query: any = canDeleteAll ? { _id: params.id } : { _id: params.id, userId: user.userId }
     
     // Get plan data before deleting for audit log
     const plan = await PaymentPlan.findOne(query).lean()
@@ -153,34 +168,29 @@ export async function DELETE(
         { status: 404 }
       )
     }
+    
+    // Check ownership if user doesn't have delete permission
+    const planDoc = plan as { name?: string; yearlyPrice?: number; userId?: any }
+    if (!canDeleteAll && planDoc.userId?.toString() !== user.userId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You do not have permission to delete this payment plan' },
+        { status: 403 }
+      )
+    }
 
     // Delete the plan
     await PaymentPlan.findOneAndDelete(query)
 
     // Create audit log entry
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      // Type assertion: findOne().lean() returns a single document or null, not an array
-      const planDoc = plan as { name?: string; yearlyPrice?: number }
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'payment_plan_delete',
-        entityType: 'payment_plan',
-        entityId: params.id,
-        entityName: planDoc.name || 'Unknown',
-        description: `Deleted payment plan "${planDoc.name || 'Unknown'}"`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          planName: planDoc.name || 'Unknown',
-          yearlyPrice: planDoc.yearlyPrice,
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-    }
+    await auditLogFromRequest(request, user, 'payment_plan_delete', 'payment_plan', {
+      entityId: params.id,
+      entityName: planDoc.name || 'Unknown',
+      description: `Deleted payment plan "${planDoc.name || 'Unknown'}"`,
+      metadata: {
+        planName: planDoc.name || 'Unknown',
+        yearlyPrice: planDoc.yearlyPrice,
+      }
+    })
 
     return NextResponse.json({ message: 'Payment plan deleted successfully' })
   } catch (error: any) {

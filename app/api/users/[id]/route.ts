@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { User } from '@/lib/models'
 import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,10 +74,12 @@ export async function GET(
       hasSuperAdminAccess = isSuperAdmin(user)
     }
     
-    // Only super_admin can view other users
-    if (!hasSuperAdminAccess) {
+    // Check permission - users with users.view can view other users
+    const canViewAll = await hasPermission(user, PERMISSIONS.USERS_VIEW)
+    
+    if (!hasSuperAdminAccess && !canViewAll) {
       return NextResponse.json(
-        { error: 'Forbidden: Super admin access required' },
+        { error: 'Forbidden: Permission required' },
         { status: 403 }
       )
     }
@@ -174,11 +178,13 @@ export async function PUT(
     
     console.log('PUT /api/users/[id] - Final decision - hasSuperAdminAccess:', hasSuperAdminAccess)
     
-    // Only super_admin can update users
-    if (!hasSuperAdminAccess) {
+    // Check permission - users with users.update can update users
+    const canUpdateAll = await hasPermission(user, PERMISSIONS.USERS_UPDATE)
+    
+    if (!hasSuperAdminAccess && !canUpdateAll) {
       console.log('PUT /api/users/[id] - Access denied. Token role:', user.role, 'Email:', user.email, 'HasSuperAdminAccess:', hasSuperAdminAccess)
       return NextResponse.json(
-        { error: 'Forbidden: Super admin access required' },
+        { error: 'Forbidden: Permission required' },
         { status: 403 }
       )
     }
@@ -227,11 +233,38 @@ export async function PUT(
     }
     if (isActive !== undefined) updateData.isActive = isActive
     
+    const oldUser = { ...targetUser.toObject() }
+    
     const updatedUser = await User.findByIdAndUpdate(
       params.id,
       { $set: updateData },
       { new: true, runValidators: true }
     ).select('-password -resetPasswordToken -resetPasswordExpires -emailVerificationToken -emailVerificationExpires')
+    
+    // Create audit log entry
+    if (Object.keys(updateData).length > 0) {
+      const changedFields: any = {}
+      Object.keys(updateData).forEach(key => {
+        const oldValue = (oldUser as any)[key]
+        const newValue = updateData[key]
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+          changedFields[key] = { old: oldValue, new: newValue }
+        }
+      })
+      
+      if (Object.keys(changedFields).length > 0) {
+        await auditLogFromRequest(request, user, 'user_update', 'user', {
+          entityId: params.id,
+          entityName: `${updatedUser.firstName} ${updatedUser.lastName}`,
+          changes: changedFields,
+          description: `Updated user "${updatedUser.email}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+          metadata: {
+            userEmail: updatedUser.email,
+            changedFields: Object.keys(changedFields),
+          }
+        })
+      }
+    }
     
     return NextResponse.json(updatedUser)
   } catch (error: any) {
@@ -296,10 +329,12 @@ export async function DELETE(
       hasSuperAdminAccess = isSuperAdmin(user)
     }
     
-    // Only super_admin can delete users
-    if (!hasSuperAdminAccess) {
+    // Check permission - users with users.delete can delete users
+    const canDeleteAll = await hasPermission(user, PERMISSIONS.USERS_DELETE)
+    
+    if (!hasSuperAdminAccess && !canDeleteAll) {
       return NextResponse.json(
-        { error: 'Forbidden: Super admin access required' },
+        { error: 'Forbidden: Permission required' },
         { status: 403 }
       )
     }
@@ -321,6 +356,17 @@ export async function DELETE(
     }
     
     await User.findByIdAndDelete(params.id)
+    
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'user_delete', 'user', {
+      entityId: params.id,
+      entityName: `${targetUser.firstName} ${targetUser.lastName}`,
+      description: `Deleted user "${targetUser.email}"`,
+      metadata: {
+        userEmail: targetUser.email,
+        userRole: targetUser.role,
+      }
+    })
     
     return NextResponse.json({ message: 'User deleted successfully' })
   } catch (error: any) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { LifecycleEventPayment, Family } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,9 +20,12 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Build query - admin sees all, regular users only their families' events
+    // Check permission - users with lifecycle_events.view see all, others see only their families' events
+    const canViewAll = await hasPermission(user, PERMISSIONS.LIFECYCLE_EVENTS_VIEW)
+    
+    // Build query based on permissions
     let query: any = {}
-    if (!isAdmin(user)) {
+    if (!canViewAll) {
       // Get user's family IDs
       const userFamilies = await Family.find({ userId: user.userId }).select('_id')
       const userFamilyIds = userFamilies.map(f => f._id)

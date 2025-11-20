@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Payment, Family, AutomationSettings } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 import { createReceiptDataFromPayment, generateReceiptHTML } from '@/lib/invoice-helpers'
 import { sendEmail } from '@/lib/email-helpers'
 
@@ -33,16 +34,18 @@ export async function GET(
     
     // Check access
     const family = payment.familyId as any
-    const isFamilyMember = user.role === 'family' && user.familyId === params.id
-    const isAdminUser = isAdmin(user)
+    const isFamilyMember = user.role === 'family' && user.familyId === family._id?.toString()
+    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
     const isFamilyOwner = family.userId?.toString() === user.userId
     
-    if (!isAdminUser && !isFamilyMember && !isFamilyOwner) {
+    if (!canViewAll && !isFamilyMember && !isFamilyOwner) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this payment' },
         { status: 403 }
       )
     }
+    
+    const isAdminUser = canViewAll || isAdmin(user)
     
     const { searchParams } = new URL(request.url)
     const format = searchParams.get('format') || 'html' // 'html' or 'pdf'

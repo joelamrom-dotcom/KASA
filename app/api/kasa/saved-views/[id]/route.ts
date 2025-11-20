@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { SavedView } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 export async function GET(
   request: NextRequest,
@@ -78,7 +80,29 @@ export async function PUT(
     if (isDefault !== undefined) view.isDefault = isDefault
     if (isPublic !== undefined) view.isPublic = isPublic
 
+    const oldView = { ...view.toObject() }
     await view.save()
+
+    // Create audit log entry
+    const changedFields: any = {}
+    Object.keys(body).forEach(key => {
+      if (key !== 'isDefault' && oldView[key] !== body[key]) {
+        changedFields[key] = { old: oldView[key], new: body[key] }
+      }
+    })
+    
+    if (Object.keys(changedFields).length > 0) {
+      await auditLogFromRequest(request, user, 'saved_view_update', 'saved_view', {
+        entityId: params.id,
+        entityName: view.name,
+        changes: changedFields,
+        description: `Updated saved view "${view.name}"`,
+        metadata: {
+          entityType: view.entityType,
+          changedFields: Object.keys(changedFields),
+        }
+      })
+    }
 
     return NextResponse.json(view)
   } catch (error: any) {

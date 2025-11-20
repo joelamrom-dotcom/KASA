@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuditLogs } from '@/lib/audit-log'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,10 +12,20 @@ export async function GET(request: NextRequest) {
     await connectDB()
     
     const user = getAuthenticatedUser(request)
-    if (!user || !isAdmin(user)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+    
+    // Check permission - users with roles.view can export audit logs
+    const canViewAll = await hasPermission(user, PERMISSIONS.ROLES_VIEW)
+    
+    if (!canViewAll && user.role !== 'super_admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Permission required' },
+        { status: 403 }
       )
     }
     
@@ -25,11 +36,11 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') ? new Date(searchParams.get('startDate')!) : undefined
     const endDate = searchParams.get('endDate') ? new Date(searchParams.get('endDate')!) : undefined
     
-    // If not super_admin, only show logs for their own userId
-    const userId = user.role === 'super_admin' ? undefined : user.userId
+    // If user doesn't have view all permission, only show logs for their own userId
+    const userId = (canViewAll || user.role === 'super_admin') ? undefined : user.userId
     
     // Get all logs (no pagination for export)
-    const { logs } = await getAuditLogs({
+    const logs = await getAuditLogs({
       userId,
       entityType,
       entityId,

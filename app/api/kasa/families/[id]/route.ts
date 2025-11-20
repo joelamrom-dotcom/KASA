@@ -5,6 +5,8 @@ import { Family, FamilyMember, Payment, Withdrawal, LifecycleEventPayment, Payme
 import { calculateFamilyBalance } from '@/lib/calculations'
 import { moveToRecycleBin } from '@/lib/recycle-bin'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get family by ID with full details
 export async function GET(
@@ -32,11 +34,12 @@ export async function GET(
       )
     }
     
-    // Check ownership - admin can access all, regular users only their own, family users their own family
+    // Check permission or ownership
+    const canViewAll = await hasPermission(user, PERMISSIONS.FAMILIES_VIEW)
     const isFamilyOwner = family.userId?.toString() === user.userId
     const isFamilyMember = user.role === 'family' && user.familyId === params.id
     
-    if (!isAdmin(user) && !isFamilyOwner && !isFamilyMember) {
+    if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this family' },
         { status: 403 }
@@ -195,32 +198,16 @@ export async function PUT(
 
     // Create audit log entry
     if (Object.keys(changedFields).length > 0) {
-      try {
-        const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-        const { User } = await import('@/lib/models')
-        const userDoc = await User.findById(user.userId)
-        
-        await createAuditLog({
-          userId: user.userId,
-          userEmail: user.email,
-          userRole: user.role,
-          action: 'family_update',
-          entityType: 'family',
-          entityId: params.id,
-          entityName: updatedFamily.name,
-          changes: changedFields,
-          description: `Updated family "${updatedFamily.name}" - Changed: ${Object.keys(changedFields).join(', ')}`,
-          ipAddress: getIpAddress(request),
-          userAgent: getUserAgent(request),
-          metadata: {
-            familyName: updatedFamily.name,
-            changedFields: Object.keys(changedFields),
-          }
-        })
-      } catch (auditError: any) {
-        console.error('Error creating audit log:', auditError)
-        // Don't fail the update if audit logging fails
-      }
+      await auditLogFromRequest(request, user, 'family_update', 'family', {
+        entityId: params.id,
+        entityName: updatedFamily.name,
+        changes: changedFields,
+        description: `Updated family "${updatedFamily.name}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+        metadata: {
+          familyName: updatedFamily.name,
+          changedFields: Object.keys(changedFields),
+        }
+      })
     }
 
     return NextResponse.json(updatedFamily)
@@ -259,10 +246,13 @@ export async function DELETE(
       )
     }
     
-    // Check ownership
-    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+    // Check permission or ownership
+    const canDeleteAll = await hasPermission(user, PERMISSIONS.FAMILIES_DELETE)
+    const isFamilyOwner = family.userId?.toString() === user.userId
+    
+    if (!canDeleteAll && !isFamilyOwner) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have access to this family' },
+        { error: 'Forbidden - You do not have permission to delete this family' },
         { status: 403 }
       )
     }
@@ -291,29 +281,16 @@ export async function DELETE(
     await moveToRecycleBin('family', params.id, family.toObject())
     
     // Create audit log entry before deletion
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'family_delete',
-        entityType: 'family',
-        entityId: params.id,
-        entityName: family.name,
-        description: `Deleted family "${family.name}" and moved to recycle bin`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          familyName: family.name,
-          membersCount: members.length,
-          paymentsCount: payments.length,
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-      // Don't fail deletion if audit logging fails
-    }
+    await auditLogFromRequest(request, user, 'family_delete', 'family', {
+      entityId: params.id,
+      entityName: family.name,
+      description: `Deleted family "${family.name}" and moved to recycle bin`,
+      metadata: {
+        familyName: family.name,
+        membersCount: members.length,
+        paymentsCount: payments.length,
+      }
+    })
 
     // Now delete from database
     await FamilyMember.deleteMany({ familyId: params.id })

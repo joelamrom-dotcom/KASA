@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Task } from '@/lib/models'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,10 +80,13 @@ export async function PUT(
       )
     }
     
-    // Check ownership
-    if (!isAdmin(user) && task.userId?.toString() !== user.userId) {
+    // Check permission or ownership
+    const canUpdateAll = await hasPermission(user, PERMISSIONS.TASKS_UPDATE)
+    const isTaskOwner = task.userId?.toString() === user.userId
+    
+    if (!canUpdateAll && !isTaskOwner) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have access to this task' },
+        { error: 'Forbidden - You do not have permission to update this task' },
         { status: 403 }
       )
     }
@@ -154,43 +159,31 @@ export async function PUT(
 
     // Create audit log entry
     if (oldTask && Object.keys(updateData).length > 0) {
-      try {
-        const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-        const changedFields: any = {}
-        
-        Object.keys(updateData).forEach(key => {
-          const oldValue = (oldTask as any)[key]
-          const newValue = updateData[key]
-          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-            changedFields[key] = { from: oldValue, to: newValue }
+      const changedFields: any = {}
+      
+      Object.keys(updateData).forEach(key => {
+        const oldValue = (oldTask as any)[key]
+        const newValue = updateData[key]
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+          changedFields[key] = { old: oldValue, new: newValue }
+        }
+      })
+      
+      if (Object.keys(changedFields).length > 0) {
+        const action = status === 'completed' ? 'task_complete' : 'task_update'
+        const taskTitle = updatedTaskDoc.title || (oldTask as any).title || 'Unknown'
+        await auditLogFromRequest(request, user, action, 'task', {
+          entityId: params.id,
+          entityName: taskTitle,
+          changes: changedFields,
+          description: status === 'completed' 
+            ? `Completed task "${taskTitle}"`
+            : `Updated task "${taskTitle}" - Changed: ${Object.keys(changedFields).join(', ')}`,
+          metadata: {
+            title: taskTitle,
+            status: updatedTaskDoc.status,
           }
         })
-        
-        if (Object.keys(changedFields).length > 0) {
-          const action = status === 'completed' ? 'task_complete' : 'task_update'
-          const taskTitle = updatedTaskDoc.title || (oldTask as any).title || 'Unknown'
-          await createAuditLog({
-            userId: user.userId,
-            userEmail: user.email,
-            userRole: user.role,
-            action,
-            entityType: 'task',
-            entityId: params.id,
-            entityName: taskTitle,
-            changes: changedFields,
-            description: status === 'completed' 
-              ? `Completed task "${taskTitle}"`
-              : `Updated task "${taskTitle}" - Changed: ${Object.keys(changedFields).join(', ')}`,
-            ipAddress: getIpAddress(request),
-            userAgent: getUserAgent(request),
-            metadata: {
-              title: taskTitle,
-              status: updatedTaskDoc.status,
-            }
-          })
-        }
-      } catch (auditError: any) {
-        console.error('Error creating audit log:', auditError)
       }
     }
 
@@ -239,27 +232,15 @@ export async function DELETE(
     }
     
     // Create audit log entry before deletion
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'task_delete',
-        entityType: 'task',
-        entityId: params.id,
-        entityName: task.title,
-        description: `Deleted task "${task.title}"`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          title: task.title,
-          status: task.status,
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-    }
+    await auditLogFromRequest(request, user, 'task_delete', 'task', {
+      entityId: params.id,
+      entityName: task.title,
+      description: `Deleted task "${task.title}"`,
+      metadata: {
+        title: task.title,
+        status: task.status,
+      }
+    })
     
     await Task.findByIdAndDelete(params.id)
     

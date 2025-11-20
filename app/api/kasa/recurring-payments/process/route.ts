@@ -4,6 +4,7 @@ import { RecurringPayment, SavedPaymentMethod, Payment, Family, AutomationSettin
 import { createPaymentDeclinedTask } from '@/lib/task-helpers'
 import { getUserStripe, getUserStripeAccountId } from '@/lib/stripe-helpers'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 import { updateOverdueStatus } from '@/lib/overdue-helpers'
 
 // POST - Process all due recurring payments
@@ -24,10 +25,11 @@ export async function POST(request: NextRequest) {
     
     if (user) {
       // Manual trigger - process for this user only if automation is enabled
-      if (!isAdmin(user)) {
+      // Check permission
+      if (!(await hasPermission(user, PERMISSIONS.PAYMENTS_CREATE))) {
         return NextResponse.json(
-          { error: 'Unauthorized - Admin access required' },
-          { status: 401 }
+          { error: 'Forbidden - Payment create permission required' },
+          { status: 403 }
         )
       }
       

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, MessageHistory } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 import nodemailer from 'nodemailer'
 
 export const dynamic = 'force-dynamic'
@@ -14,6 +16,11 @@ export async function POST(request: NextRequest) {
     const user = getAuthenticatedUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.COMMUNICATION_SEND))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -130,7 +137,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save to history
-    await MessageHistory.create({
+    const messageHistory = await MessageHistory.create({
       userId,
       type,
       subject: type === 'email' ? subject : undefined,
@@ -139,6 +146,21 @@ export async function POST(request: NextRequest) {
       successCount,
       failureCount,
       status: failureCount === 0 ? 'sent' : (successCount > 0 ? 'partial' : 'failed')
+    })
+
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'message_send', 'message', {
+      entityId: messageHistory._id.toString(),
+      entityName: `Bulk ${type} message`,
+      description: `Sent ${type} message to ${successCount} recipients (${failureCount} failed)`,
+      metadata: {
+        type,
+        subject: type === 'email' ? subject : undefined,
+        successCount,
+        failureCount,
+        totalRecipients: families.length,
+        recipients: recipients.slice(0, 10), // First 10 recipients
+      }
     })
 
     return NextResponse.json({

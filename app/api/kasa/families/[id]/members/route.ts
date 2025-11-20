@@ -3,6 +3,8 @@ import connectDB from '@/lib/database'
 import { FamilyMember, LifecycleEventPayment, Family } from '@/lib/models'
 import { calculateBarMitzvahDate, hasReachedBarMitzvahAge } from '@/lib/hebrew-date'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get all members for a family
 export async function GET(
@@ -30,8 +32,12 @@ export async function GET(
       )
     }
     
-    // Check ownership
-    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+    // Check permission or ownership
+    const canViewAll = await hasPermission(user, PERMISSIONS.MEMBERS_VIEW)
+    const isFamilyOwner = family.userId?.toString() === user.userId
+    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    
+    if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have access to this family' },
         { status: 403 }
@@ -75,10 +81,13 @@ export async function POST(
       )
     }
     
-    // Check ownership
-    if (!isAdmin(user) && family.userId?.toString() !== user.userId) {
+    // Check permission or ownership
+    const canCreateAll = await hasPermission(user, PERMISSIONS.MEMBERS_CREATE)
+    const isFamilyOwner = family.userId?.toString() === user.userId
+    
+    if (!canCreateAll && !isFamilyOwner) {
       return NextResponse.json(
-        { error: 'Forbidden - You do not have access to this family' },
+        { error: 'Forbidden - You do not have permission to add members to this family' },
         { status: 403 }
       )
     }
@@ -139,30 +148,18 @@ export async function POST(
     })
 
     // Create audit log entry
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'member_create',
-        entityType: 'member',
-        entityId: member._id.toString(),
-        entityName: `${firstName} ${lastName}`,
-        description: `Created member "${firstName} ${lastName}" for family "${family.name}"`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          familyId: params.id,
-          familyName: family.name,
-          memberName: `${firstName} ${lastName}`,
-          gender,
-          birthDate: new Date(birthDate),
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-    }
+    await auditLogFromRequest(request, user, 'member_create', 'member', {
+      entityId: member._id.toString(),
+      entityName: `${firstName} ${lastName}`,
+      description: `Created member "${firstName} ${lastName}" for family "${family.name}"`,
+      metadata: {
+        familyId: params.id,
+        familyName: family.name,
+        memberName: `${firstName} ${lastName}`,
+        gender,
+        birthDate: new Date(birthDate),
+      }
+    })
 
     // Auto-assign payment plan (Plan 3 - Bucher Plan) when male turns 13 in Hebrew years
     if (gender === 'male' && finalHebrewBirthDate && finalHebrewBirthDate.trim() && hasReachedBarMitzvahAge(finalHebrewBirthDate)) {

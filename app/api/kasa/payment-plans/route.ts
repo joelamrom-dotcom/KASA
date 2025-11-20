@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { PaymentPlan, Family } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get all payment plans with family counts
 export async function GET(request: NextRequest) {
@@ -16,11 +18,13 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Build query - each user sees only their own settings
-    // Convert userId to ObjectId for proper MongoDB comparison
+    // Check permission - users with payment_plans.view see all, others see only their own
+    const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENT_PLANS_VIEW)
+    
+    // Build query - each user sees only their own settings unless they have permission
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
-    const query = { userId: userObjectId }
+    const query = canViewAll ? {} : { userId: userObjectId }
     
     // Sort by planNumber to ensure consistent order (Plan 1, Plan 2, Plan 3, Plan 4)
     const plans = await PaymentPlan.find(query).sort({ planNumber: 1 })
@@ -92,6 +96,11 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.PAYMENT_PLANS_CREATE))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
     const body = await request.json()
     const { name, yearlyPrice, planNumber } = body
 
@@ -127,28 +136,16 @@ export async function POST(request: NextRequest) {
     })
 
     // Create audit log entry
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'payment_plan_create',
-        entityType: 'payment_plan',
-        entityId: plan._id.toString(),
-        entityName: name,
-        description: `Created payment plan "${name}" ($${yearlyPrice}/year)`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          planName: name,
-          yearlyPrice,
-          planNumber: finalPlanNumber,
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-    }
+    await auditLogFromRequest(request, user, 'payment_plan_create', 'payment_plan', {
+      entityId: plan._id.toString(),
+      entityName: name,
+      description: `Created payment plan "${name}" ($${yearlyPrice}/year)`,
+      metadata: {
+        planName: name,
+        yearlyPrice,
+        planNumber: finalPlanNumber,
+      }
+    })
 
     return NextResponse.json(plan, { status: 201 })
   } catch (error: any) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, FamilyMember, Payment, LifecycleEvent, Task } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +18,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const range = searchParams.get('range') || 'month'
 
+    // Check permission - users with analytics.view see all stats, others see only their own
+    const canViewAll = await hasPermission(user, PERMISSIONS.ANALYTICS_VIEW)
+    
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
@@ -32,25 +36,25 @@ export async function GET(request: NextRequest) {
       startDate.setFullYear(now.getFullYear() - 1)
     }
 
+    // Build query based on permissions
+    const familyQuery = canViewAll ? {} : { userId }
+    const paymentQuery = canViewAll ? { date: { $gte: startDate } } : { userId, date: { $gte: startDate } }
+    const eventQuery = canViewAll ? { date: { $gte: startDate } } : { userId, date: { $gte: startDate } }
+
     // Total Families
-    const totalFamilies = await Family.countDocuments({ userId })
+    const totalFamilies = await Family.countDocuments(familyQuery)
 
     // Total Members
-    const totalMembers = await FamilyMember.countDocuments({ userId })
+    const memberQuery = canViewAll ? {} : { userId }
+    const totalMembers = await FamilyMember.countDocuments(memberQuery)
 
     // Total Income (from payments)
-    const payments = await Payment.find({
-      userId,
-      date: { $gte: startDate }
-    })
+    const payments = await Payment.find(paymentQuery)
 
     const totalIncome = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0)
 
     // Total Expenses (from lifecycle events)
-    const events = await LifecycleEvent.find({
-      userId,
-      date: { $gte: startDate }
-    })
+    const events = await LifecycleEvent.find(eventQuery)
 
     const totalExpenses = events.reduce((sum, event) => sum + (event.amount || 0), 0)
     const balance = totalIncome - totalExpenses
@@ -93,10 +97,10 @@ export async function GET(request: NextRequest) {
     const upcomingEventsDate = new Date()
     upcomingEventsDate.setDate(now.getDate() + 30)
     
-    const upcomingEvents = await LifecycleEvent.find({
-      userId,
-      date: { $gte: now, $lte: upcomingEventsDate }
-    })
+    const upcomingEventsQuery = canViewAll 
+      ? { date: { $gte: now, $lte: upcomingEventsDate } }
+      : { userId, date: { $gte: now, $lte: upcomingEventsDate } }
+    const upcomingEvents = await LifecycleEvent.find(upcomingEventsQuery)
       .populate('familyId', 'name')
       .sort({ date: 1 })
       .limit(10)

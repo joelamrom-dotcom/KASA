@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { YearlyCalculation, Family, Payment } from '@/lib/models'
 import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 import { calculateYearlyIncome, calculateAndSaveYear } from '@/lib/calculations'
 
 // GET - Get yearly calculations (user-scoped)
@@ -20,15 +21,15 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const year = searchParams.get('year')
     
-    // For super_admin, show all calculations
-    // For other users, calculate based on their own families/payments
+    // Check permission - users with analytics.view see all calculations
+    const canViewAll = await hasPermission(user, PERMISSIONS.ANALYTICS_VIEW)
     const isSuperAdminUser = isSuperAdmin(user)
     
     if (year) {
       const yearNum = parseInt(year)
       
-      // If super_admin, try to get global calculation first
-      if (isSuperAdminUser) {
+      // If user has analytics view permission or is super_admin, try to get global calculation first
+      if (canViewAll || isSuperAdminUser) {
         const calculation = await YearlyCalculation.findOne({ year: yearNum })
         if (calculation) {
           return NextResponse.json(calculation)
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
       // Calculate user-specific income for the year
       // This will filter families/payments by userId
       const userFamilies = await Family.find(
-        isSuperAdminUser ? {} : { userId: user.userId }
+        (canViewAll || isSuperAdminUser) ? {} : { userId: user.userId }
       )
       
       // Calculate income based on user's families
@@ -56,8 +57,8 @@ export async function GET(request: NextRequest) {
       })
     }
     
-    // Get all calculations (for super_admin) or calculate for current user
-    if (isSuperAdminUser) {
+    // Get all calculations (for users with analytics.view or super_admin) or calculate for current user
+    if (canViewAll || isSuperAdminUser) {
       const calculations = await YearlyCalculation.find({}).sort({ year: -1 })
       return NextResponse.json(calculations)
     } else {

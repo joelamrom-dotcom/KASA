@@ -5,6 +5,8 @@ import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
 import { getCachedData, setCachedData, CacheKeys, invalidateCache } from '@/lib/cache'
 import { performanceMonitor } from '@/lib/performance'
 import { getFamiliesWithPaymentsPipeline } from '@/lib/db-optimization'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 
 // GET - Get all families (filtered by user)
 export async function GET(request: NextRequest) {
@@ -58,12 +60,18 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Build query - super_admin sees all, admin sees all, regular users see only their data, family users see only their family
+    // Check permission
+    const canViewAll = await hasPermission(user, PERMISSIONS.FAMILIES_VIEW)
+    if (!canViewAll && user.role !== 'family') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Build query - users with families.view see all, regular users see only their data, family users see only their family
     let query: any = {}
-    if (isSuperAdminUser || isAdmin(user)) {
-      // Super admin and admin see all families
+    if (canViewAll) {
+      // Users with families.view permission see all families
       query = {}
-      console.log('GET /api/kasa/families - Super admin/admin: showing all families')
+      console.log('GET /api/kasa/families - Has permission: showing all families')
     } else if (user.role === 'family' && user.familyId) {
       // Family users see only their own family
       query = { _id: user.familyId }
@@ -139,6 +147,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
+    
+    const user = getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Check permission
+    if (!(await hasPermission(user, PERMISSIONS.FAMILIES_CREATE))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
     const body = await request.json()
     const { 
       name, 
@@ -197,15 +216,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get authenticated user
-    const user = getAuthenticatedUser(request)
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
     const family = await Family.create({
       userId: user.userId, // Associate family with user
       name,
@@ -234,29 +244,16 @@ export async function POST(request: NextRequest) {
     })
 
     // Create audit log entry
-    try {
-      const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      await createAuditLog({
-        userId: user.userId,
-        userEmail: user.email,
-        userRole: user.role,
-        action: 'family_create',
-        entityType: 'family',
-        entityId: family._id.toString(),
-        entityName: family.name,
-        description: `Created new family "${family.name}"`,
-        ipAddress: getIpAddress(request),
-        userAgent: getUserAgent(request),
-        metadata: {
-          familyName: family.name,
-          email: family.email,
-          paymentPlanId: paymentPlanId,
-        }
-      })
-    } catch (auditError: any) {
-      console.error('Error creating audit log:', auditError)
-      // Don't fail family creation if audit logging fails
-    }
+    await auditLogFromRequest(request, user, 'family_create', 'family', {
+      entityId: family._id.toString(),
+      entityName: family.name,
+      description: `Created new family "${family.name}"`,
+      metadata: {
+        familyName: family.name,
+        email: family.email,
+        paymentPlanId: paymentPlanId,
+      }
+    })
 
     // Auto-create Stripe Customer for the family
     try {

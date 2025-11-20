@@ -34,7 +34,9 @@ import {
   DocumentChartBarIcon,
   ChatBubbleLeftRightIcon,
   Squares2X2Icon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  ShieldCheckIcon,
+  ComputerDesktopIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -60,7 +62,9 @@ import {
   LinkIcon as LinkIconSolid,
   DocumentChartBarIcon as DocumentChartBarIconSolid,
   ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid,
-  CalendarDaysIcon as CalendarDaysIconSolid
+  CalendarDaysIcon as CalendarDaysIconSolid,
+  ShieldCheckIcon as ShieldCheckIconSolid,
+  ComputerDesktopIcon as ComputerDesktopIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -119,11 +123,14 @@ export default function Sidebar() {
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/communication', label: 'Communication', icon: ChatBubbleLeftRightIcon, iconSolid: ChatBubbleLeftRightIconSolid },
       { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
-      // Show Audit Logs and Users pages only for admins
-      ...(user?.role === 'admin' || user?.role === 'super_admin' ? [
+      ...(user?.role === 'super_admin' || user?.role === 'admin' ? [
+        { href: '/roles', label: 'Roles & Permissions', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
+        { href: '/sessions', label: 'Sessions', icon: ComputerDesktopIcon, iconSolid: ComputerDesktopIconSolid }
+      ] : []),
+      ...(user?.role === 'super_admin' ? [
+        { href: '/users', label: 'Users', icon: UsersIcon, iconSolid: UsersIconSolid },
         { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardDocumentCheckIcon, iconSolid: ClipboardDocumentCheckIconSolid }
       ] : []),
-      ...(user?.role === 'super_admin' ? [{ href: '/users', label: 'Users', icon: UsersIcon, iconSolid: UsersIconSolid }] : []),
     ]
 
   return (

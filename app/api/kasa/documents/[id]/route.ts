@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Document } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
+import { auditLogFromRequest } from '@/lib/audit-log'
 import { readFile, unlink } from 'fs/promises'
 import { join } from 'path'
 
@@ -20,11 +22,16 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check permission or ownership
+    const canViewAll = await hasPermission(user, PERMISSIONS.DOCUMENTS_VIEW)
+
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
     const documentId = new mongoose.Types.ObjectId(params.id)
 
-    const document = await Document.findOne({ _id: documentId, userId })
+    // Build query based on permissions
+    const query: any = canViewAll ? { _id: documentId } : { _id: documentId, userId }
+    const document = await Document.findOne(query)
 
     if (!document) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
@@ -64,11 +71,16 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check permission or ownership
+    const canViewAll = await hasPermission(user, PERMISSIONS.DOCUMENTS_VIEW)
+
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
     const documentId = new mongoose.Types.ObjectId(params.id)
 
-    const document = await Document.findOne({ _id: documentId, userId })
+    // Build query based on permissions
+    const query: any = canViewAll ? { _id: documentId } : { _id: documentId, userId }
+    const document = await Document.findOne(query)
 
     if (!document) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
@@ -84,6 +96,18 @@ export async function DELETE(
 
     // Delete document record
     await Document.findByIdAndDelete(documentId)
+
+    // Create audit log entry
+    await auditLogFromRequest(request, user, 'document_delete', 'document', {
+      entityId: params.id,
+      entityName: document.name,
+      description: `Deleted document "${document.name}"`,
+      metadata: {
+        fileName: document.fileName,
+        category: document.category,
+        fileSize: document.fileSize,
+      }
+    })
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

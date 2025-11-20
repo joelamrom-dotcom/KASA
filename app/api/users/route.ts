@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { User } from '@/lib/models'
 import { getAuthenticatedUser, isSuperAdmin } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,11 +94,13 @@ export async function GET(request: NextRequest) {
     console.log('GET /api/users - ========== END ROLE CHECK ==========')
     console.log('GET /api/users - Final decision - hasSuperAdminAccess:', hasSuperAdminAccess)
     
-    // Only super_admin can see all users
-    if (!hasSuperAdminAccess) {
+    // Check permission - users with users.view can see all users
+    const canViewAll = await hasPermission(user, PERMISSIONS.USERS_VIEW)
+    
+    if (!hasSuperAdminAccess && !canViewAll) {
       console.log('GET /api/users - Access denied. Token role:', user.role, 'Email:', user.email, 'HasSuperAdminAccess:', hasSuperAdminAccess)
       return NextResponse.json(
-        { error: 'Forbidden: Super admin access required' },
+        { error: 'Forbidden: Permission required' },
         { status: 403 }
       )
     }
