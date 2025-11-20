@@ -581,7 +581,6 @@ export default function PaymentsPage() {
               onPageChange={setCurrentPage}
             />
           )}
-          )}
 
           {viewType === 'kanban' && (
             <div className="p-6">
