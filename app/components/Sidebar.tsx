@@ -7,7 +7,7 @@ import PushNotificationManager from './PushNotificationManager'
 import GlobalSearch from './GlobalSearch'
 import NotificationCenter from './NotificationCenter'
 import DarkModeToggle from './DarkModeToggle'
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon, ArrowPathIcon, Squares2X2Icon } from '@heroicons/react/24/outline'
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useState, useRef, useEffect } from 'react'
 import { 
   HomeIcon,
@@ -58,8 +58,7 @@ import {
   TagIcon as TagIconSolid,
   LinkIcon as LinkIconSolid,
   DocumentChartBarIcon as DocumentChartBarIconSolid,
-  ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid,
-  Squares2X2Icon as Squares2X2IconSolid
+  ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
