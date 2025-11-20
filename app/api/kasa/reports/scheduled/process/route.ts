@@ -77,14 +77,15 @@ export async function POST(request: NextRequest) {
               recipient.email,
               `Scheduled Report: ${scheduledReport.name}`,
               `Please find attached the scheduled report "${scheduledReport.name}".`,
-              {
+              undefined,
+              [{
                 filename: `${scheduledReport.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.${scheduledReport.exportFormat === 'excel' ? 'xlsx' : scheduledReport.exportFormat}`,
                 content: base64,
                 encoding: 'base64',
                 contentType: scheduledReport.exportFormat === 'pdf' ? 'application/pdf' : 
                              scheduledReport.exportFormat === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
                              'text/csv'
-              }
+              }]
             )
           } catch (emailError: any) {
             console.error(`Error sending email to ${recipient.email}:`, emailError)

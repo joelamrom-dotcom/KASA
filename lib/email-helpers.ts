@@ -25,7 +25,18 @@ async function getEmailTransporter() {
 /**
  * Send email using configured email settings
  */
-export async function sendEmail(to: string, subject: string, html: string, fromName?: string) {
+export async function sendEmail(
+  to: string, 
+  subject: string, 
+  html: string, 
+  fromName?: string,
+  attachments?: Array<{
+    filename: string
+    content: string
+    encoding: string
+    contentType: string
+  }>
+) {
   try {
     await connectDB()
     const emailConfigDoc = await EmailConfig.findOne({ isActive: true })
@@ -38,12 +49,23 @@ export async function sendEmail(to: string, subject: string, html: string, fromN
     const transporter = await getEmailTransporter()
     const fromNameToUse = fromName || emailConfigDoc.fromName || 'Kasa Family Management'
 
-    const info = await transporter.sendMail({
+    const mailOptions: any = {
       from: `${fromNameToUse} <${emailConfigDoc.email}>`,
       to,
       subject,
       html
-    })
+    }
+
+    if (attachments && attachments.length > 0) {
+      mailOptions.attachments = attachments.map(att => ({
+        filename: att.filename,
+        content: att.content,
+        encoding: att.encoding as 'base64',
+        contentType: att.contentType
+      }))
+    }
+
+    const info = await transporter.sendMail(mailOptions)
 
     console.log(`✅ Email sent successfully to ${to}:`, info.messageId)
     return { success: true, messageId: info.messageId }
