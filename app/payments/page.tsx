@@ -234,6 +234,86 @@ export default function PaymentsPage() {
     }
   }
 
+  // Fetch overdue payments
+  const fetchOverduePayments = async () => {
+    try {
+      setOverdueLoading(true)
+      const token = localStorage.getItem('token')
+      const params = new URLSearchParams()
+      
+      if (overdueFilter === 'level1') params.append('minDaysOverdue', '7')
+      else if (overdueFilter === 'level2') params.append('minDaysOverdue', '14')
+      else if (overdueFilter === 'level3') params.append('minDaysOverdue', '30')
+
+      const res = await fetch(`/api/kasa/payments/overdue?${params.toString()}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setOverduePayments(data.payments)
+        setOverdueStats(data.stats)
+      }
+    } catch (error) {
+      console.error('Error fetching overdue payments:', error)
+    } finally {
+      setOverdueLoading(false)
+    }
+  }
+
+  // Fetch payment links
+  const fetchLinks = async () => {
+    try {
+      setLinksLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/payment-links', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setLinks(data)
+      }
+    } catch (error) {
+      console.error('Error fetching links:', error)
+    } finally {
+      setLinksLoading(false)
+    }
+  }
+
+  const fetchFamiliesForLinks = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/families', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFamilies(data)
+      }
+    } catch (error) {
+      console.error('Error fetching families:', error)
+    }
+  }
+
+  // Fetch analytics
+  const fetchAnalytics = async () => {
+    try {
+      setAnalyticsLoading(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/payment-analytics?period=${analyticsPeriod}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAnalytics(data)
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error)
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }
+
   const formatPaymentMethod = (payment: Payment) => {
     const paymentMethod = payment.paymentMethod || 'cash'
     const method = paymentMethodLabels[paymentMethod as keyof typeof paymentMethodLabels] || 'Cash'
@@ -395,7 +475,17 @@ export default function PaymentsPage() {
     }
   }
 
-  if (loading) {
+  // Define tabs
+  const tabs = [
+    { id: 'all' as PaymentTab, label: 'All Payments', icon: CurrencyDollarIcon },
+    ...(getUser()?.role === 'admin' || getUser()?.role === 'super_admin' ? [
+      { id: 'overdue' as PaymentTab, label: 'Overdue Payments', icon: ExclamationTriangleIcon },
+      { id: 'links' as PaymentTab, label: 'Payment Links', icon: LinkIcon },
+      { id: 'analytics' as PaymentTab, label: 'Analytics', icon: ChartBarIcon }
+    ] : [])
+  ]
+
+  if (loading && activeTab === 'all') {
     return (
       <div className="min-h-screen p-8">
         <div className="max-w-7xl mx-auto">
@@ -411,7 +501,7 @@ export default function PaymentsPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              All Payments
+              Payments
             </h1>
             <p className="text-gray-600">View and manage all payments across all families</p>
           </div>
@@ -420,7 +510,7 @@ export default function PaymentsPage() {
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => {
+            {tabs.map((tab: { id: PaymentTab; label: string; icon: any }) => {
               const Icon = tab.icon
               return (
                 <button
@@ -1077,7 +1167,7 @@ export default function PaymentsPage() {
                                 })
                                 if (res.ok) {
                                   setLinkMessage({ type: 'success', text: 'Payment link deleted successfully!' })
-                                  fetchLinks()
+                                  await fetchLinks()
                                 } else {
                                   const error = await res.json()
                                   setLinkMessage({ type: 'error', text: error.error || 'Failed to delete payment link' })
@@ -1139,7 +1229,7 @@ export default function PaymentsPage() {
                         setShowLinkModal(false)
                         setEditingLink(null)
                         setLinkFormData({ familyId: '', amount: undefined, description: '', paymentPlan: { enabled: false }, expiresAt: '', maxUses: undefined })
-                        fetchLinks()
+                        await fetchLinks()
                       } else {
                         const error = await res.json()
                         setLinkMessage({ type: 'error', text: error.error || 'Failed to save payment link' })
