@@ -41,14 +41,16 @@ const ROLES = {
   super_admin: 'Super Admin',
   admin: 'Admin', 
   user: 'User',
-  viewer: 'Viewer'
+  viewer: 'Viewer',
+  family: 'Family'
 }
 
 const ROLE_COLORS = {
   super_admin: 'bg-purple-100 text-purple-800 border-purple-300',
   admin: 'bg-blue-100 text-blue-800 border-blue-300',
   user: 'bg-gray-100 text-gray-800 border-gray-300',
-  viewer: 'bg-green-100 text-green-800 border-green-300'
+  viewer: 'bg-green-100 text-green-800 border-green-300',
+  family: 'bg-orange-100 text-orange-800 border-orange-300'
 }
 
 export default function UsersPage() {
