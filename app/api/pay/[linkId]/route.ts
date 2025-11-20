@@ -19,25 +19,36 @@ export async function GET(
       .populate('familyId', 'name email')
       .lean()
 
-    if (!link) {
+    if (!link || Array.isArray(link)) {
       return NextResponse.json({ error: 'Payment link not found' }, { status: 404 })
     }
 
+    // Type assertion: findOne().lean() returns a single document or null, not an array
+    const linkDoc = link as {
+      _id: { toString(): string } | string
+      expiresAt?: Date | string
+      maxUses?: number
+      currentUses?: number
+      familyId?: any
+      [key: string]: any
+    }
+
     // Check if expired
-    if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+    if (linkDoc.expiresAt && new Date(linkDoc.expiresAt) < new Date()) {
       return NextResponse.json({ error: 'Payment link has expired' }, { status: 410 })
     }
 
     // Check if max uses reached
-    if (link.maxUses && link.currentUses >= link.maxUses) {
+    if (linkDoc.maxUses && linkDoc.currentUses && linkDoc.currentUses >= linkDoc.maxUses) {
       return NextResponse.json({ error: 'Payment link has reached maximum uses' }, { status: 410 })
     }
 
+    const linkId = typeof linkDoc._id === 'string' ? linkDoc._id : linkDoc._id.toString()
     return NextResponse.json({
-      ...link,
-      _id: link._id.toString(),
-      familyId: (link.familyId as any)?._id?.toString(),
-      familyName: (link.familyId as any)?.name
+      ...linkDoc,
+      _id: linkId,
+      familyId: (linkDoc.familyId as any)?._id?.toString(),
+      familyName: (linkDoc.familyId as any)?.name
     })
   } catch (error: any) {
     console.error('Error fetching payment link:', error)
@@ -66,22 +77,35 @@ export async function POST(
       .populate('familyId')
       .lean()
 
-    if (!link) {
+    if (!link || Array.isArray(link)) {
       return NextResponse.json({ error: 'Payment link not found' }, { status: 404 })
     }
 
+    // Type assertion: findOne().lean() returns a single document or null, not an array
+    const linkDoc = link as {
+      _id: { toString(): string } | string
+      expiresAt?: Date | string
+      maxUses?: number
+      currentUses?: number
+      amount?: number
+      description?: string
+      userId?: string
+      familyId?: any
+      [key: string]: any
+    }
+
     // Check if expired
-    if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+    if (linkDoc.expiresAt && new Date(linkDoc.expiresAt) < new Date()) {
       return NextResponse.json({ error: 'Payment link has expired' }, { status: 410 })
     }
 
     // Check if max uses reached
-    if (link.maxUses && link.currentUses >= link.maxUses) {
+    if (linkDoc.maxUses && linkDoc.currentUses && linkDoc.currentUses >= linkDoc.maxUses) {
       return NextResponse.json({ error: 'Payment link has reached maximum uses' }, { status: 410 })
     }
 
-    const family = link.familyId as any
-    const finalAmount = link.amount || amount
+    const family = linkDoc.familyId as any
+    const finalAmount = linkDoc.amount || amount
 
     if (!finalAmount || finalAmount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
@@ -102,13 +126,14 @@ export async function POST(
       year: new Date().getFullYear(),
       type: 'membership',
       paymentMethod: paymentMethod || 'credit_card',
-      paymentLinkId: link._id,
+      paymentLinkId: typeof linkDoc._id === 'string' ? linkDoc._id : linkDoc._id.toString(),
       stripePaymentIntentId,
-      notes: `Payment via link: ${link.description || ''}`
+      notes: `Payment via link: ${linkDoc.description || ''}`
     })
 
     // Update link usage
-    await PaymentLink.findByIdAndUpdate(link._id, {
+    const linkIdForUpdate = typeof linkDoc._id === 'string' ? linkDoc._id : linkDoc._id.toString()
+    await PaymentLink.findByIdAndUpdate(linkIdForUpdate, {
       $inc: { currentUses: 1 }
     })
 
@@ -119,7 +144,7 @@ export async function POST(
     
     await PaymentAnalytics.findOneAndUpdate(
       {
-        userId: link.userId,
+        userId: linkDoc.userId,
         date: today
       },
       {
