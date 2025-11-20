@@ -329,8 +329,11 @@ export default function TasksSection() {
       </div>
 
       {/* Task Creation Modal */}
-      {showTaskModal && (
-        <Modal title="Create Task" onClose={() => setShowTaskModal(false)}>
+      <Modal 
+        isOpen={showTaskModal} 
+        title="Create Task" 
+        onClose={() => setShowTaskModal(false)}
+      >
           <form
             onSubmit={async (e) => {
               e.preventDefault()
@@ -489,7 +492,6 @@ export default function TasksSection() {
             </div>
           </form>
         </Modal>
-      )}
     </>
   )
 }
