@@ -41,18 +41,33 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Type assertion for lean() result
+    const familyDoc = family as {
+      email?: string
+      phone?: string
+      husbandCellPhone?: string
+      wifeCellPhone?: string
+      address?: string
+      street?: string
+      city?: string
+      state?: string
+      zip?: string
+      receiveEmails?: boolean
+      receiveSMS?: boolean
+    }
+
     return NextResponse.json({
-      email: family.email,
-      phone: family.phone,
-      husbandCellPhone: family.husbandCellPhone,
-      wifeCellPhone: family.wifeCellPhone,
-      address: family.address,
-      street: family.street,
-      city: family.city,
-      state: family.state,
-      zip: family.zip,
-      receiveEmails: family.receiveEmails,
-      receiveSMS: family.receiveSMS
+      email: familyDoc.email,
+      phone: familyDoc.phone,
+      husbandCellPhone: familyDoc.husbandCellPhone,
+      wifeCellPhone: familyDoc.wifeCellPhone,
+      address: familyDoc.address,
+      street: familyDoc.street,
+      city: familyDoc.city,
+      state: familyDoc.state,
+      zip: familyDoc.zip,
+      receiveEmails: familyDoc.receiveEmails,
+      receiveSMS: familyDoc.receiveSMS
     })
   } catch (error: any) {
     console.error('Error fetching contact information:', error)
