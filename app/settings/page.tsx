@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon, XMarkIcon, ShieldCheckIcon, TagIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, ComputerDesktopIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
@@ -138,9 +138,9 @@ export default function SettingsPage() {
   const [roles, setRoles] = useState<any[]>([])
   const [permissions, setPermissions] = useState<any[]>([])
   const [rolesLoading, setRolesLoading] = useState(false)
-  const [showRoleModal, setShowRoleModal] = useState(false)
-  const [editingRole, setEditingRole] = useState<any>(null)
-  const [roleFormData, setRoleFormData] = useState<any>({ name: '', displayName: '', description: '', permissions: [] })
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
+  const [selectedRolePermissions, setSelectedRolePermissions] = useState<Set<string>>(new Set())
+  const [savingPermissions, setSavingPermissions] = useState(false)
 
   // Audit Logs state
   const [auditLogs, setAuditLogs] = useState<any[]>([])
@@ -380,7 +380,7 @@ export default function SettingsPage() {
       })
       if (res.ok) {
         const data = await res.json()
-        setRoles(data)
+        setRoles(data.roles || data || [])
       }
     } catch (error) {
       console.error('Error fetching roles:', error)
@@ -397,12 +397,101 @@ export default function SettingsPage() {
       })
       if (res.ok) {
         const data = await res.json()
-        setPermissions(data)
+        setPermissions(data.permissions || data || [])
       }
     } catch (error) {
       console.error('Error fetching permissions:', error)
     }
   }
+
+  const loadRolePermissions = async (roleId: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/roles/${roleId}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const role = await res.json()
+        const permissionIds = role.permissions?.map((p: any) => typeof p === 'object' ? p._id || p.name : p) || []
+        const permissionNames = permissions
+          .filter(p => permissionIds.includes(p._id) || permissionIds.includes(p.name))
+          .map(p => p.name)
+        setSelectedRolePermissions(new Set(permissionNames))
+        setSelectedRoleId(roleId)
+      }
+    } catch (error) {
+      console.error('Error loading role permissions:', error)
+    }
+  }
+
+  const togglePermission = async (permissionName: string) => {
+    if (!selectedRoleId) return
+
+    const newPermissions = new Set(selectedRolePermissions)
+    if (newPermissions.has(permissionName)) {
+      newPermissions.delete(permissionName)
+    } else {
+      newPermissions.add(permissionName)
+    }
+    setSelectedRolePermissions(newPermissions)
+
+    // Save immediately
+    try {
+      setSavingPermissions(true)
+      const token = localStorage.getItem('token')
+      const permissionIds = permissions
+        .filter(p => newPermissions.has(p.name))
+        .map(p => p._id)
+
+      const res = await fetch(`/api/roles/${selectedRoleId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          permissions: permissionIds
+        })
+      })
+
+      if (!res.ok) {
+        // Revert on error
+        setSelectedRolePermissions(selectedRolePermissions)
+        const error = await res.json()
+        showToast(error.error || 'Failed to update permissions', 'error')
+      } else {
+        showToast('Permissions updated', 'success')
+      }
+    } catch (error) {
+      // Revert on error
+      setSelectedRolePermissions(selectedRolePermissions)
+      showToast('Failed to update permissions', 'error')
+    } finally {
+      setSavingPermissions(false)
+    }
+  }
+
+  // Group permissions by module
+  const permissionsByModule = useMemo(() => {
+    const grouped: Record<string, any[]> = {}
+    permissions.forEach(perm => {
+      const module = perm.module || 'other'
+      if (!grouped[module]) {
+        grouped[module] = []
+      }
+      grouped[module].push(perm)
+    })
+    return grouped
+  }, [permissions])
+
+  // Get module display name
+  const getModuleDisplayName = (module: string) => {
+    return module.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+  }
+
+  // Standard permission actions
+  const standardActions = ['view', 'create', 'update', 'delete']
+  const extendedActions = ['export', 'import', 'refund', 'manage']
 
   // Refresh Kevittel data when switching to the Kevittel tab
   useEffect(() => {
@@ -3345,21 +3434,204 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Roles & Permissions Tab - Embedded from /roles page */}
+        {/* Roles & Permissions Tab - Salesforce-style table */}
         {activeTab === 'roles' && (userRole === 'admin' || userRole === 'super_admin') && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Roles & Permissions</h2>
               <p className="text-gray-600">Manage user roles and their permissions</p>
             </div>
+
+            {/* Role Selector */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Role</label>
+              <select
+                value={selectedRoleId || ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    loadRolePermissions(e.target.value)
+                  } else {
+                    setSelectedRoleId(null)
+                    setSelectedRolePermissions(new Set())
+                  }
+                }}
+                className="w-full max-w-md border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">-- Select a role --</option>
+                {roles.map((role: any) => (
+                  <option key={role._id} value={role._id}>
+                    {role.displayName || role.name} {role.isSystem ? '(System)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {rolesLoading ? (
               <div className="text-center py-8 text-gray-500">Loading...</div>
-            ) : (
+            ) : !selectedRoleId ? (
               <div className="text-center py-8 text-gray-500">
-                <p>Roles & Permissions management interface</p>
-                <Link href="/roles" className="text-blue-600 hover:underline mt-2 inline-block">
-                  Go to full Roles & Permissions page →
-                </Link>
+                <ShieldCheckIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p>Please select a role to manage permissions</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-gray-300 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase border-r border-gray-300 min-w-[220px]">
+                        Object
+                      </th>
+                      <th colSpan={4} className="px-6 py-3 text-center text-xs font-semibold text-gray-900 uppercase bg-blue-50 border-b-2 border-gray-300">
+                        Basic Access
+                      </th>
+                      <th colSpan={4} className="px-6 py-3 text-center text-xs font-semibold text-gray-900 uppercase bg-green-50 border-b-2 border-gray-300">
+                        Extended Access
+                      </th>
+                    </tr>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r border-gray-300"></th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase bg-blue-50">Read</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase bg-blue-50">Create</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase bg-blue-50">Edit</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase bg-blue-50">Delete</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase bg-green-50">Export</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase bg-green-50">Import</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase bg-green-50">Refund</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase bg-green-50">Manage</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {Object.entries(permissionsByModule).sort(([a], [b]) => a.localeCompare(b)).map(([module, modulePermissions]) => {
+                      const viewPerm = modulePermissions.find(p => p.action === 'view')
+                      const createPerm = modulePermissions.find(p => p.action === 'create')
+                      const updatePerm = modulePermissions.find(p => p.action === 'update')
+                      const deletePerm = modulePermissions.find(p => p.action === 'delete')
+                      const exportPerm = modulePermissions.find(p => p.action === 'export')
+                      const importPerm = modulePermissions.find(p => p.action === 'import')
+                      const refundPerm = modulePermissions.find(p => p.action === 'refund')
+                      const managePerm = modulePermissions.find(p => p.action === 'manage')
+
+                      return (
+                        <tr key={module} className="hover:bg-gray-50 transition-colors">
+                          <td className="sticky left-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 border-r border-gray-300">
+                            {getModuleDisplayName(module)}
+                          </td>
+                          {/* Basic Access */}
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            {viewPerm ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedRolePermissions.has(viewPerm.name)}
+                                onChange={() => togglePermission(viewPerm.name)}
+                                disabled={savingPermissions}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            {createPerm ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedRolePermissions.has(createPerm.name)}
+                                onChange={() => togglePermission(createPerm.name)}
+                                disabled={savingPermissions}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            {updatePerm ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedRolePermissions.has(updatePerm.name)}
+                                onChange={() => togglePermission(updatePerm.name)}
+                                disabled={savingPermissions}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            {deletePerm ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedRolePermissions.has(deletePerm.name)}
+                                onChange={() => togglePermission(deletePerm.name)}
+                                disabled={savingPermissions}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          {/* Extended Access */}
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            {exportPerm ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedRolePermissions.has(exportPerm.name)}
+                                onChange={() => togglePermission(exportPerm.name)}
+                                disabled={savingPermissions}
+                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            {importPerm ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedRolePermissions.has(importPerm.name)}
+                                onChange={() => togglePermission(importPerm.name)}
+                                disabled={savingPermissions}
+                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            {refundPerm ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedRolePermissions.has(refundPerm.name)}
+                                onChange={() => togglePermission(refundPerm.name)}
+                                disabled={savingPermissions}
+                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            {managePerm ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedRolePermissions.has(managePerm.name)}
+                                onChange={() => togglePermission(managePerm.name)}
+                                disabled={savingPermissions}
+                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {savingPermissions && (
+                  <div className="mt-4 text-center text-sm text-gray-600 bg-yellow-50 py-2 border-t border-gray-200">
+                    Saving permissions...
+                  </div>
+                )}
               </div>
             )}
           </div>
