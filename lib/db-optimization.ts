@@ -76,7 +76,13 @@ function buildFieldQuery(condition: any): any {
     case 'isEmpty':
       return { $or: [{ [field]: null }, { [field]: '' }, { [field]: { $exists: false } }] }
     case 'isNotEmpty':
-      return { [field]: { $ne: null, $ne: '', $exists: true } }
+      return { 
+        $and: [
+          { [field]: { $ne: null } },
+          { [field]: { $ne: '' } },
+          { [field]: { $exists: true } }
+        ]
+      }
     default:
       return null
   }
