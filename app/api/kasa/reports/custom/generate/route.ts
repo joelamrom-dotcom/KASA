@@ -105,17 +105,18 @@ export async function POST(request: NextRequest) {
 
       for (const payment of payments) {
         const row: any = {}
+        const paymentDoc = payment as { _id: { toString(): string } | string; familyId?: any; [key: string]: any }
         report.fields.forEach((field: any) => {
           if (field.fieldName.startsWith('payment.')) {
             const prop = field.fieldName.split('.').slice(1).join('.')
             if (prop === 'family') {
-              row[field.label] = (payment.familyId as any)?.name || ''
+              row[field.label] = (paymentDoc.familyId as any)?.name || ''
             } else {
-              row[field.label] = (payment as any)[prop] || ''
+              row[field.label] = paymentDoc[prop] || ''
             }
           }
         })
-        row._id = payment._id.toString()
+        row._id = typeof paymentDoc._id === 'string' ? paymentDoc._id : paymentDoc._id.toString()
         row._type = 'payment'
         data.push(row)
       }
