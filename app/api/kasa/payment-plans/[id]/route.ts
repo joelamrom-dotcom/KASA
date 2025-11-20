@@ -147,7 +147,7 @@ export async function DELETE(
     // Get plan data before deleting for audit log
     const plan = await PaymentPlan.findOne(query).lean()
     
-    if (!plan) {
+    if (!plan || Array.isArray(plan)) {
       return NextResponse.json(
         { error: 'Payment plan not found' },
         { status: 404 }
@@ -160,7 +160,8 @@ export async function DELETE(
     // Create audit log entry
     try {
       const { createAuditLog, getIpAddress, getUserAgent } = await import('@/lib/audit-log')
-      const planDoc = plan as { name: string; yearlyPrice?: number }
+      // Type assertion: findOne().lean() returns a single document or null, not an array
+      const planDoc = plan as { name?: string; yearlyPrice?: number }
       await createAuditLog({
         userId: user.userId,
         userEmail: user.email,
@@ -168,12 +169,12 @@ export async function DELETE(
         action: 'payment_plan_delete',
         entityType: 'payment_plan',
         entityId: params.id,
-        entityName: planDoc.name,
-        description: `Deleted payment plan "${planDoc.name}"`,
+        entityName: planDoc.name || 'Unknown',
+        description: `Deleted payment plan "${planDoc.name || 'Unknown'}"`,
         ipAddress: getIpAddress(request),
         userAgent: getUserAgent(request),
         metadata: {
-          planName: planDoc.name,
+          planName: planDoc.name || 'Unknown',
           yearlyPrice: planDoc.yearlyPrice,
         }
       })
