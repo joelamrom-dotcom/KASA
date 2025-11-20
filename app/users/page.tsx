@@ -509,7 +509,7 @@ export default function UsersPage() {
       {/* Delete Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={showDeleteDialog}
-        onCancel={() => {
+        onClose={() => {
           setShowDeleteDialog(false)
           setUserToDelete(null)
         }}
@@ -518,7 +518,7 @@ export default function UsersPage() {
         message={`Are you sure you want to delete ${userToDelete?.firstName} ${userToDelete?.lastName}? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
-        variant="danger"
+        type="danger"
       />
 
     </div>
