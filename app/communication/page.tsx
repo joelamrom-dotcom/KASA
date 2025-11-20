@@ -8,7 +8,8 @@ import {
   UserGroupIcon,
   ClockIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 
