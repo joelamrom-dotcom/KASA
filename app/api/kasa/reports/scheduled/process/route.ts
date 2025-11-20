@@ -20,18 +20,19 @@ export async function POST(request: NextRequest) {
     const results = []
 
     for (const scheduledReport of dueReports) {
+      // Type assertion: find().lean() returns array of documents
+      const scheduledReportDoc = scheduledReport as { 
+        _id: { toString(): string } | string
+        reportId?: any
+        name?: string
+        recipients?: any[]
+        schedule?: any
+        runCount?: number
+        errorCount?: number
+        exportFormat?: string
+      }
+      
       try {
-        // Type assertion: find().lean() returns array of documents
-        const scheduledReportDoc = scheduledReport as { 
-          _id: { toString(): string } | string
-          reportId?: any
-          name?: string
-          recipients?: any[]
-          schedule?: any
-          runCount?: number
-          errorCount?: number
-          exportFormat?: string
-        }
         const report = scheduledReportDoc.reportId as any
         if (!report) {
           const reportId = typeof scheduledReportDoc._id === 'string' ? scheduledReportDoc._id : scheduledReportDoc._id.toString()
