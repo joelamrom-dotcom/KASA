@@ -9,7 +9,9 @@ import {
   MagnifyingGlassIcon,
   ChevronUpIcon,
   ChevronDownIcon,
-  ArrowsUpDownIcon
+  ArrowsUpDownIcon,
+  CalendarIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import Pagination from '@/app/components/Pagination'
@@ -21,6 +23,10 @@ import TableImportExport from '@/app/components/TableImportExport'
 import FilterBuilder, { FilterGroup } from '@/app/components/FilterBuilder'
 import SavedViews from '@/app/components/SavedViews'
 import QuickFilters from '@/app/components/QuickFilters'
+import ViewSwitcher, { ViewType } from '@/app/components/ViewSwitcher'
+import KanbanBoard from '@/app/components/KanbanBoard'
+import CardView from '@/app/components/CardView'
+import ListView from '@/app/components/ListView'
 import { applyFilters } from '@/app/utils/filterUtils'
 import { useBulkSelection } from '@/app/hooks/useBulkSelection'
 import BulkActionBar from '@/app/components/BulkActionBar'
@@ -145,6 +151,7 @@ export default function FamiliesPage() {
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
   const [showBulkEmailModal, setShowBulkEmailModal] = useState(false)
   const [showBulkSMSModal, setShowBulkSMSModal] = useState(false)
+  const [viewType, setViewType] = useState<ViewType>('table')
   const itemsPerPage = 10
 
   // Define filter fields for families
@@ -930,6 +937,11 @@ export default function FamiliesPage() {
                 showToast('View loaded', 'success')
               }}
             />
+            <ViewSwitcher
+              currentView={viewType}
+              onViewChange={setViewType}
+              availableViews={['table', 'kanban', 'card', 'list']}
+            />
           </div>
           {(searchQuery || filterGroups.length > 0) && (
             <div className="flex items-center gap-2 flex-wrap">
@@ -951,6 +963,7 @@ export default function FamiliesPage() {
         </div>
 
         <div className="glass-strong rounded-2xl shadow-xl overflow-hidden border border-white/30">
+          {viewType === 'table' && (
           <table className="min-w-full divide-y divide-white/20">
             <thead className="bg-white/20 backdrop-blur-sm">
               <tr>
@@ -1152,6 +1165,168 @@ export default function FamiliesPage() {
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
             />
+          )}
+          )}
+
+          {viewType === 'kanban' && (
+            <div className="p-6">
+              <KanbanBoard
+                items={sortedFamilies}
+                getItemId={(f) => f._id}
+                getItemStatus={(f) => {
+                  if (f.openBalance > 1000) return 'high-balance'
+                  if (f.openBalance > 0) return 'has-balance'
+                  return 'paid'
+                }}
+                columns={[
+                  { id: 'paid', title: 'Paid Up', status: 'paid', color: 'green' },
+                  { id: 'has-balance', title: 'Has Balance', status: 'has-balance', color: 'yellow' },
+                  { id: 'high-balance', title: 'High Balance', status: 'high-balance', color: 'red' },
+                ]}
+                renderItem={(family) => (
+                  <div>
+                    <Link href={`/families/${family._id}`} className="font-semibold text-blue-600 hover:underline">
+                      {family.name}
+                    </Link>
+                    <div className="mt-2 space-y-1 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <UserGroupIcon className="h-4 w-4" />
+                        {family.memberCount || 0} members
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <CurrencyDollarIcon className="h-4 w-4" />
+                        ${family.openBalance.toLocaleString()}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <CalendarIcon className="h-4 w-4" />
+                        {new Date(family.weddingDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
+          )}
+
+          {viewType === 'card' && (
+            <div className="p-6">
+              <CardView
+                items={sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
+                columns={3}
+                renderCard={(family) => (
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-4">
+                      <Link href={`/families/${family._id}`} className="font-semibold text-lg text-blue-600 hover:underline">
+                        {family.name}
+                      </Link>
+                      <input
+                        type="checkbox"
+                        checked={bulkSelection.isSelected(family._id)}
+                        onChange={() => bulkSelection.toggleSelection(family._id)}
+                        className="rounded border-gray-300 text-blue-600"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4" />
+                        {new Date(family.weddingDate).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <UserGroupIcon className="h-4 w-4" />
+                        {family.memberCount || 0} members
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CurrencyDollarIcon className="h-4 w-4" />
+                        ${family.openBalance.toLocaleString()}
+                      </div>
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                        {getPlanNameById(family.paymentPlanId, family.currentPlan)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <button
+                        onClick={() => handleEdit(family)}
+                        className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(family)}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              />
+              {filteredFamilies.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(filteredFamilies.length / itemsPerPage)}
+                  totalItems={filteredFamilies.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
+          )}
+
+          {viewType === 'list' && (
+            <div className="p-6">
+              <ListView
+                items={sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
+                renderItem={(family) => (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={bulkSelection.isSelected(family._id)}
+                        onChange={() => bulkSelection.toggleSelection(family._id)}
+                        className="rounded border-gray-300 text-blue-600"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <Link href={`/families/${family._id}`} className="font-medium text-blue-600 hover:underline flex-1">
+                        {family.name}
+                      </Link>
+                      <span className="text-sm text-gray-600 w-32">{new Date(family.weddingDate).toLocaleDateString()}</span>
+                      <span className="text-sm text-gray-600 w-24 flex items-center gap-1">
+                        <UserGroupIcon className="h-4 w-4" />
+                        {family.memberCount || 0}
+                      </span>
+                      <span className="text-sm text-gray-600 w-32">{getPlanNameById(family.paymentPlanId, family.currentPlan)}</span>
+                      <span className="text-sm font-medium w-24">${family.openBalance.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(family)}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded"
+                        title="Edit"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(family)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                        title="Delete"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              />
+              {filteredFamilies.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(filteredFamilies.length / itemsPerPage)}
+                  totalItems={filteredFamilies.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
           )}
         </div>
 

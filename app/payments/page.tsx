@@ -14,6 +14,10 @@ import TableImportExport from '@/app/components/TableImportExport'
 import FilterBuilder, { FilterGroup } from '@/app/components/FilterBuilder'
 import SavedViews from '@/app/components/SavedViews'
 import QuickFilters from '@/app/components/QuickFilters'
+import ViewSwitcher, { ViewType } from '@/app/components/ViewSwitcher'
+import KanbanBoard from '@/app/components/KanbanBoard'
+import CardView from '@/app/components/CardView'
+import ListView from '@/app/components/ListView'
 import { applyFilters } from '@/app/utils/filterUtils'
 import { showToast } from '@/app/components/Toast'
 import { useBulkSelection } from '@/app/hooks/useBulkSelection'
@@ -85,6 +89,7 @@ export default function PaymentsPage() {
     type: '',
   })
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
+  const [viewType, setViewType] = useState<ViewType>('table')
 
   // Define filter fields for payments
   const paymentFilterFields = [
@@ -449,6 +454,11 @@ export default function PaymentsPage() {
                 showToast('View loaded', 'success')
               }}
             />
+            <ViewSwitcher
+              currentView={viewType}
+              onViewChange={setViewType}
+              availableViews={['table', 'kanban', 'card', 'list']}
+            />
           </div>
           {(searchQuery || filterGroups.length > 0) && (
             <div className="flex items-center gap-2 flex-wrap">
@@ -471,6 +481,7 @@ export default function PaymentsPage() {
 
         {/* Payments Table */}
         <div className="glass-strong rounded-2xl shadow-xl overflow-hidden border border-white/30">
+          {viewType === 'table' && (
           <table className="min-w-full divide-y divide-white/20">
             <thead className="bg-white/20 backdrop-blur-sm">
               <tr>
@@ -569,6 +580,144 @@ export default function PaymentsPage() {
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
             />
+          )}
+          )}
+
+          {viewType === 'kanban' && (
+            <div className="p-6">
+              <KanbanBoard
+                items={payments}
+                getItemId={(p) => p._id}
+                getItemStatus={(p) => p.paymentMethod}
+                columns={[
+                  { id: 'credit_card', title: 'Credit Card', status: 'credit_card', color: 'blue' },
+                  { id: 'check', title: 'Check', status: 'check', color: 'purple' },
+                  { id: 'cash', title: 'Cash', status: 'cash', color: 'green' },
+                  { id: 'quick_pay', title: 'Quick Pay', status: 'quick_pay', color: 'orange' },
+                ]}
+                renderItem={(payment) => {
+                  const MethodIcon = paymentMethodIcons[payment.paymentMethod as keyof typeof paymentMethodIcons] || CurrencyDollarIcon
+                  return (
+                    <div>
+                      <div className="font-semibold text-lg text-green-600">
+                        ${payment.amount.toLocaleString()}
+                      </div>
+                      <Link href={`/families/${typeof payment.familyId === 'object' ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline text-sm mt-1 block">
+                        {typeof payment.familyId === 'object' ? payment.familyId.name : 'Unknown'}
+                      </Link>
+                      <div className="mt-2 space-y-1 text-xs text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <MethodIcon className="h-3 w-3" />
+                          {formatPaymentMethod(payment)}
+                        </div>
+                        <div>{new Date(payment.paymentDate).toLocaleDateString()}</div>
+                        <div className="capitalize">{payment.type}</div>
+                      </div>
+                    </div>
+                  )
+                }}
+              />
+            </div>
+          )}
+
+          {viewType === 'card' && (
+            <div className="p-6">
+              <CardView
+                items={payments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
+                columns={3}
+                renderCard={(payment) => {
+                  const MethodIcon = paymentMethodIcons[payment.paymentMethod as keyof typeof paymentMethodIcons] || CurrencyDollarIcon
+                  return (
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="text-2xl font-bold text-green-600">
+                          ${payment.amount.toLocaleString()}
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={bulkSelection.isSelected(payment._id)}
+                          onChange={() => bulkSelection.toggleSelection(payment._id)}
+                          className="rounded border-gray-300 text-blue-600"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      <Link href={`/families/${typeof payment.familyId === 'object' ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline font-medium block mb-2">
+                        {typeof payment.familyId === 'object' ? payment.familyId.name : 'Unknown'}
+                      </Link>
+                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex items-center gap-2">
+                          <MethodIcon className="h-4 w-4" />
+                          {formatPaymentMethod(payment)}
+                        </div>
+                        <div>{new Date(payment.paymentDate).toLocaleDateString()}</div>
+                        <div className="capitalize">{payment.type}</div>
+                        <div>Year: {payment.year}</div>
+                        {payment.notes && (
+                          <div className="pt-2 border-t border-gray-200 dark:border-gray-700 text-xs">
+                            {payment.notes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                }}
+              />
+              {payments.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(payments.length / itemsPerPage)}
+                  totalItems={payments.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
+          )}
+
+          {viewType === 'list' && (
+            <div className="p-6">
+              <ListView
+                items={payments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
+                renderItem={(payment) => {
+                  const MethodIcon = paymentMethodIcons[payment.paymentMethod as keyof typeof paymentMethodIcons] || CurrencyDollarIcon
+                  return (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={bulkSelection.isSelected(payment._id)}
+                          onChange={() => bulkSelection.toggleSelection(payment._id)}
+                          className="rounded border-gray-300 text-blue-600"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="text-lg font-bold text-green-600 w-24">
+                          ${payment.amount.toLocaleString()}
+                        </div>
+                        <Link href={`/families/${typeof payment.familyId === 'object' ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline flex-1">
+                          {typeof payment.familyId === 'object' ? payment.familyId.name : 'Unknown'}
+                        </Link>
+                        <span className="text-sm text-gray-600 w-32">{new Date(payment.paymentDate).toLocaleDateString()}</span>
+                        <span className="text-sm text-gray-600 w-24 flex items-center gap-1">
+                          <MethodIcon className="h-4 w-4" />
+                          {formatPaymentMethod(payment)}
+                        </span>
+                        <span className="text-sm capitalize w-24">{payment.type}</span>
+                        <span className="text-sm w-16">{payment.year}</span>
+                      </div>
+                    </div>
+                  )
+                }}
+              />
+              {payments.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(payments.length / itemsPerPage)}
+                  totalItems={payments.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
           )}
         </div>
 
