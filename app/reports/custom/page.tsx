@@ -755,7 +755,7 @@ export default function CustomReportsPage() {
                 {Object.entries(reportData.summary).map(([key, value]) => (
                   <div key={key} className="flex justify-between">
                     <span>{key}:</span>
-                    <span className="font-medium">${typeof value === 'number' ? value.toLocaleString() : value}</span>
+                    <span className="font-medium">${typeof value === 'number' ? value.toLocaleString() : String(value)}</span>
                   </div>
                 ))}
               </div>
