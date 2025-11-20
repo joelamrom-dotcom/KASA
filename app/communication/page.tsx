@@ -268,17 +268,25 @@ export default function CommunicationPage() {
             </div>
 
             {/* Templates */}
-            {templates.length > 0 && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">Templates</h3>
-                  <button
-                    onClick={() => setShowTemplateModal(true)}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    + New Template
-                  </button>
-                </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Templates</h3>
+                <button
+                  onClick={() => {
+                    setTemplateForm({
+                      name: '',
+                      subject: subject,
+                      body: body,
+                      type: messageType
+                    })
+                    setShowTemplateModal(true)
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  + New Template
+                </button>
+              </div>
+              {templates.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                   {templates.filter(t => t.type === messageType).map(template => (
                     <button
@@ -291,8 +299,12 @@ export default function CommunicationPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No templates yet. Click "+ New Template" to create your first template.
+                </p>
+              )}
+            </div>
 
             {/* Message Form */}
             <div className="bg-white rounded-lg shadow p-6">

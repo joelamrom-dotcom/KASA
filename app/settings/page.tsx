@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon, PlusIcon, PencilIcon, TrashIcon, CalendarIcon, CreditCardIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, PrinterIcon, DocumentArrowDownIcon, Cog6ToothIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import React from 'react'
 
@@ -2646,6 +2646,349 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </form>
+            )}
+          </div>
+        )}
+
+        {/* Templates Tab */}
+        {activeTab === 'templates' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
+                  <DocumentTextIcon className="h-6 w-6 text-teal-600" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">Invoice Templates</h2>
+                  <p className="text-sm text-gray-600">Customize invoice and receipt templates</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingTemplate(null)
+                  setTemplateFormData({
+                    templateType: 'invoice',
+                    templateName: 'Default',
+                    headerLogo: '',
+                    headerText: 'KASA',
+                    headerSubtext: 'Family Management',
+                    headerColor: '#333333',
+                    primaryColor: '#333333',
+                    secondaryColor: '#666666',
+                    fontFamily: 'Arial, sans-serif',
+                    footerText: 'Thank you for your business!',
+                    footerSubtext: 'Kasa Family Management',
+                    customCSS: '',
+                    isDefault: false
+                  })
+                  setShowTemplateModal(true)
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center gap-2"
+              >
+                <PlusIcon className="h-5 w-5" />
+                Create New Template
+              </button>
+            </div>
+
+            {templatesLoading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                <p className="mt-2 text-gray-600">Loading templates...</p>
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">No templates yet</h3>
+                <p className="text-sm text-gray-500 mb-4">Create your first invoice or receipt template to get started.</p>
+                <button
+                  onClick={() => {
+                    setEditingTemplate(null)
+                    setTemplateFormData({
+                      templateType: 'invoice',
+                      templateName: 'Default',
+                      headerLogo: '',
+                      headerText: 'KASA',
+                      headerSubtext: 'Family Management',
+                      headerColor: '#333333',
+                      primaryColor: '#333333',
+                      secondaryColor: '#666666',
+                      fontFamily: 'Arial, sans-serif',
+                      footerText: 'Thank you for your business!',
+                      footerSubtext: 'Kasa Family Management',
+                      customCSS: '',
+                      isDefault: false
+                    })
+                    setShowTemplateModal(true)
+                  }}
+                  className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+                >
+                  Create Template
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {templates.map((template) => (
+                  <div
+                    key={template._id}
+                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-gray-800">{template.templateName}</h3>
+                          {template.isDefault && (
+                            <span className="px-2 py-0.5 text-xs bg-teal-100 text-teal-700 rounded">Default</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 capitalize">{template.templateType}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditTemplate(template)}
+                          className="p-2 text-gray-600 hover:text-teal-600 hover:bg-teal-50 rounded transition-colors"
+                          title="Edit template"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTemplate(template._id)}
+                          className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete template"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <p><span className="font-medium">Header:</span> {template.headerText || 'N/A'}</p>
+                      <p><span className="font-medium">Footer:</span> {template.footerText || 'N/A'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Template Modal */}
+            {showTemplateModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+                    <h2 className="text-2xl font-bold">
+                      {editingTemplate ? 'Edit Template' : 'Create New Template'}
+                    </h2>
+                    <button
+                      onClick={() => setShowTemplateModal(false)}
+                      className="p-2 hover:bg-gray-100 rounded"
+                    >
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <form onSubmit={handleSubmitTemplate} className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Template Type *</label>
+                        <select
+                          value={templateFormData.templateType}
+                          onChange={(e) => setTemplateFormData({ ...templateFormData, templateType: e.target.value as 'invoice' | 'receipt' })}
+                          className="w-full border rounded-lg px-3 py-2"
+                          required
+                        >
+                          <option value="invoice">Invoice</option>
+                          <option value="receipt">Receipt</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Template Name *</label>
+                        <input
+                          type="text"
+                          value={templateFormData.templateName}
+                          onChange={(e) => setTemplateFormData({ ...templateFormData, templateName: e.target.value })}
+                          className="w-full border rounded-lg px-3 py-2"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h3 className="font-semibold mb-3">Header Settings</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Header Logo URL</label>
+                          <input
+                            type="text"
+                            value={templateFormData.headerLogo}
+                            onChange={(e) => setTemplateFormData({ ...templateFormData, headerLogo: e.target.value })}
+                            className="w-full border rounded-lg px-3 py-2"
+                            placeholder="https://example.com/logo.png"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Header Text</label>
+                            <input
+                              type="text"
+                              value={templateFormData.headerText}
+                              onChange={(e) => setTemplateFormData({ ...templateFormData, headerText: e.target.value })}
+                              className="w-full border rounded-lg px-3 py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Header Subtext</label>
+                            <input
+                              type="text"
+                              value={templateFormData.headerSubtext}
+                              onChange={(e) => setTemplateFormData({ ...templateFormData, headerSubtext: e.target.value })}
+                              className="w-full border rounded-lg px-3 py-2"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Header Color</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={templateFormData.headerColor}
+                              onChange={(e) => setTemplateFormData({ ...templateFormData, headerColor: e.target.value })}
+                              className="h-10 w-20 border rounded"
+                            />
+                            <input
+                              type="text"
+                              value={templateFormData.headerColor}
+                              onChange={(e) => setTemplateFormData({ ...templateFormData, headerColor: e.target.value })}
+                              className="flex-1 border rounded-lg px-3 py-2"
+                              placeholder="#333333"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h3 className="font-semibold mb-3">Body Settings</h3>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Primary Color</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="color"
+                                value={templateFormData.primaryColor}
+                                onChange={(e) => setTemplateFormData({ ...templateFormData, primaryColor: e.target.value })}
+                                className="h-10 w-20 border rounded"
+                              />
+                              <input
+                                type="text"
+                                value={templateFormData.primaryColor}
+                                onChange={(e) => setTemplateFormData({ ...templateFormData, primaryColor: e.target.value })}
+                                className="flex-1 border rounded-lg px-3 py-2"
+                                placeholder="#333333"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Secondary Color</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="color"
+                                value={templateFormData.secondaryColor}
+                                onChange={(e) => setTemplateFormData({ ...templateFormData, secondaryColor: e.target.value })}
+                                className="h-10 w-20 border rounded"
+                              />
+                              <input
+                                type="text"
+                                value={templateFormData.secondaryColor}
+                                onChange={(e) => setTemplateFormData({ ...templateFormData, secondaryColor: e.target.value })}
+                                className="flex-1 border rounded-lg px-3 py-2"
+                                placeholder="#666666"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Font Family</label>
+                          <input
+                            type="text"
+                            value={templateFormData.fontFamily}
+                            onChange={(e) => setTemplateFormData({ ...templateFormData, fontFamily: e.target.value })}
+                            className="w-full border rounded-lg px-3 py-2"
+                            placeholder="Arial, sans-serif"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h3 className="font-semibold mb-3">Footer Settings</h3>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Footer Text</label>
+                            <input
+                              type="text"
+                              value={templateFormData.footerText}
+                              onChange={(e) => setTemplateFormData({ ...templateFormData, footerText: e.target.value })}
+                              className="w-full border rounded-lg px-3 py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Footer Subtext</label>
+                            <input
+                              type="text"
+                              value={templateFormData.footerSubtext}
+                              onChange={(e) => setTemplateFormData({ ...templateFormData, footerSubtext: e.target.value })}
+                              className="w-full border rounded-lg px-3 py-2"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h3 className="font-semibold mb-3">Advanced</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Custom CSS</label>
+                          <textarea
+                            value={templateFormData.customCSS}
+                            onChange={(e) => setTemplateFormData({ ...templateFormData, customCSS: e.target.value })}
+                            rows={6}
+                            className="w-full border rounded-lg px-3 py-2 font-mono text-sm"
+                            placeholder="/* Custom CSS styles */"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="isDefault"
+                            checked={templateFormData.isDefault}
+                            onChange={(e) => setTemplateFormData({ ...templateFormData, isDefault: e.target.checked })}
+                            className="w-4 h-4"
+                          />
+                          <label htmlFor="isDefault" className="text-sm font-medium">
+                            Set as default template for this type
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 justify-end pt-4 border-t">
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplateModal(false)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+                      >
+                        {editingTemplate ? 'Update Template' : 'Create Template'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
             )}
           </div>
         )}
