@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, Payment, RecurringPayment, Statement } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import mongoose from 'mongoose'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,7 +45,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get recent payments (last 10)
-    const familyId = typeof family._id === 'string' ? family._id : String(family._id)
+    // Type assertion: findOne().lean() returns a single document or null, not an array
+    const familyDoc = family as { _id: mongoose.Types.ObjectId | string }
+    const familyId = String(familyDoc._id)
     const recentPayments = await Payment.find({ familyId })
       .sort({ paymentDate: -1 })
       .limit(10)
