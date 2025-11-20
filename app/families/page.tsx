@@ -1154,7 +1154,7 @@ export default function FamiliesPage() {
                     </div>
                   </td>
                 </tr>
-              )))}
+              ))}
             </tbody>
           </table>
           {filteredFamilies.length > 0 && (
