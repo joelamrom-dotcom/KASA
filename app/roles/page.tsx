@@ -124,7 +124,7 @@ export default function RolesPage() {
         const data = await res.json()
         setPermissions(data.permissions || [])
         // Expand all modules by default
-        const modules = new Set(data.permissions.map((p: Permission) => p.module))
+        const modules = new Set<string>(data.permissions.map((p: Permission) => p.module))
         setExpandedModules(modules)
       }
     } catch (error) {
