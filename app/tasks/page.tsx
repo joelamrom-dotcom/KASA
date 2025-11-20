@@ -6,7 +6,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import Modal from '@/app/components/Modal'
 
@@ -31,6 +32,7 @@ interface Task {
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loadingTasks, setLoadingTasks] = useState(true)
+  const [permissionDenied, setPermissionDenied] = useState(false)
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'today' | 'overdue'>('all')
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [taskForm, setTaskForm] = useState({
@@ -93,6 +95,7 @@ export default function TasksPage() {
 
   const fetchTasks = async () => {
     setLoadingTasks(true)
+    setPermissionDenied(false)
     try {
       let url = '/api/kasa/tasks'
       if (taskFilter === 'today') {
@@ -104,6 +107,13 @@ export default function TasksPage() {
       }
       
       const res = await fetch(url)
+      
+      if (res.status === 403) {
+        setPermissionDenied(true)
+        setTasks([])
+        return
+      }
+      
       if (res.ok) {
         const data = await res.json()
         setTasks(data || [])
@@ -201,6 +211,20 @@ export default function TasksPage() {
           {loadingTasks ? (
             <div className="text-center py-8">
               <p className="text-gray-500">Loading tasks...</p>
+            </div>
+          ) : permissionDenied ? (
+            <div className="text-center py-12 glass rounded-xl border border-white/20">
+              <div className="flex justify-center mb-4">
+                <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <ShieldCheckIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Access Denied
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                You don't have permission to view tasks. Please contact your administrator to request access.
+              </p>
             </div>
           ) : tasks.length === 0 ? (
             <div className="text-center py-12 glass rounded-xl border border-white/20">

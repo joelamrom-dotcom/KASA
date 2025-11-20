@@ -17,7 +17,8 @@ import {
   DocumentDuplicateIcon,
   XMarkIcon,
   CalendarIcon,
-  ArrowTrendingUpIcon
+  ArrowTrendingUpIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import Pagination from '@/app/components/Pagination'
@@ -93,6 +94,7 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [allPayments, setAllPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
+  const [permissionDenied, setPermissionDenied] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   const [searchQuery, setSearchQuery] = useState('')
@@ -211,12 +213,30 @@ export default function PaymentsPage() {
   const fetchPayments = async () => {
     try {
       setLoading(true)
+      setPermissionDenied(false)
       const params = new URLSearchParams()
       if (filters.year) params.append('year', filters.year)
       if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod)
       if (filters.type) params.append('type', filters.type)
 
       const res = await fetch(`/api/kasa/payments?${params.toString()}`)
+      
+      if (res.status === 403) {
+        setPermissionDenied(true)
+        setAllPayments([])
+        setPayments([])
+        return
+      }
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to load payments' }))
+        console.error('API error:', errorData)
+        setAllPayments([])
+        setPayments([])
+        showToast(errorData.error || 'Failed to load payments', 'error')
+        return
+      }
+      
       const data = await res.json()
       if (Array.isArray(data)) {
         setAllPayments(data)
@@ -669,7 +689,25 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody className="bg-white/10 divide-y divide-white/20">
-              {payments.length === 0 ? (
+              {permissionDenied ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12">
+                    <div className="text-center py-12 px-4">
+                      <div className="flex justify-center mb-4">
+                        <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                          <ShieldCheckIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        Access Denied
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                        You don't have permission to view payments. Please contact your administrator to request access.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : payments.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No payments found
