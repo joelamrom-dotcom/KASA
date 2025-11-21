@@ -195,11 +195,34 @@ async function generatePDF(reportData: any, report: any): Promise<NextResponse> 
     
     // Try to use puppeteer if available, otherwise fall back to HTML
     try {
-      const puppeteer = require('puppeteer')
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      })
+      let browser: any
+      let puppeteer: any
+      
+      // Try puppeteer-core with chromium for serverless environments
+      try {
+        puppeteer = require('puppeteer-core')
+        const chromium = require('@sparticuz/chromium')
+        chromium.setGraphicsMode(false)
+        
+        browser = await puppeteer.launch({
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+        })
+      } catch (e) {
+        // Fallback to regular puppeteer if available
+        try {
+          puppeteer = require('puppeteer')
+          browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          })
+        } catch (e2) {
+          throw new Error('No PDF generator available')
+        }
+      }
+      
       const page = await browser.newPage()
       await page.setContent(html, { waitUntil: 'networkidle0' })
       
@@ -224,7 +247,7 @@ async function generatePDF(reportData: any, report: any): Promise<NextResponse> 
       })
     } catch (puppeteerError: any) {
       // Fallback: return HTML that can be printed to PDF
-      console.warn('Puppeteer not available, returning HTML:', puppeteerError.message)
+      console.warn('PDF generator not available, returning HTML:', puppeteerError.message)
       return new NextResponse(html, {
         headers: {
           'Content-Type': 'text/html',
