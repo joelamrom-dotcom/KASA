@@ -1213,28 +1213,30 @@ export default function CustomReportsPage() {
             )}
 
             {/* Charts */}
-            {editingReport.chartSettings?.enabled && reportData.data && reportData.data.length > 0 && (
+            {editingReport.chartSettings?.enabled && reportData.data && reportData.data.length > 0 && editingReport.chartSettings && (() => {
+              const chartSettings = editingReport.chartSettings
+              return (
               <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                 <h3 className="font-semibold mb-4">Chart Visualization</h3>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    {editingReport.chartSettings.chartType === 'bar' && (
+                    {chartSettings.chartType === 'bar' ? (
                       <BarChart data={reportData.data.slice(0, 20)}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
-                          dataKey={editingReport.chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
+                          dataKey={chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
                           angle={-45}
                           textAnchor="end"
                           height={100}
                         />
                         <YAxis />
                         <Tooltip />
-                        {editingReport.chartSettings.showLegend && <Legend />}
-                        {editingReport.chartSettings.yAxisField ? (
+                        {chartSettings.showLegend && <Legend />}
+                        {chartSettings.yAxisField ? (
                           <Bar 
-                            dataKey={reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label}
+                            dataKey={reportData.fields.find((f: any) => f.fieldName === chartSettings.yAxisField)?.label}
                             fill="#3b82f6"
-                            label={editingReport.chartSettings.showDataLabels}
+                            label={chartSettings.showDataLabels}
                           />
                         ) : (
                           reportData.fields.filter((f: any) => f.dataType === 'number' || f.dataType === 'currency').slice(0, 3).map((field: any, idx: number) => (
@@ -1242,31 +1244,30 @@ export default function CustomReportsPage() {
                               key={field.fieldName}
                               dataKey={field.label}
                               fill={['#3b82f6', '#10b981', '#f59e0b'][idx]}
-                              label={editingReport.chartSettings.showDataLabels}
+                              label={chartSettings.showDataLabels}
                             />
                           ))
                         )}
                       </BarChart>
-                    )}
-                    {editingReport.chartSettings.chartType === 'line' && (
+                    ) : chartSettings.chartType === 'line' ? (
                       <LineChart data={reportData.data.slice(0, 20)}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
-                          dataKey={editingReport.chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
+                          dataKey={chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
                           angle={-45}
                           textAnchor="end"
                           height={100}
                         />
                         <YAxis />
                         <Tooltip />
-                        {editingReport.chartSettings.showLegend && <Legend />}
-                        {editingReport.chartSettings.yAxisField ? (
+                        {chartSettings.showLegend && <Legend />}
+                        {chartSettings.yAxisField ? (
                           <Line 
                             type="monotone"
-                            dataKey={reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label}
+                            dataKey={reportData.fields.find((f: any) => f.fieldName === chartSettings.yAxisField)?.label}
                             stroke="#3b82f6"
                             strokeWidth={2}
-                            dot={editingReport.chartSettings.showDataLabels}
+                            dot={chartSettings.showDataLabels}
                           />
                         ) : (
                           reportData.fields.filter((f: any) => f.dataType === 'number' || f.dataType === 'currency').slice(0, 3).map((field: any, idx: number) => (
@@ -1276,23 +1277,22 @@ export default function CustomReportsPage() {
                               dataKey={field.label}
                               stroke={['#3b82f6', '#10b981', '#f59e0b'][idx]}
                               strokeWidth={2}
-                              dot={editingReport.chartSettings.showDataLabels}
+                              dot={chartSettings.showDataLabels}
                             />
                           ))
                         )}
                       </LineChart>
-                    )}
-                    {editingReport.chartSettings.chartType === 'pie' && (
+                    ) : chartSettings.chartType === 'pie' ? (
                       <PieChart>
                         <Pie
                           data={reportData.data.slice(0, 10).map((row: any) => ({
-                            name: row[reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label || reportData.fields[0]?.label] || 'Unknown',
-                            value: parseFloat(row[reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label || reportData.fields.find((f: any) => f.dataType === 'currency' || f.dataType === 'number')?.label] || 0)
+                            name: row[reportData.fields.find((f: any) => f.fieldName === chartSettings.xAxisField)?.label || reportData.fields[0]?.label] || 'Unknown',
+                            value: parseFloat(row[reportData.fields.find((f: any) => f.fieldName === chartSettings.yAxisField)?.label || reportData.fields.find((f: any) => f.dataType === 'currency' || f.dataType === 'number')?.label] || 0)
                           }))}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={editingReport.chartSettings.showDataLabels ? ({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%` : false}
+                          label={chartSettings.showDataLabels ? ({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%` : false}
                           outerRadius={100}
                           fill="#8884d8"
                           dataKey="value"
@@ -1302,25 +1302,24 @@ export default function CustomReportsPage() {
                           ))}
                         </Pie>
                         <Tooltip />
-                        {editingReport.chartSettings.showLegend && <Legend />}
+                        {chartSettings.showLegend && <Legend />}
                       </PieChart>
-                    )}
-                    {editingReport.chartSettings.chartType === 'area' && (
+                    ) : chartSettings.chartType === 'area' ? (
                       <AreaChart data={reportData.data.slice(0, 20)}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
-                          dataKey={editingReport.chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
+                          dataKey={chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
                           angle={-45}
                           textAnchor="end"
                           height={100}
                         />
                         <YAxis />
                         <Tooltip />
-                        {editingReport.chartSettings.showLegend && <Legend />}
-                        {editingReport.chartSettings.yAxisField ? (
+                        {chartSettings.showLegend && <Legend />}
+                        {chartSettings.yAxisField ? (
                           <Area 
                             type="monotone"
-                            dataKey={reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label}
+                            dataKey={reportData.fields.find((f: any) => f.fieldName === chartSettings.yAxisField)?.label}
                             stroke="#3b82f6"
                             fill="#3b82f6"
                             fillOpacity={0.6}
@@ -1338,23 +1337,22 @@ export default function CustomReportsPage() {
                           ))
                         )}
                       </AreaChart>
-                    )}
-                    {editingReport.chartSettings.chartType === 'column' && (
+                    ) : chartSettings.chartType === 'column' ? (
                       <BarChart data={reportData.data.slice(0, 20)} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis 
                           type="category"
-                          dataKey={editingReport.chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
+                          dataKey={chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
                           width={150}
                         />
                         <Tooltip />
-                        {editingReport.chartSettings.showLegend && <Legend />}
-                        {editingReport.chartSettings.yAxisField ? (
+                        {chartSettings.showLegend && <Legend />}
+                        {chartSettings.yAxisField ? (
                           <Bar 
-                            dataKey={reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label}
+                            dataKey={reportData.fields.find((f: any) => f.fieldName === chartSettings.yAxisField)?.label}
                             fill="#3b82f6"
-                            label={editingReport.chartSettings.showDataLabels}
+                            label={chartSettings.showDataLabels}
                           />
                         ) : (
                           reportData.fields.filter((f: any) => f.dataType === 'number' || f.dataType === 'currency').slice(0, 3).map((field: any, idx: number) => (
@@ -1362,16 +1360,26 @@ export default function CustomReportsPage() {
                               key={field.fieldName}
                               dataKey={field.label}
                               fill={['#3b82f6', '#10b981', '#f59e0b'][idx]}
-                              label={editingReport.chartSettings.showDataLabels}
+                              label={chartSettings.showDataLabels}
                             />
                           ))
                         )}
+                      </BarChart>
+                    ) : (
+                      <BarChart data={reportData.data.slice(0, 20)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey={reportData.fields[0]?.label} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey={reportData.fields.find((f: any) => f.dataType === 'currency' || f.dataType === 'number')?.label} fill="#3b82f6" />
                       </BarChart>
                     )}
                   </ResponsiveContainer>
                 </div>
               </div>
-            )}
+              )
+            })()}
 
             {reportData.data && reportData.data.length > 0 && (
               <div className="overflow-x-auto">
