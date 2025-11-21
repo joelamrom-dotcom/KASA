@@ -235,6 +235,11 @@ export default function CustomReportsPage() {
   const [shareReport, setShareReport] = useState<CustomReport | null>(null)
   const [reportSnapshots, setReportSnapshots] = useState<Record<string, any[]>>({})
   const [showSnapshots, setShowSnapshots] = useState<string | null>(null)
+  const [reportUsageStats, setReportUsageStats] = useState<Record<string, any>>({})
+  const [showComparison, setShowComparison] = useState(false)
+  const [comparisonReports, setComparisonReports] = useState<string[]>([])
+  const [drillDownData, setDrillDownData] = useState<any>(null)
+  const [showDrillDown, setShowDrillDown] = useState(false)
   
   const [formData, setFormData] = useState<CustomReport>({
     name: '',
