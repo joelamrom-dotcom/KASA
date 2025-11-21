@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { CustomReport } from '@/lib/models'
-import { getAuthenticatedUser, hasPermission } from '@/lib/auth'
-import { PERMISSIONS } from '@/lib/permissions'
+import { getAuthenticatedUser } from '@/lib/middleware'
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 // POST - Share report with users
 export async function POST(
