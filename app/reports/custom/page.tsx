@@ -22,7 +22,12 @@ import {
   MagnifyingGlassIcon,
   Squares2X2Icon,
   DocumentTextIcon,
-  ClockIcon as ClockIconSolid
+  ClockIcon as ClockIconSolid,
+  UserGroupIcon,
+  CameraIcon,
+  ArrowDownIcon,
+  ChartPieIcon,
+  DocumentChartBarIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
@@ -201,6 +206,11 @@ export default function CustomReportsPage() {
   const [selectedReports, setSelectedReports] = useState<string[]>([])
   const [showBulkActions, setShowBulkActions] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+  const [users, setUsers] = useState<any[]>([])
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [shareReport, setShareReport] = useState<CustomReport | null>(null)
+  const [reportSnapshots, setReportSnapshots] = useState<Record<string, any[]>>({})
+  const [showSnapshots, setShowSnapshots] = useState<string | null>(null)
   
   const [formData, setFormData] = useState<CustomReport>({
     name: '',
