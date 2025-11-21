@@ -377,6 +377,107 @@ export default function CustomReportsPage() {
     }
   }
 
+  const createReportSnapshot = async (report: CustomReport) => {
+    try {
+      if (!reportData) {
+        alert('Please generate the report first')
+        return
+      }
+
+      const snapshot = {
+        reportId: report._id,
+        reportName: report.name,
+        reportData: reportData,
+        createdAt: new Date().toISOString(),
+        createdBy: user?.email || 'Unknown'
+      }
+
+      // Store snapshot in localStorage (could be moved to backend)
+      const snapshots = JSON.parse(localStorage.getItem(`reportSnapshots_${report._id}`) || '[]')
+      snapshots.unshift(snapshot)
+      if (snapshots.length > 10) snapshots.pop() // Keep only last 10
+      localStorage.setItem(`reportSnapshots_${report._id}`, JSON.stringify(snapshots))
+      
+      setReportSnapshots(prev => ({
+        ...prev,
+        [report._id || '']: snapshots
+      }))
+
+      alert('Report snapshot created successfully!')
+    } catch (error) {
+      console.error('Error creating snapshot:', error)
+      alert('Failed to create snapshot')
+    }
+  }
+
+  const loadReportSnapshot = (reportId: string, snapshot: any) => {
+    setReportData(snapshot.reportData)
+    setEditingReport(reports.find(r => r._id === reportId) || null)
+    alert(`Loaded snapshot from ${new Date(snapshot.createdAt).toLocaleString()}`)
+  }
+
+  const shareReportWithUsers = async (report: CustomReport, userIds: string[], permission: 'view' | 'edit') => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/reports/custom/${report._id}/share`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          userIds,
+          permission
+        })
+      })
+
+      if (res.ok) {
+        await fetchReports()
+        setShowShareModal(false)
+        setShareReport(null)
+        alert('Report shared successfully!')
+      } else {
+        const error = await res.json()
+        alert(`Error: ${error.error || 'Failed to share report'}`)
+      }
+    } catch (error) {
+      console.error('Error sharing report:', error)
+      alert('Failed to share report')
+    }
+  }
+
+  const exportReportAsJSON = async (report: CustomReport) => {
+    if (!reportData) {
+      alert('Please generate the report first')
+      return
+    }
+
+    const jsonData = {
+      report: {
+        name: report.name,
+        description: report.description,
+        fields: report.fields,
+        filters: report.filters,
+        dateRange: report.dateRange,
+        groupBy: report.groupBy,
+        sortBy: report.sortBy,
+        sortOrder: report.sortOrder
+      },
+      data: reportData,
+      exportedAt: new Date().toISOString()
+    }
+
+    const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  }
+
   const fetchReports = async () => {
     try {
       const token = localStorage.getItem('token')
