@@ -33,7 +33,16 @@ import {
   ExclamationTriangleIcon,
   ArrowPathIcon,
   PresentationChartLineIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  BellIcon,
+  ViewfinderCircleIcon,
+  ArrowsPointingOutIcon,
+  PrinterIcon,
+  CloudArrowDownIcon,
+  AdjustmentsHorizontalIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  Bars3BottomLeftIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
@@ -134,6 +143,43 @@ interface CustomReport {
   lastRefreshed?: string
   accessCount?: number
   lastAccessed?: string
+  alerts?: {
+    enabled: boolean
+    conditions: Array<{
+      field: string
+      operator: 'greater_than' | 'less_than' | 'equals' | 'not_equals'
+      value: any
+      notificationType: 'email' | 'in_app' | 'both'
+      recipients?: string[]
+    }>
+  }
+  savedViews?: Array<{
+    name: string
+    filters: ReportFilter[]
+    dateRange: any
+    groupBy: string[]
+    sortBy: string
+    sortOrder: 'asc' | 'desc'
+    columnVisibility?: Record<string, boolean>
+    columnOrder?: string[]
+  }>
+  columnSettings?: {
+    visibility: Record<string, boolean>
+    order: string[]
+    widths: Record<string, number>
+  }
+  exportHistory?: Array<{
+    format: string
+    exportedAt: string
+    exportedBy: string
+    fileName: string
+  }>
+  performanceMetrics?: {
+    lastGenerationTime?: number
+    averageGenerationTime?: number
+    dataRowCount?: number
+    cacheEnabled?: boolean
+  }
 }
 
 const AVAILABLE_FIELDS = [
