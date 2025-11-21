@@ -388,14 +388,9 @@ async function generatePDF(reportData: any, report: any): Promise<NextResponse> 
         }
       })
     } catch (puppeteerError: any) {
-      // Fallback: return HTML that can be printed to PDF
-      console.warn('PDF generator not available, returning HTML:', puppeteerError.message)
-      return new NextResponse(html, {
-        headers: {
-          'Content-Type': 'text/html',
-          'Content-Disposition': `inline; filename="${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.html"`
-        }
-      })
+      // If puppeteer fails, throw error with helpful message
+      console.error('PDF generation failed:', puppeteerError)
+      throw new Error(`PDF generation failed: ${puppeteerError.message}. Please ensure puppeteer-core and @sparticuz/chromium are properly installed.`)
     }
   } catch (error: any) {
     console.error('Error generating PDF:', error)
