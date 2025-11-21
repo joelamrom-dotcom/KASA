@@ -187,6 +187,55 @@ interface CustomReport {
     dataRowCount?: number
     cacheEnabled?: boolean
   }
+  dashboard?: {
+    enabled: boolean
+    position?: { row: number; col: number; width: number; height: number }
+    refreshInterval?: number
+  }
+  calculatedFields?: Array<{
+    name: string
+    formula: string
+    dataType: 'string' | 'number' | 'date' | 'currency' | 'boolean'
+    format?: string
+  }>
+  branding?: {
+    logo?: string
+    primaryColor?: string
+    secondaryColor?: string
+    fontFamily?: string
+    watermark?: string
+  }
+  filterPresets?: Array<{
+    name: string
+    filters: ReportFilter[]
+    dateRange: any
+  }>
+  comments?: Array<{
+    id: string
+    field: string
+    rowIndex: number
+    comment: string
+    author: string
+    createdAt: string
+    replies?: Array<{
+      id: string
+      comment: string
+      author: string
+      createdAt: string
+    }>
+  }>
+  automation?: {
+    enabled: boolean
+    triggers: Array<{
+      condition: {
+        field: string
+        operator: string
+        value: any
+      }
+      action: 'email' | 'notification' | 'webhook' | 'export'
+      config: any
+    }>
+  }
 }
 
 const AVAILABLE_FIELDS = [
@@ -765,10 +814,7 @@ export default function CustomReportsPage() {
   const addCalculatedField = (field: { name: string; formula: string; dataType: any; format?: string }) => {
     setFormData({
       ...formData,
-      calculatedFields: [...(formData.calculatedFields || []), {
-        ...field,
-        id: Date.now().toString()
-      }]
+      calculatedFields: [...(formData.calculatedFields || []), field]
     })
   }
 
