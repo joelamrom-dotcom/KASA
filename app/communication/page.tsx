@@ -162,11 +162,13 @@ export default function CommunicationPage() {
   }
 
   const getPreviewContent = () => {
-    if (!previewFamily) return { subject: '', body: '' }
+    if (!previewFamily || !selectedTemplate) return { subject: '', body: '' }
     
     const variables = buildFamilyVariables(previewFamily)
-    const previewSubject = replaceVariables(subject, variables, { fallback: '[Variable]' })
-    const previewBody = replaceVariables(body, variables, { fallback: '[Variable]' })
+    const previewSubject = selectedTemplate.subject 
+      ? replaceVariables(selectedTemplate.subject, variables, { fallback: '[Variable]' })
+      : ''
+    const previewBody = replaceVariables(selectedTemplate.bodyHtml || selectedTemplate.body, variables, { fallback: '[Variable]' })
     
     return { subject: previewSubject, body: previewBody }
   }
