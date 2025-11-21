@@ -418,7 +418,7 @@ export default function FamilyDetailPage() {
   }
 
   const fetchSubFamilies = async () => {
-    if (!params.id) return
+    if (!isValidFamilyId(params.id)) return
     setLoadingSubFamilies(true)
     try {
       const res = await fetch(`/api/kasa/families/${params.id}/sub-families`)
@@ -702,6 +702,7 @@ export default function FamilyDetailPage() {
   }
 
   const fetchStatements = async () => {
+    if (!isValidFamilyId(params.id)) return
     try {
       const res = await fetch(`/api/kasa/statements?familyId=${params.id}`)
       const data = await res.json()
