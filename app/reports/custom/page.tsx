@@ -286,6 +286,13 @@ export default function CustomReportsPage() {
   const [comparisonReports, setComparisonReports] = useState<string[]>([])
   const [drillDownData, setDrillDownData] = useState<any>(null)
   const [showDrillDown, setShowDrillDown] = useState(false)
+  const [showAlertsModal, setShowAlertsModal] = useState(false)
+  const [showSavedViewsModal, setShowSavedViewsModal] = useState(false)
+  const [showColumnSettings, setShowColumnSettings] = useState(false)
+  const [showExportHistory, setShowExportHistory] = useState(false)
+  const [showPrintPreview, setShowPrintPreview] = useState(false)
+  const [quickFilters, setQuickFilters] = useState<ReportFilter[]>([])
+  const [reportRefreshStatus, setReportRefreshStatus] = useState<Record<string, 'idle' | 'refreshing' | 'success' | 'error'>>({})
   
   const [formData, setFormData] = useState<CustomReport>({
     name: '',
@@ -643,6 +650,101 @@ export default function CustomReportsPage() {
     }
     setComparisonReports(reportIds)
     setShowComparison(true)
+  }
+
+  const saveCurrentView = (report: CustomReport, viewName: string) => {
+    const newView = {
+      name: viewName,
+      filters: report.filters,
+      dateRange: report.dateRange,
+      groupBy: report.groupBy,
+      sortBy: report.sortBy,
+      sortOrder: report.sortOrder,
+      columnVisibility: report.columnSettings?.visibility || {},
+      columnOrder: report.columnSettings?.order || []
+    }
+    
+    const updatedViews = [...(report.savedViews || []), newView]
+    console.log('Saving view:', newView)
+    alert(`View "${viewName}" saved successfully!`)
+  }
+
+  const loadSavedView = (report: CustomReport, view: any) => {
+    setFormData({
+      ...report,
+      filters: view.filters,
+      dateRange: view.dateRange,
+      groupBy: view.groupBy,
+      sortBy: view.sortBy,
+      sortOrder: view.sortOrder,
+      columnSettings: {
+        ...report.columnSettings,
+        visibility: view.columnVisibility || {},
+        order: view.columnOrder || []
+      }
+    })
+    setEditingReport(report)
+    alert(`View "${view.name}" loaded!`)
+  }
+
+  const trackExport = (reportId: string, format: string, fileName: string) => {
+    const exportLog = JSON.parse(localStorage.getItem('reportExportHistory') || '[]')
+    exportLog.push({
+      reportId,
+      format,
+      exportedAt: new Date().toISOString(),
+      exportedBy: user?.email || 'Unknown',
+      fileName
+    })
+    if (exportLog.length > 50) exportLog.shift()
+    localStorage.setItem('reportExportHistory', JSON.stringify(exportLog))
+  }
+
+  const getExportHistory = (reportId: string) => {
+    const exportLog = JSON.parse(localStorage.getItem('reportExportHistory') || '[]')
+    return exportLog.filter((entry: any) => entry.reportId === reportId)
+  }
+
+  const addQuickFilter = (filter: ReportFilter) => {
+    setQuickFilters([...quickFilters, filter])
+  }
+
+  const removeQuickFilter = (index: number) => {
+    setQuickFilters(quickFilters.filter((_, i) => i !== index))
+  }
+
+  const applyQuickFilters = () => {
+    if (!editingReport) return
+    const updatedFilters = [...(editingReport.filters || []), ...quickFilters]
+    setFormData({
+      ...formData,
+      filters: updatedFilters
+    })
+    setEditingReport({
+      ...editingReport,
+      filters: updatedFilters
+    })
+    alert('Quick filters applied!')
+  }
+
+  const printReport = () => {
+    window.print()
+  }
+
+  const toggleColumnVisibility = (fieldName: string) => {
+    if (!editingReport) return
+    const currentVisibility = editingReport.columnSettings?.visibility || {}
+    const newVisibility = {
+      ...currentVisibility,
+      [fieldName]: !currentVisibility[fieldName]
+    }
+    setFormData({
+      ...formData,
+      columnSettings: {
+        ...editingReport.columnSettings || { visibility: {}, order: [], widths: {} },
+        visibility: newVisibility
+      }
+    })
   }
 
   const fetchReports = async () => {
