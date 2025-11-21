@@ -281,6 +281,7 @@ export default function CustomReportsPage() {
         await fetchReports()
         
         // Auto-generate the report after saving
+        setGenerating(true)
         try {
           const generateRes = await fetch('/api/kasa/reports/custom/generate', {
             method: 'POST',
@@ -306,6 +307,8 @@ export default function CustomReportsPage() {
         } catch (genError) {
           console.error('Error auto-generating report:', genError)
           alert('Report saved successfully, but failed to generate. You can generate it manually.')
+        } finally {
+          setGenerating(false)
         }
         
         setShowBuilder(false)
