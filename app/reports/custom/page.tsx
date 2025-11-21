@@ -14,6 +14,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
 
 interface ReportField {
   fieldName: string
@@ -197,6 +198,12 @@ export default function CustomReportsPage() {
       includeCharts: true,
       pageOrientation: 'portrait',
       pageSize: 'letter'
+    },
+    chartSettings: {
+      enabled: false,
+      chartType: 'bar',
+      showLegend: true,
+      showDataLabels: false
     }
   })
 
@@ -300,6 +307,12 @@ export default function CustomReportsPage() {
             pageOrientation: 'portrait',
             pageSize: 'letter'
           },
+          chartSettings: formData.chartSettings || {
+            enabled: false,
+            chartType: 'bar',
+            showLegend: true,
+            showDataLabels: false
+          },
           _id: editingReport?._id
         })
       })
@@ -356,6 +369,12 @@ export default function CustomReportsPage() {
             includeCharts: true,
             pageOrientation: 'portrait',
             pageSize: 'letter'
+          },
+          chartSettings: {
+            enabled: false,
+            chartType: 'bar',
+            showLegend: true,
+            showDataLabels: false
           }
         })
       } else {
@@ -595,6 +614,12 @@ export default function CustomReportsPage() {
                     includeCharts: true,
                     pageOrientation: 'portrait',
                     pageSize: 'letter'
+                  },
+                  chartSettings: {
+                    enabled: false,
+                    chartType: 'bar',
+                    showLegend: true,
+                    showDataLabels: false
                   }
                 })
               }}
@@ -790,14 +815,29 @@ export default function CustomReportsPage() {
                     })}
                     className="w-full border rounded-lg px-4 py-2"
                   >
-                    <option value="custom">Custom Range</option>
-                    <option value="this_month">This Month</option>
-                    <option value="last_month">Last Month</option>
-                    <option value="this_year">This Year</option>
-                    <option value="last_year">Last Year</option>
-                    <option value="last_30_days">Last 30 Days</option>
-                    <option value="last_90_days">Last 90 Days</option>
-                    <option value="last_365_days">Last 365 Days</option>
+                    <optgroup label="Custom">
+                      <option value="custom">Custom Range</option>
+                    </optgroup>
+                    <optgroup label="This Period">
+                      <option value="this_month">This Month</option>
+                      <option value="this_quarter">This Quarter</option>
+                      <option value="this_year">This Year</option>
+                      <option value="this_fiscal_year">This Fiscal Year</option>
+                      <option value="mtd">Month to Date (MTD)</option>
+                      <option value="qtd">Quarter to Date (QTD)</option>
+                      <option value="ytd">Year to Date (YTD)</option>
+                    </optgroup>
+                    <optgroup label="Previous Period">
+                      <option value="last_month">Last Month</option>
+                      <option value="last_quarter">Last Quarter</option>
+                      <option value="last_year">Last Year</option>
+                      <option value="last_fiscal_year">Last Fiscal Year</option>
+                    </optgroup>
+                    <optgroup label="Rolling Periods">
+                      <option value="last_30_days">Last 30 Days</option>
+                      <option value="last_90_days">Last 90 Days</option>
+                      <option value="last_365_days">Last 365 Days</option>
+                    </optgroup>
                   </select>
                   {formData.dateRange.type === 'custom' && (
                     <div className="grid grid-cols-2 gap-4 mt-2">
@@ -1126,42 +1166,249 @@ export default function CustomReportsPage() {
         )}
 
         {/* Report Results */}
-        {reportData && (
+        {reportData && editingReport && (
           <div className="mt-8 bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold mb-4">Report Results</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Report Results</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => exportReport(editingReport, 'pdf')}
+                  className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                >
+                  Export PDF
+                </button>
+                <button
+                  onClick={() => exportReport(editingReport, 'excel')}
+                  className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                >
+                  Export Excel
+                </button>
+                <button
+                  onClick={() => exportReport(editingReport, 'csv')}
+                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                >
+                  Export CSV
+                </button>
+              </div>
+            </div>
+            
             {reportData.summary && (
               <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                 <h3 className="font-semibold mb-2">Summary</h3>
-                {Object.entries(reportData.summary).map(([key, value]) => (
-                  <div key={key} className="flex justify-between">
-                    <span>{key}:</span>
-                    <span className="font-medium">${typeof value === 'number' ? value.toLocaleString() : String(value)}</span>
-                  </div>
-                ))}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {Object.entries(reportData.summary).map(([key, value]) => (
+                    <div key={key} className="flex flex-col">
+                      <span className="text-sm text-gray-600">{key}</span>
+                      <span className="font-medium text-lg">
+                        {typeof value === 'number' 
+                          ? (key.toLowerCase().includes('amount') || key.toLowerCase().includes('total') || key.toLowerCase().includes('sum')
+                              ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : value.toLocaleString())
+                          : String(value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Charts */}
+            {editingReport.chartSettings?.enabled && reportData.data && reportData.data.length > 0 && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold mb-4">Chart Visualization</h3>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    {editingReport.chartSettings.chartType === 'bar' && (
+                      <BarChart data={reportData.data.slice(0, 20)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey={editingReport.chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
+                          angle={-45}
+                          textAnchor="end"
+                          height={100}
+                        />
+                        <YAxis />
+                        <Tooltip />
+                        {editingReport.chartSettings.showLegend && <Legend />}
+                        {editingReport.chartSettings.yAxisField ? (
+                          <Bar 
+                            dataKey={reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label}
+                            fill="#3b82f6"
+                            label={editingReport.chartSettings.showDataLabels}
+                          />
+                        ) : (
+                          reportData.fields.filter((f: any) => f.dataType === 'number' || f.dataType === 'currency').slice(0, 3).map((field: any, idx: number) => (
+                            <Bar 
+                              key={field.fieldName}
+                              dataKey={field.label}
+                              fill={['#3b82f6', '#10b981', '#f59e0b'][idx]}
+                              label={editingReport.chartSettings.showDataLabels}
+                            />
+                          ))
+                        )}
+                      </BarChart>
+                    )}
+                    {editingReport.chartSettings.chartType === 'line' && (
+                      <LineChart data={reportData.data.slice(0, 20)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey={editingReport.chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
+                          angle={-45}
+                          textAnchor="end"
+                          height={100}
+                        />
+                        <YAxis />
+                        <Tooltip />
+                        {editingReport.chartSettings.showLegend && <Legend />}
+                        {editingReport.chartSettings.yAxisField ? (
+                          <Line 
+                            type="monotone"
+                            dataKey={reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label}
+                            stroke="#3b82f6"
+                            strokeWidth={2}
+                            dot={editingReport.chartSettings.showDataLabels}
+                          />
+                        ) : (
+                          reportData.fields.filter((f: any) => f.dataType === 'number' || f.dataType === 'currency').slice(0, 3).map((field: any, idx: number) => (
+                            <Line 
+                              key={field.fieldName}
+                              type="monotone"
+                              dataKey={field.label}
+                              stroke={['#3b82f6', '#10b981', '#f59e0b'][idx]}
+                              strokeWidth={2}
+                              dot={editingReport.chartSettings.showDataLabels}
+                            />
+                          ))
+                        )}
+                      </LineChart>
+                    )}
+                    {editingReport.chartSettings.chartType === 'pie' && (
+                      <PieChart>
+                        <Pie
+                          data={reportData.data.slice(0, 10).map((row: any) => ({
+                            name: row[reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label || reportData.fields[0]?.label] || 'Unknown',
+                            value: parseFloat(row[reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label || reportData.fields.find((f: any) => f.dataType === 'currency' || f.dataType === 'number')?.label] || 0)
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={editingReport.chartSettings.showDataLabels ? ({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%` : false}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {reportData.data.slice(0, 10).map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6366f1'][index % 10]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        {editingReport.chartSettings.showLegend && <Legend />}
+                      </PieChart>
+                    )}
+                    {editingReport.chartSettings.chartType === 'area' && (
+                      <AreaChart data={reportData.data.slice(0, 20)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey={editingReport.chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
+                          angle={-45}
+                          textAnchor="end"
+                          height={100}
+                        />
+                        <YAxis />
+                        <Tooltip />
+                        {editingReport.chartSettings.showLegend && <Legend />}
+                        {editingReport.chartSettings.yAxisField ? (
+                          <Area 
+                            type="monotone"
+                            dataKey={reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label}
+                            stroke="#3b82f6"
+                            fill="#3b82f6"
+                            fillOpacity={0.6}
+                          />
+                        ) : (
+                          reportData.fields.filter((f: any) => f.dataType === 'number' || f.dataType === 'currency').slice(0, 3).map((field: any, idx: number) => (
+                            <Area 
+                              key={field.fieldName}
+                              type="monotone"
+                              dataKey={field.label}
+                              stroke={['#3b82f6', '#10b981', '#f59e0b'][idx]}
+                              fill={['#3b82f6', '#10b981', '#f59e0b'][idx]}
+                              fillOpacity={0.6}
+                            />
+                          ))
+                        )}
+                      </AreaChart>
+                    )}
+                    {editingReport.chartSettings.chartType === 'column' && (
+                      <BarChart data={reportData.data.slice(0, 20)} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis 
+                          type="category"
+                          dataKey={editingReport.chartSettings.xAxisField ? reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.xAxisField)?.label : reportData.fields[0]?.label}
+                          width={150}
+                        />
+                        <Tooltip />
+                        {editingReport.chartSettings.showLegend && <Legend />}
+                        {editingReport.chartSettings.yAxisField ? (
+                          <Bar 
+                            dataKey={reportData.fields.find((f: any) => f.fieldName === editingReport.chartSettings.yAxisField)?.label}
+                            fill="#3b82f6"
+                            label={editingReport.chartSettings.showDataLabels}
+                          />
+                        ) : (
+                          reportData.fields.filter((f: any) => f.dataType === 'number' || f.dataType === 'currency').slice(0, 3).map((field: any, idx: number) => (
+                            <Bar 
+                              key={field.fieldName}
+                              dataKey={field.label}
+                              fill={['#3b82f6', '#10b981', '#f59e0b'][idx]}
+                              label={editingReport.chartSettings.showDataLabels}
+                            />
+                          ))
+                        )}
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
             {reportData.data && reportData.data.length > 0 && (
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-50">
                       {reportData.fields.map((field: any) => (
-                        <th key={field.fieldName} className="border px-4 py-2 text-left">{field.label}</th>
+                        <th key={field.fieldName} className="border px-4 py-2 text-left font-semibold">{field.label}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.data.map((row: any, index: number) => (
-                      <tr key={index}>
-                        {reportData.fields.map((field: any) => (
-                          <td key={field.fieldName} className="border px-4 py-2">
-                            {row[field.label] || '-'}
-                          </td>
-                        ))}
+                      <tr key={index} className="hover:bg-gray-50">
+                        {reportData.fields.map((field: any) => {
+                          const value = row[field.label] || '-'
+                          const isNumeric = typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)) && isFinite(parseFloat(value)))
+                          const isCurrency = field.dataType === 'currency' && isNumeric
+                          return (
+                            <td key={field.fieldName} className="border px-4 py-2">
+                              {isCurrency 
+                                ? `$${parseFloat(String(value)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                : isNumeric
+                                  ? parseFloat(String(value)).toLocaleString()
+                                  : value}
+                            </td>
+                          )
+                        })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {reportData.data && reportData.data.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>No data found for the selected criteria.</p>
               </div>
             )}
           </div>
