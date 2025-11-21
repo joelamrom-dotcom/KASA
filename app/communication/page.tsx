@@ -359,26 +359,46 @@ export default function CommunicationPage() {
             <div className="bg-white rounded-lg shadow p-6">
               {messageType === 'email' && (
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Subject *</label>
-                  <input
-                    type="text"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2"
-                    placeholder="Message subject"
-                  />
+                  <label className="block text-sm font-medium mb-1">
+                    Subject *
+                    <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      className="flex-1 border rounded-lg px-3 py-2"
+                      placeholder="Message subject, e.g., Invoice for {{familyName}}"
+                    />
+                    <VariablePicker
+                      onSelectVariable={(varName) => setSubject(subject + varName)}
+                      type="email"
+                    />
+                  </div>
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium mb-1">Message *</label>
-                <textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={8}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder={messageType === 'email' ? 'Email message...' : 'SMS message (160 characters max)...'}
-                  maxLength={messageType === 'sms' ? 160 : undefined}
-                />
+                <label className="block text-sm font-medium mb-1">
+                  Message *
+                  <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
+                </label>
+                <div className="flex gap-2">
+                  <textarea
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    rows={8}
+                    className="flex-1 border rounded-lg px-3 py-2"
+                    placeholder={messageType === 'email' ? 'Email message...' : 'SMS message (160 characters max)...'}
+                    maxLength={messageType === 'sms' ? 160 : undefined}
+                  />
+                  <div className="flex flex-col">
+                    <VariablePicker
+                      onSelectVariable={(varName) => setBody(body + varName)}
+                      type={messageType}
+                    />
+                  </div>
+                </div>
                 {messageType === 'sms' && (
                   <p className="text-xs text-gray-500 mt-1">{body.length}/160 characters</p>
                 )}
@@ -508,23 +528,45 @@ export default function CommunicationPage() {
                 </div>
                 {templateForm.type === 'email' && (
                   <div>
-                    <label className="block text-sm font-medium mb-1">Subject</label>
-                    <input
-                      type="text"
-                      value={templateForm.subject}
-                      onChange={(e) => setTemplateForm({ ...templateForm, subject: e.target.value })}
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
+                    <label className="block text-sm font-medium mb-1">
+                      Subject
+                      <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={templateForm.subject}
+                        onChange={(e) => setTemplateForm({ ...templateForm, subject: e.target.value })}
+                        className="flex-1 border rounded-lg px-3 py-2"
+                        placeholder="e.g., Invoice for {{familyName}}"
+                      />
+                      <VariablePicker
+                        onSelectVariable={(varName) => setTemplateForm({ ...templateForm, subject: templateForm.subject + varName })}
+                        type="email"
+                      />
+                    </div>
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Body *</label>
-                  <textarea
-                    value={templateForm.body}
-                    onChange={(e) => setTemplateForm({ ...templateForm, body: e.target.value })}
-                    rows={6}
-                    className="w-full border rounded-lg px-3 py-2"
-                  />
+                  <label className="block text-sm font-medium mb-1">
+                    Body *
+                    <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <textarea
+                      value={templateForm.body}
+                      onChange={(e) => setTemplateForm({ ...templateForm, body: e.target.value })}
+                      rows={6}
+                      className="flex-1 border rounded-lg px-3 py-2"
+                      placeholder="e.g., Hello {{familyName}}, your balance is {{openBalance}}"
+                    />
+                    <div className="flex flex-col">
+                      <VariablePicker
+                        onSelectVariable={(varName) => setTemplateForm({ ...templateForm, body: templateForm.body + varName })}
+                        type={templateForm.type}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-4 justify-end pt-4">
                   <button
