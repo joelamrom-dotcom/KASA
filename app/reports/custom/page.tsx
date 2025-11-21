@@ -300,6 +300,14 @@ export default function CustomReportsPage() {
   const [showPrintPreview, setShowPrintPreview] = useState(false)
   const [quickFilters, setQuickFilters] = useState<ReportFilter[]>([])
   const [reportRefreshStatus, setReportRefreshStatus] = useState<Record<string, 'idle' | 'refreshing' | 'success' | 'error'>>({})
+  const [showDashboard, setShowDashboard] = useState(false)
+  const [dashboardReports, setDashboardReports] = useState<string[]>([])
+  const [showCalculatedFields, setShowCalculatedFields] = useState(false)
+  const [showBranding, setShowBranding] = useState(false)
+  const [showFilterPresets, setShowFilterPresets] = useState(false)
+  const [showComments, setShowComments] = useState(false)
+  const [showAutomation, setShowAutomation] = useState(false)
+  const [selectedCommentCell, setSelectedCommentCell] = useState<{field: string, rowIndex: number} | null>(null)
   
   const [formData, setFormData] = useState<CustomReport>({
     name: '',
@@ -752,6 +760,88 @@ export default function CustomReportsPage() {
         visibility: newVisibility
       }
     })
+  }
+
+  const addCalculatedField = (field: { name: string; formula: string; dataType: any; format?: string }) => {
+    setFormData({
+      ...formData,
+      calculatedFields: [...(formData.calculatedFields || []), {
+        ...field,
+        id: Date.now().toString()
+      }]
+    })
+  }
+
+  const removeCalculatedField = (index: number) => {
+    setFormData({
+      ...formData,
+      calculatedFields: (formData.calculatedFields || []).filter((_, i) => i !== index)
+    })
+  }
+
+  const saveFilterPreset = (name: string) => {
+    const preset = {
+      name,
+      filters: formData.filters,
+      dateRange: formData.dateRange
+    }
+    setFormData({
+      ...formData,
+      filterPresets: [...(formData.filterPresets || []), preset]
+    })
+    alert(`Filter preset "${name}" saved!`)
+  }
+
+  const loadFilterPreset = (preset: any) => {
+    setFormData({
+      ...formData,
+      filters: preset.filters,
+      dateRange: preset.dateRange
+    })
+    alert(`Filter preset "${preset.name}" loaded!`)
+  }
+
+  const addComment = (field: string, rowIndex: number, comment: string) => {
+    const newComment = {
+      id: Date.now().toString(),
+      field,
+      rowIndex,
+      comment,
+      author: user?.email || 'Unknown',
+      createdAt: new Date().toISOString(),
+      replies: []
+    }
+    setFormData({
+      ...formData,
+      comments: [...(formData.comments || []), newComment]
+    })
+    setSelectedCommentCell(null)
+  }
+
+  const addCommentReply = (commentId: string, reply: string) => {
+    const updatedComments = (formData.comments || []).map((comment: any) => {
+      if (comment.id === commentId) {
+        return {
+          ...comment,
+          replies: [...(comment.replies || []), {
+            id: Date.now().toString(),
+            comment: reply,
+            author: user?.email || 'Unknown',
+            createdAt: new Date().toISOString()
+          }]
+        }
+      }
+      return comment
+    })
+    setFormData({
+      ...formData,
+      comments: updatedComments
+    })
+  }
+
+  const createDashboard = (reportIds: string[]) => {
+    setDashboardReports(reportIds)
+    setShowDashboard(true)
   }
 
   const fetchReports = async () => {
