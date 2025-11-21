@@ -27,7 +27,13 @@ import {
   CameraIcon,
   ArrowDownIcon,
   ChartPieIcon,
-  DocumentChartBarIcon
+  DocumentChartBarIcon,
+  ArrowTrendingUpIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon,
+  PresentationChartLineIcon,
+  ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
@@ -109,6 +115,25 @@ interface CustomReport {
   createdAt?: string
   updatedAt?: string
   version?: number
+  subtotals?: {
+    enabled: boolean
+    showGrandTotal: boolean
+    showSubtotals: boolean
+    subtotalFields?: string[]
+  }
+  validation?: {
+    enabled: boolean
+    rules: Array<{
+      field: string
+      operator: 'required' | 'min' | 'max' | 'pattern'
+      value?: any
+      message?: string
+    }>
+  }
+  refreshInterval?: number // Auto-refresh interval in minutes
+  lastRefreshed?: string
+  accessCount?: number
+  lastAccessed?: string
 }
 
 const AVAILABLE_FIELDS = [
@@ -579,6 +604,11 @@ export default function CustomReportsPage() {
             showLegend: true,
             showDataLabels: false
           },
+          subtotals: formData.subtotals,
+          validation: formData.validation,
+          refreshInterval: formData.refreshInterval,
+          tags: formData.tags,
+          notes: formData.notes,
           _id: editingReport?._id
         })
       })
