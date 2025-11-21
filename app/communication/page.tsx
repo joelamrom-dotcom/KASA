@@ -53,8 +53,7 @@ export default function CommunicationPage() {
   const [families, setFamilies] = useState<Family[]>([])
   const [selectedFamilies, setSelectedFamilies] = useState<string[]>([])
   const [messageType, setMessageType] = useState<'email' | 'sms'>('email')
-  const [subject, setSubject] = useState('')
-  const [body, setBody] = useState('')
+  const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null)
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
   const [history, setHistory] = useState<MessageHistory[]>([])
   const [loading, setLoading] = useState(false)
@@ -139,18 +138,8 @@ export default function CommunicationPage() {
   }
 
   const handleUseTemplate = (template: MessageTemplate) => {
-    setSubject(template.subject || '')
-    setBody(template.bodyHtml || template.body)
+    setSelectedTemplate(template)
     setMessageType(template.type)
-    setShowTemplateModal(false)
-  }
-
-  const handleInsertVariable = (variable: string) => {
-    setBody(prev => prev + variable)
-  }
-
-  const handleInsertVariableInSubject = (variable: string) => {
-    setSubject(prev => prev + variable)
   }
 
   const handlePreview = () => {
@@ -188,13 +177,8 @@ export default function CommunicationPage() {
       return
     }
 
-    if (messageType === 'email' && !subject) {
-      alert('Please enter a subject')
-      return
-    }
-
-    if (!body.trim()) {
-      alert('Please enter a message')
+    if (!selectedTemplate) {
+      alert('Please select a template to send')
       return
     }
 
@@ -209,17 +193,15 @@ export default function CommunicationPage() {
         },
         body: JSON.stringify({
           familyIds: selectedFamilies,
-          type: messageType,
-          subject: messageType === 'email' ? subject : undefined,
-          body
+          type: selectedTemplate.type,
+          subject: selectedTemplate.type === 'email' ? selectedTemplate.subject : undefined,
+          body: selectedTemplate.bodyHtml || selectedTemplate.body
         })
       })
 
       if (response.ok) {
         const data = await response.json()
         alert(`Message sent! ${data.successCount} successful, ${data.failureCount} failed`)
-        setSubject('')
-        setBody('')
         setSelectedFamilies([])
         fetchHistory()
       } else {
@@ -254,7 +236,7 @@ export default function CommunicationPage() {
       if (response.ok) {
         alert('Template saved successfully!')
         setShowTemplateModal(false)
-        setTemplateForm({ name: '', subject: '', body: '', bodyHtml: '', type: 'email', isHtml: false })
+        setTemplateForm({ name: '', subject: '', body: '', bodyHtml: '', type: messageType, isHtml: false })
         fetchTemplates()
       }
     } catch (error) {
@@ -322,8 +304,8 @@ export default function CommunicationPage() {
                   onClick={() => {
                     setTemplateForm({
                       name: '',
-                      subject: subject,
-                      body: body,
+                      subject: '',
+                      body: '',
                       bodyHtml: '',
                       type: messageType,
                       isHtml: false
@@ -355,55 +337,31 @@ export default function CommunicationPage() {
               )}
             </div>
 
-            {/* Message Form */}
-            <div className="bg-white rounded-lg shadow p-6">
-              {messageType === 'email' && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">
-                    Subject *
-                    <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      className="flex-1 border rounded-lg px-3 py-2"
-                      placeholder="Message subject, e.g., Invoice for {{familyName}}"
-                    />
-                    <VariablePicker
-                      onSelectVariable={(varName) => setSubject(subject + varName)}
-                      type="email"
-                    />
-                  </div>
+            {/* Selected Template Preview */}
+            {selectedTemplate && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold">Selected Template</h3>
+                  <button
+                    onClick={() => setSelectedTemplate(null)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Clear
+                  </button>
                 </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Message *
-                  <span className="text-xs text-gray-500 ml-2">(use {`{{variableName}}`} for dynamic values)</span>
-                </label>
-                <div className="flex gap-2">
-                  <textarea
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    rows={8}
-                    className="flex-1 border rounded-lg px-3 py-2"
-                    placeholder={messageType === 'email' ? 'Email message...' : 'SMS message (160 characters max)...'}
-                    maxLength={messageType === 'sms' ? 160 : undefined}
-                  />
-                  <div className="flex flex-col">
-                    <VariablePicker
-                      onSelectVariable={(varName) => setBody(body + varName)}
-                      type={messageType}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <p className="font-medium text-sm">{selectedTemplate.name}</p>
+                  {selectedTemplate.type === 'email' && selectedTemplate.subject && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Subject:</span> {selectedTemplate.subject}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Message:</span> {selectedTemplate.bodyHtml || selectedTemplate.body}
+                  </p>
                 </div>
-                {messageType === 'sms' && (
-                  <p className="text-xs text-gray-500 mt-1">{body.length}/160 characters</p>
-                )}
               </div>
-            </div>
+            )}
 
             {/* Recipients */}
             <div className="bg-white rounded-lg shadow p-6">
@@ -442,11 +400,13 @@ export default function CommunicationPage() {
             {/* Send Button */}
             <button
               onClick={handleSend}
-              disabled={sending || selectedFamilies.length === 0}
+              disabled={sending || selectedFamilies.length === 0 || !selectedTemplate}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <PaperAirplaneIcon className="h-5 w-5" />
-              {sending ? 'Sending...' : `Send ${messageType.toUpperCase()} to ${selectedFamilies.length} ${selectedFamilies.length === 1 ? 'family' : 'families'}`}
+              {sending ? 'Sending...' : selectedTemplate 
+                ? `Send ${selectedTemplate.type.toUpperCase()} to ${selectedFamilies.length} ${selectedFamilies.length === 1 ? 'family' : 'families'}`
+                : 'Select a template to send'}
             </button>
           </div>
 
