@@ -263,7 +263,24 @@ export default function FamilyDetailPage() {
     notes: ''
   })
 
+  // Validate family ID
+  const isValidFamilyId = (id: string | string[] | undefined): boolean => {
+    if (!id || Array.isArray(id)) return false
+    if (id === 'null' || id === 'undefined' || id.trim() === '') return false
+    // Check if it looks like a valid MongoDB ObjectId (24 hex characters)
+    return /^[0-9a-fA-F]{24}$/.test(id)
+  }
+
   useEffect(() => {
+    // Validate ID before making any API calls
+    if (!isValidFamilyId(params.id)) {
+      console.error('Invalid family ID:', params.id)
+      setData(null)
+      setLoading(false)
+      router.push('/families')
+      return
+    }
+
     if (params.id) {
       fetchFamilyDetails()
       fetchStatements()
@@ -273,7 +290,7 @@ export default function FamilyDetailPage() {
     fetchPaymentPlans()
     fetchLifecycleEventTypes()
     fetchEmailConfig()
-  }, [params.id])
+  }, [params.id, router])
 
   useEffect(() => {
     if (activeTab === 'notes' && params.id) {
@@ -289,7 +306,7 @@ export default function FamilyDetailPage() {
   }, [activeTab, params.id])
 
   const fetchRelationships = async () => {
-    if (!params.id) return
+    if (!isValidFamilyId(params.id)) return
     setLoadingRelationships(true)
     try {
       const token = localStorage.getItem('token')
@@ -324,7 +341,7 @@ export default function FamilyDetailPage() {
   }
 
   const fetchHistory = async () => {
-    if (!params.id) return
+    if (!isValidFamilyId(params.id)) return
     setLoadingHistory(true)
     try {
       const token = localStorage.getItem('token')
@@ -417,7 +434,7 @@ export default function FamilyDetailPage() {
   }
 
   const fetchNotes = async () => {
-    if (!params.id) return
+    if (!isValidFamilyId(params.id)) return
     setLoadingNotes(true)
     try {
       const res = await fetch(`/api/kasa/families/${params.id}/notes`)
