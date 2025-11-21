@@ -277,7 +277,37 @@ export default function CustomReportsPage() {
       })
 
       if (res.ok) {
+        const savedReport = await res.json()
         await fetchReports()
+        
+        // Auto-generate the report after saving
+        try {
+          const generateRes = await fetch('/api/kasa/reports/custom/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+              reportId: savedReport._id
+            })
+          })
+
+          if (generateRes.ok) {
+            const reportData = await generateRes.json()
+            setReportData(reportData)
+            setEditingReport(savedReport)
+            alert('Report saved and generated successfully!')
+          } else {
+            const error = await generateRes.json().catch(() => ({ error: 'Failed to generate report' }))
+            console.warn('Report saved but generation failed:', error)
+            alert('Report saved successfully, but failed to generate. You can generate it manually.')
+          }
+        } catch (genError) {
+          console.error('Error auto-generating report:', genError)
+          alert('Report saved successfully, but failed to generate. You can generate it manually.')
+        }
+        
         setShowBuilder(false)
         setEditingReport(null)
         setFormData({
@@ -297,7 +327,6 @@ export default function CustomReportsPage() {
             pageSize: 'letter'
           }
         })
-        alert('Report saved successfully!')
       } else {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
         console.error('Save error response:', errorData)
