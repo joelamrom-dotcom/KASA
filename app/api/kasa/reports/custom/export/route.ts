@@ -339,63 +339,19 @@ async function generatePDF(reportData: any, report: any): Promise<NextResponse> 
 </html>
     `
     
-    // Try to use puppeteer if available, otherwise fall back to HTML
-    try {
-      let browser: any
-      let puppeteer: any
-      
-      // Try puppeteer-core with chromium for serverless environments
-      try {
-        puppeteer = require('puppeteer-core')
-        const chromium = require('@sparticuz/chromium')
-        chromium.setGraphicsMode(false)
-        
-        browser = await puppeteer.launch({
-          args: chromium.args,
-          defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath(),
-          headless: chromium.headless,
-        })
-      } catch (e) {
-        // Fallback to regular puppeteer if available
-        try {
-          puppeteer = require('puppeteer')
-          browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-          })
-        } catch (e2) {
-          throw new Error('No PDF generator available')
-        }
+    // Return HTML with metadata for client-side PDF generation
+    // This is more reliable than puppeteer in serverless environments
+    // The frontend will use html2pdf.js to convert to PDF
+    return new NextResponse(JSON.stringify({ 
+      html, 
+      filename: `${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+      pageSize: report.exportSettings?.pageSize || 'letter',
+      orientation: report.exportSettings?.pageOrientation || 'portrait'
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
       }
-      
-      const page = await browser.newPage()
-      await page.setContent(html, { waitUntil: 'networkidle0' })
-      
-      const pdf = await page.pdf({
-        format: report.exportSettings?.pageSize === 'a4' ? 'A4' : 'Letter',
-        landscape: report.exportSettings?.pageOrientation === 'landscape',
-        margin: {
-          top: '1cm',
-          right: '1cm',
-          bottom: '1cm',
-          left: '1cm'
-        }
-      })
-      
-      await browser.close()
-      
-      return new NextResponse(pdf, {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf"`
-        }
-      })
-    } catch (puppeteerError: any) {
-      // If puppeteer fails, throw error with helpful message
-      console.error('PDF generation failed:', puppeteerError)
-      throw new Error(`PDF generation failed: ${puppeteerError.message}. Please ensure puppeteer-core and @sparticuz/chromium are properly installed.`)
-    }
+    })
   } catch (error: any) {
     console.error('Error generating PDF:', error)
     throw error
