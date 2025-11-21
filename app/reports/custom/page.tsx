@@ -42,7 +42,14 @@ import {
   AdjustmentsHorizontalIcon,
   EyeIcon,
   EyeSlashIcon,
-  Bars3BottomLeftIcon
+  Bars3BottomLeftIcon,
+  Squares2X2Icon as DashboardIcon,
+  CalculatorIcon as FormulaIcon,
+  PaintBrushIcon,
+  SparklesIcon,
+  ChatBubbleLeftRightIcon,
+  RocketLaunchIcon,
+  BookmarkIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
@@ -2330,6 +2337,193 @@ export default function CustomReportsPage() {
                         </div>
                       </div>
                     )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filter Presets Modal */}
+        {showFilterPresets && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Filter Presets</h2>
+                <button
+                  onClick={() => setShowFilterPresets(false)}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6 space-y-3">
+                {(formData.filterPresets || []).map((preset, idx) => (
+                  <div key={idx} className="border rounded-lg p-4 hover:bg-gray-50">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">{preset.name}</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {preset.filters.length} filters • {preset.dateRange.type}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          loadFilterPreset(preset)
+                          setShowFilterPresets(false)
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                      >
+                        Load Preset
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {(formData.filterPresets || []).length === 0 && (
+                  <p className="text-center text-gray-500 py-8">No filter presets saved</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Comments Modal */}
+        {showComments && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Report Comments</h2>
+                <button
+                  onClick={() => setShowComments(false)}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                {(formData.comments || []).map((comment) => (
+                  <div key={comment.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-medium">{comment.field} (Row {comment.rowIndex + 1})</div>
+                        <div className="text-sm text-gray-500">{comment.author} • {new Date(comment.createdAt).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <p className="text-gray-700 mb-2">{comment.comment}</p>
+                    {(comment.replies || []).map((reply) => (
+                      <div key={reply.id} className="ml-4 mt-2 p-2 bg-gray-50 rounded">
+                        <div className="text-xs text-gray-500 mb-1">{reply.author} • {new Date(reply.createdAt).toLocaleString()}</div>
+                        <p className="text-sm">{reply.comment}</p>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const reply = prompt('Add a reply:')
+                        if (reply) addCommentReply(comment.id, reply)
+                      }}
+                      className="text-blue-600 text-sm hover:text-blue-800"
+                    >
+                      Reply
+                    </button>
+                  </div>
+                ))}
+                {(formData.comments || []).length === 0 && (
+                  <p className="text-center text-gray-500 py-8">No comments yet</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Comment Modal */}
+        {selectedCommentCell && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-xl font-bold">Add Comment</h2>
+                <button
+                  onClick={() => setSelectedCommentCell(null)}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  Field: {selectedCommentCell.field} • Row: {selectedCommentCell.rowIndex + 1}
+                </p>
+                <textarea
+                  className="w-full border rounded-lg px-4 py-2 mb-4"
+                  rows={4}
+                  placeholder="Enter your comment..."
+                  id="comment-input"
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setSelectedCommentCell(null)}
+                    className="px-4 py-2 border rounded hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById('comment-input') as HTMLTextAreaElement
+                      if (input.value.trim()) {
+                        addComment(selectedCommentCell.field, selectedCommentCell.rowIndex, input.value.trim())
+                        input.value = ''
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Add Comment
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dashboard View */}
+        {showDashboard && dashboardReports.length > 0 && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Report Dashboard</h2>
+                <button
+                  onClick={() => {
+                    setShowDashboard(false)
+                    setDashboardReports([])
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  {dashboardReports.map((reportId: string) => {
+                    const report = reports.find(r => r._id === reportId)
+                    return report ? (
+                      <div key={reportId} className="border rounded-lg p-4">
+                        <h3 className="font-semibold mb-2">{report.name}</h3>
+                        <p className="text-sm text-gray-600">{report.description}</p>
+                        <div className="mt-2 text-xs text-gray-500">
+                          <div>{report.fields.length} fields</div>
+                          <div>{report.filters.length} filters</div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditingReport(report)
+                            setFormData(report)
+                            generateReport(report)
+                            setShowDashboard(false)
+                          }}
+                          className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                        >
+                          View Report
+                        </button>
+                      </div>
+                    ) : null
                   })}
                 </div>
               </div>
