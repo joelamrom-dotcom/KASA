@@ -11,7 +11,13 @@ import {
   ArrowUpTrayIcon,
   ArrowDownTrayIcon,
   ClockIcon,
-  XMarkIcon
+  XMarkIcon,
+  EnvelopeIcon,
+  DocumentDuplicateIcon,
+  StarIcon,
+  FunnelIcon,
+  CalculatorIcon,
+  ShareIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
@@ -19,16 +25,17 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, 
 interface ReportField {
   fieldName: string
   label: string
-  dataType: 'string' | 'number' | 'date' | 'currency' | 'boolean'
+  dataType: 'string' | 'number' | 'date' | 'currency' | 'boolean' | 'calculated'
   aggregate: 'sum' | 'avg' | 'count' | 'min' | 'max' | 'none'
   groupBy: boolean
   sortOrder: number
   format?: string
+  formula?: string // For calculated fields
 }
 
 interface ReportFilter {
   fieldName: string
-  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than' | 'between' | 'in' | 'not_in'
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than' | 'between' | 'in' | 'not_in' | 'starts_with' | 'ends_with' | 'is_empty' | 'is_not_empty' | 'greater_than_or_equal' | 'less_than_or_equal'
   value: any
   value2?: any
 }
@@ -175,6 +182,10 @@ export default function CustomReportsPage() {
   const [reportData, setReportData] = useState<any>(null)
   const [generating, setGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState<'reports' | 'scheduled'>('reports')
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [emailReport, setEmailReport] = useState<CustomReport | null>(null)
+  const [favoriteReports, setFavoriteReports] = useState<string[]>([])
   
   const [formData, setFormData] = useState<CustomReport>({
     name: '',
@@ -210,7 +221,137 @@ export default function CustomReportsPage() {
   useEffect(() => {
     fetchReports()
     fetchScheduledReports()
+    // Load favorite reports from localStorage
+    const favorites = localStorage.getItem('favoriteReports')
+    if (favorites) {
+      setFavoriteReports(JSON.parse(favorites))
+    }
   }, [])
+
+  // Report Templates/Presets
+  const REPORT_TEMPLATES = [
+    {
+      name: 'Monthly Payment Summary',
+      description: 'Summary of all payments for the current month',
+      fields: [
+        { fieldName: 'payment.amount', label: 'Payment Amount', dataType: 'currency' as const, aggregate: 'sum' as const, groupBy: false, sortOrder: 0 },
+        { fieldName: 'payment.paymentDate', label: 'Payment Date', dataType: 'date' as const, aggregate: 'none' as const, groupBy: true, sortOrder: 1 },
+        { fieldName: 'family.name', label: 'Family Name', dataType: 'string' as const, aggregate: 'none' as const, groupBy: false, sortOrder: 2 }
+      ],
+      filters: [],
+      dateRange: { type: 'this_month' as const },
+      groupBy: ['payment.paymentDate'],
+      sortBy: 'payment.paymentDate',
+      sortOrder: 'desc' as const
+    },
+    {
+      name: 'Overdue Payments Report',
+      description: 'Families with overdue balances',
+      fields: [
+        { fieldName: 'family.name', label: 'Family Name', dataType: 'string' as const, aggregate: 'none' as const, groupBy: false, sortOrder: 0 },
+        { fieldName: 'family.openBalance', label: 'Open Balance', dataType: 'currency' as const, aggregate: 'none' as const, groupBy: false, sortOrder: 1 },
+        { fieldName: 'family.email', label: 'Email', dataType: 'string' as const, aggregate: 'none' as const, groupBy: false, sortOrder: 2 }
+      ],
+      filters: [
+        { fieldName: 'family.openBalance', operator: 'greater_than' as const, value: 0 }
+      ],
+      dateRange: { type: 'custom' as const },
+      groupBy: [],
+      sortBy: 'family.openBalance',
+      sortOrder: 'desc' as const
+    },
+    {
+      name: 'Payment Method Breakdown',
+      description: 'Payments grouped by payment method',
+      fields: [
+        { fieldName: 'payment.paymentMethod', label: 'Payment Method', dataType: 'string' as const, aggregate: 'none' as const, groupBy: true, sortOrder: 0 },
+        { fieldName: 'payment.amount', label: 'Total Amount', dataType: 'currency' as const, aggregate: 'sum' as const, groupBy: false, sortOrder: 1 },
+        { fieldName: 'payment.amount', label: 'Count', dataType: 'number' as const, aggregate: 'count' as const, groupBy: false, sortOrder: 2 }
+      ],
+      filters: [],
+      dateRange: { type: 'this_year' as const },
+      groupBy: ['payment.paymentMethod'],
+      sortBy: 'payment.amount',
+      sortOrder: 'desc' as const
+    }
+  ]
+
+  const duplicateReport = async (report: CustomReport) => {
+    try {
+      const token = localStorage.getItem('token')
+      const duplicateData = {
+        ...report,
+        name: `${report.name} (Copy)`,
+        _id: undefined
+      }
+      
+      const res = await fetch('/api/kasa/reports/custom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(duplicateData)
+      })
+
+      if (res.ok) {
+        await fetchReports()
+        alert('Report duplicated successfully!')
+      } else {
+        const error = await res.json()
+        alert(`Error: ${error.error || 'Failed to duplicate report'}`)
+      }
+    } catch (error) {
+      console.error('Error duplicating report:', error)
+      alert('Failed to duplicate report')
+    }
+  }
+
+  const toggleFavorite = (reportId: string) => {
+    const newFavorites = favoriteReports.includes(reportId)
+      ? favoriteReports.filter(id => id !== reportId)
+      : [...favoriteReports, reportId]
+    setFavoriteReports(newFavorites)
+    localStorage.setItem('favoriteReports', JSON.stringify(newFavorites))
+  }
+
+  const sendReportEmail = async (report: CustomReport, recipients: string[], subject: string, message: string, format: 'pdf' | 'excel' | 'csv') => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!reportData) {
+        alert('Please generate the report first')
+        return
+      }
+
+      const res = await fetch('/api/kasa/reports/custom/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          reportId: report._id,
+          recipients,
+          subject,
+          message,
+          format,
+          reportData
+        })
+      })
+
+      if (res.ok) {
+        setShowEmailModal(false)
+        setEmailReport(null)
+        alert('Report sent successfully!')
+      } else {
+        const error = await res.json()
+        alert(`Error: ${error.error || 'Failed to send report'}`)
+      }
+    } catch (error) {
+      console.error('Error sending report:', error)
+      alert('Failed to send report')
+    }
+  }
 
   const fetchReports = async () => {
     try {
@@ -649,14 +790,69 @@ export default function CustomReportsPage() {
           </div>
         </div>
 
+        {/* Report Templates */}
+        {activeTab === 'reports' && reports.length === 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Quick Start Templates</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {REPORT_TEMPLATES.map((template, idx) => (
+                <div key={idx} className="bg-white rounded-lg shadow p-4 border-2 border-dashed border-gray-300 hover:border-blue-500 cursor-pointer transition-colors">
+                  <h3 className="font-semibold text-gray-800 mb-2">{template.name}</h3>
+                  <p className="text-sm text-gray-600 mb-3">{template.description}</p>
+                  <button
+                    onClick={() => {
+                      setFormData({
+                        ...template,
+                        exportSettings: {
+                          includeSummary: true,
+                          includeCharts: true,
+                          pageOrientation: 'portrait',
+                          pageSize: 'letter'
+                        },
+                        chartSettings: {
+                          enabled: false,
+                          chartType: 'bar',
+                          showLegend: true,
+                          showDataLabels: false
+                        }
+                      } as CustomReport)
+                      setShowBuilder(true)
+                      setEditingReport(null)
+                    }}
+                    className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                  >
+                    Use Template
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Reports List */}
         {activeTab === 'reports' && (
           <div className="grid gap-4 mb-8">
-          {reports.map((report) => (
-            <div key={report._id} className="bg-white rounded-lg shadow p-6">
+          {reports
+            .sort((a, b) => {
+              const aFav = favoriteReports.includes(a._id || '')
+              const bFav = favoriteReports.includes(b._id || '')
+              if (aFav && !bFav) return -1
+              if (!aFav && bFav) return 1
+              return 0
+            })
+            .map((report) => (
+            <div key={report._id} className={`bg-white rounded-lg shadow p-6 ${favoriteReports.includes(report._id || '') ? 'ring-2 ring-yellow-400' : ''}`}>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-800">{report.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleFavorite(report._id!)}
+                      className={`p-1 rounded ${favoriteReports.includes(report._id || '') ? 'text-yellow-500' : 'text-gray-400 hover:text-yellow-500'}`}
+                    >
+                      <StarIcon className={`h-5 w-5 ${favoriteReports.includes(report._id || '') ? 'fill-current' : ''}`} />
+                    </button>
+                    <h3 className="text-xl font-semibold text-gray-800">{report.name}</h3>
+                  </div>
                   {report.description && (
                     <p className="text-gray-600 mt-1">{report.description}</p>
                   )}
@@ -674,6 +870,17 @@ export default function CustomReportsPage() {
                     className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
                   >
                     Generate
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEmailReport(report)
+                      setShowEmailModal(true)
+                    }}
+                    className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm flex items-center gap-1"
+                    title="Email Report"
+                  >
+                    <EnvelopeIcon className="h-4 w-4" />
+                    Email
                   </button>
                   <button
                     onClick={() => exportReport(report, 'pdf')}
@@ -695,6 +902,13 @@ export default function CustomReportsPage() {
                     title="Export as CSV"
                   >
                     CSV
+                  </button>
+                  <button
+                    onClick={() => duplicateReport(report)}
+                    className="p-1 text-gray-600 hover:bg-gray-50 rounded"
+                    title="Duplicate Report"
+                  >
+                    <DocumentDuplicateIcon className="h-5 w-5" />
                   </button>
                   <button
                     onClick={() => {
@@ -1443,6 +1657,109 @@ export default function CustomReportsPage() {
             </div>
           </div>
         )}
+
+        {/* Email Report Modal */}
+        {showEmailModal && emailReport && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Email Report</h2>
+                <button
+                  onClick={() => {
+                    setShowEmailModal(false)
+                    setEmailReport(null)
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <EmailReportForm
+                report={emailReport}
+                onSend={sendReportEmail}
+                onCancel={() => {
+                  setShowEmailModal(false)
+                  setEmailReport(null)
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EmailReportForm({ report, onSend, onCancel }: { report: CustomReport, onSend: (report: CustomReport, recipients: string[], subject: string, message: string, format: 'pdf' | 'excel' | 'csv') => void, onCancel: () => void }) {
+  const [recipients, setRecipients] = useState('')
+  const [subject, setSubject] = useState(`Report: ${report.name}`)
+  const [message, setMessage] = useState('Please find the attached report.')
+  const [format, setFormat] = useState<'pdf' | 'excel' | 'csv'>('pdf')
+
+  const handleSend = () => {
+    const recipientList = recipients.split(',').map(email => email.trim()).filter(email => email)
+    if (recipientList.length === 0) {
+      alert('Please enter at least one email address')
+      return
+    }
+    onSend(report, recipientList, subject, message, format)
+  }
+
+  return (
+    <div className="p-6 space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Recipients (comma-separated)</label>
+        <input
+          type="text"
+          value={recipients}
+          onChange={(e) => setRecipients(e.target.value)}
+          className="w-full border rounded-lg px-4 py-2"
+          placeholder="email1@example.com, email2@example.com"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Subject</label>
+        <input
+          type="text"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          className="w-full border rounded-lg px-4 py-2"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Message</label>
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          className="w-full border rounded-lg px-4 py-2"
+          rows={4}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Format</label>
+        <select
+          value={format}
+          onChange={(e) => setFormat(e.target.value as 'pdf' | 'excel' | 'csv')}
+          className="w-full border rounded-lg px-4 py-2"
+        >
+          <option value="pdf">PDF</option>
+          <option value="excel">Excel</option>
+          <option value="csv">CSV</option>
+        </select>
+      </div>
+      <div className="flex gap-3 pt-4 border-t">
+        <button
+          onClick={handleSend}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Send Report
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   )
