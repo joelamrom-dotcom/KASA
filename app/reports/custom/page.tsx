@@ -491,7 +491,7 @@ export default function CustomReportsPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Custom Reports</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Reports</h1>
             <p className="text-gray-600 mt-2">Create custom reports with drag-and-drop fields, filters, and comparisons</p>
           </div>
           <div className="flex gap-2">
