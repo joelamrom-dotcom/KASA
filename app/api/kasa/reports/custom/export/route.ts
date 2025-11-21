@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     } else if (format === 'excel') {
       return generateExcel(reportData, report)
     } else if (format === 'pdf') {
-      return generatePDF(reportData, report)
+      return await generatePDF(reportData, report)
     }
 
     return NextResponse.json({ error: 'Format not implemented' }, { status: 400 })
@@ -119,9 +119,10 @@ function generateExcel(reportData: any, report: any): NextResponse {
   return generateCSV(reportData, report)
 }
 
-function generatePDF(reportData: any, report: any): NextResponse {
-  // Generate HTML that can be printed to PDF
-  const html = `
+async function generatePDF(reportData: any, report: any): Promise<NextResponse> {
+  try {
+    // Generate HTML content
+    const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -169,7 +170,7 @@ function generatePDF(reportData: any, report: any): NextResponse {
           <tr>
             ${report.fields.map((f: any) => {
               const val = row[f.label] || ''
-              return `<td>${typeof val === 'number' ? `$${val.toLocaleString()}` : val}</td>`
+              return `<td>${typeof val === 'number' ? `$${val.toLocaleString()}` : String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`
             }).join('')}
           </tr>
         `).join('')}
@@ -190,13 +191,50 @@ function generatePDF(reportData: any, report: any): NextResponse {
   ` : ''}
 </body>
 </html>
-  `
-  
-  return new NextResponse(html, {
-    headers: {
-      'Content-Type': 'text/html',
-      'Content-Disposition': `inline; filename="${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.html"`
+    `
+    
+    // Try to use puppeteer if available, otherwise fall back to HTML
+    try {
+      const puppeteer = require('puppeteer')
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      })
+      const page = await browser.newPage()
+      await page.setContent(html, { waitUntil: 'networkidle0' })
+      
+      const pdf = await page.pdf({
+        format: report.exportSettings?.pageSize === 'a4' ? 'A4' : 'Letter',
+        landscape: report.exportSettings?.pageOrientation === 'landscape',
+        margin: {
+          top: '1cm',
+          right: '1cm',
+          bottom: '1cm',
+          left: '1cm'
+        }
+      })
+      
+      await browser.close()
+      
+      return new NextResponse(pdf, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf"`
+        }
+      })
+    } catch (puppeteerError: any) {
+      // Fallback: return HTML that can be printed to PDF
+      console.warn('Puppeteer not available, returning HTML:', puppeteerError.message)
+      return new NextResponse(html, {
+        headers: {
+          'Content-Type': 'text/html',
+          'Content-Disposition': `inline; filename="${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.html"`
+        }
+      })
     }
-  })
+  } catch (error: any) {
+    console.error('Error generating PDF:', error)
+    throw error
+  }
 }
 
