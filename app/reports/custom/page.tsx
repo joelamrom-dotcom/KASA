@@ -49,7 +49,18 @@ import {
   SparklesIcon,
   ChatBubbleLeftRightIcon,
   RocketLaunchIcon,
-  BookmarkIcon
+  BookmarkIcon,
+  LinkIcon,
+  CodeBracketIcon,
+  ClockIcon as ScheduleIcon,
+  DocumentTextIcon as VersionIcon,
+  ShieldCheckIcon,
+  ArrowsRightLeftIcon,
+  LinkSlashIcon,
+  ServerIcon,
+  ChartBarSquareIcon,
+  CheckBadgeIcon,
+  ExclamationCircleIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
@@ -236,6 +247,81 @@ interface CustomReport {
       config: any
     }>
   }
+  // Advanced scheduling with cron
+  advancedScheduling?: {
+    enabled: boolean
+    cronExpression?: string
+    timezone?: string
+    nextRun?: string
+    lastRun?: string
+    runCount?: number
+  }
+  // Versioning and history
+  versionHistory?: Array<{
+    version: number
+    changes: string
+    changedBy: string
+    changedAt: string
+    reportData: Partial<CustomReport>
+  }>
+  // Public sharing
+  publicSharing?: {
+    enabled: boolean
+    publicLink?: string
+    embedCode?: string
+    accessToken?: string
+    expiresAt?: string
+    passwordProtected?: boolean
+    password?: string
+    allowDownload?: boolean
+    allowExport?: boolean
+  }
+  // Data quality checks
+  dataQuality?: {
+    enabled: boolean
+    checks: Array<{
+      name: string
+      type: 'completeness' | 'accuracy' | 'consistency' | 'validity' | 'timeliness'
+      field?: string
+      threshold?: number
+      status?: 'pass' | 'fail' | 'warning'
+      message?: string
+    }>
+    lastCheck?: string
+    overallScore?: number
+  }
+  // Report merge/combine
+  mergeSettings?: {
+    enabled: boolean
+    mergeWith?: string[] // Report IDs to merge with
+    mergeType?: 'union' | 'intersection' | 'difference'
+    keyFields?: string[] // Fields to match on
+  }
+  // Access logs and audit trail
+  accessLogs?: Array<{
+    userId: string
+    userName: string
+    accessedAt: string
+    action: 'view' | 'export' | 'edit' | 'share' | 'delete'
+    ipAddress?: string
+    userAgent?: string
+  }>
+  // Dependencies and chaining
+  dependencies?: {
+    dependsOn?: string[] // Report IDs this report depends on
+    usedBy?: string[] // Report IDs that depend on this report
+    autoRefresh?: boolean
+    refreshOnDependencyChange?: boolean
+  }
+  // Caching
+  cacheSettings?: {
+    enabled: boolean
+    ttl?: number // Time to live in minutes
+    cacheKey?: string
+    lastCached?: string
+    cacheHitCount?: number
+    cacheMissCount?: number
+  }
 }
 
 const AVAILABLE_FIELDS = [
@@ -357,6 +443,16 @@ export default function CustomReportsPage() {
   const [showComments, setShowComments] = useState(false)
   const [showAutomation, setShowAutomation] = useState(false)
   const [selectedCommentCell, setSelectedCommentCell] = useState<{field: string, rowIndex: number} | null>(null)
+  const [showAdvancedScheduling, setShowAdvancedScheduling] = useState(false)
+  const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [showPublicSharing, setShowPublicSharing] = useState(false)
+  const [showDataQuality, setShowDataQuality] = useState(false)
+  const [showMergeReports, setShowMergeReports] = useState(false)
+  const [showAccessLogs, setShowAccessLogs] = useState(false)
+  const [showDependencies, setShowDependencies] = useState(false)
+  const [showCacheSettings, setShowCacheSettings] = useState(false)
+  const [publicLinkCopied, setPublicLinkCopied] = useState(false)
+  const [embedCodeCopied, setEmbedCodeCopied] = useState(false)
   
   const [formData, setFormData] = useState<CustomReport>({
     name: '',
@@ -1566,6 +1662,76 @@ export default function CustomReportsPage() {
                     className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                   >
                     <PencilIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingReport(report)
+                      setShowPublicSharing(true)
+                    }}
+                    className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"
+                    title="Public Sharing"
+                  >
+                    <LinkIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingReport(report)
+                      setShowVersionHistory(true)
+                    }}
+                    className="p-1 text-gray-600 hover:bg-gray-50 rounded"
+                    title="Version History"
+                  >
+                    <VersionIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingReport(report)
+                      setShowDataQuality(true)
+                    }}
+                    className="p-1 text-green-600 hover:bg-green-50 rounded"
+                    title="Data Quality"
+                  >
+                    <ShieldCheckIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingReport(report)
+                      setShowAccessLogs(true)
+                    }}
+                    className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                    title="Access Logs"
+                  >
+                    <ChartBarSquareIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingReport(report)
+                      setShowDependencies(true)
+                    }}
+                    className="p-1 text-cyan-600 hover:bg-cyan-50 rounded"
+                    title="Dependencies"
+                  >
+                    <ArrowsRightLeftIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingReport(report)
+                      setShowCacheSettings(true)
+                    }}
+                    className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                    title="Cache Settings"
+                  >
+                    <ServerIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingReport(report)
+                      setShowAdvancedScheduling(true)
+                    }}
+                    className="p-1 text-teal-600 hover:bg-teal-50 rounded"
+                    title="Advanced Scheduling"
+                  >
+                    <ScheduleIcon className="h-5 w-5" />
                   </button>
                   <button
                     onClick={() => deleteReport(report._id!)}
