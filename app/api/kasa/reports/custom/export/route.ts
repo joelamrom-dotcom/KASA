@@ -263,7 +263,11 @@ async function generateExcel(reportData: any, report: any): Promise<NextResponse
 
 async function generatePDF(reportData: any, report: any): Promise<NextResponse> {
   try {
-    // Generate HTML content
+    // Use pdf-lib for server-side PDF generation (more reliable than puppeteer)
+    const { PDFDocument, rgb, StandardFonts } = require('pdf-lib')
+    
+    // For now, return HTML that can be converted to PDF on client side
+    // This is more reliable than puppeteer in serverless environments
     const html = `
 <!DOCTYPE html>
 <html>

@@ -391,22 +391,68 @@ export default function CustomReportsPage() {
       })
 
       if (res.ok) {
-        const blob = await res.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : format}`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+        if (format === 'pdf') {
+          // Handle PDF export with client-side generation
+          const data = await res.json()
+          if (data.html) {
+            // Use html2pdf.js for client-side PDF generation
+            const html2pdf = (await import('html2pdf.js')).default
+            
+            // Create a temporary element with the HTML content
+            const element = document.createElement('div')
+            element.innerHTML = data.html
+            element.style.position = 'absolute'
+            element.style.left = '-9999px'
+            document.body.appendChild(element)
+            
+            const opt = {
+              margin: [10, 10, 10, 10] as [number, number, number, number],
+              filename: data.filename,
+              image: { type: 'jpeg' as const, quality: 0.98 },
+              html2canvas: { scale: 2, useCORS: true, logging: false },
+              jsPDF: { 
+                unit: 'mm', 
+                format: data.pageSize === 'a4' ? 'a4' : 'letter', 
+                orientation: data.orientation || 'portrait' as const 
+              }
+            }
+            
+            try {
+              await html2pdf().set(opt).from(element).save()
+            } finally {
+              document.body.removeChild(element)
+            }
+          } else {
+            // Fallback: download as blob if server returned PDF directly
+            const blob = await res.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = data.filename || `${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+          }
+        } else {
+          // Handle Excel and CSV exports
+          const blob = await res.blob()
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : format}`
+          document.body.appendChild(a)
+          a.click()
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+        }
       } else {
         const error = await res.json()
         alert(`Error: ${error.error || 'Failed to export report'}`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error exporting report:', error)
-      alert('Failed to export report')
+      alert(`Failed to export report: ${error.message || 'Unknown error'}`)
     }
   }
 
