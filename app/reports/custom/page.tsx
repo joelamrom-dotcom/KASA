@@ -17,7 +17,12 @@ import {
   StarIcon,
   FunnelIcon,
   CalculatorIcon,
-  ShareIcon
+  ShareIcon,
+  TagIcon,
+  MagnifyingGlassIcon,
+  Squares2X2Icon,
+  DocumentTextIcon,
+  ClockIcon as ClockIconSolid
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
@@ -94,6 +99,11 @@ interface CustomReport {
     includeCharts: boolean
   }
   sharedWith?: string[] // User IDs who can view this report
+  tags?: string[] // Tags for categorization
+  notes?: string // Report notes/comments
+  createdAt?: string
+  updatedAt?: string
+  version?: number
 }
 
 const AVAILABLE_FIELDS = [
@@ -186,6 +196,11 @@ export default function CustomReportsPage() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [emailReport, setEmailReport] = useState<CustomReport | null>(null)
   const [favoriteReports, setFavoriteReports] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const [selectedReports, setSelectedReports] = useState<string[]>([])
+  const [showBulkActions, setShowBulkActions] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   
   const [formData, setFormData] = useState<CustomReport>({
     name: '',
@@ -841,26 +856,75 @@ export default function CustomReportsPage() {
               return 0
             })
             .map((report) => (
-            <div key={report._id} className={`bg-white rounded-lg shadow p-6 ${favoriteReports.includes(report._id || '') ? 'ring-2 ring-yellow-400' : ''}`}>
+            <div 
+              key={report._id} 
+              className={`bg-white rounded-lg shadow p-6 border-2 ${selectedReports.includes(report._id || '') ? 'border-blue-500' : favoriteReports.includes(report._id || '') ? 'ring-2 ring-yellow-400' : 'border-transparent'} ${selectedReports.length > 0 ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+              onClick={() => {
+                if (selectedReports.length > 0) {
+                  setSelectedReports(prev => 
+                    prev.includes(report._id || '') 
+                      ? prev.filter(id => id !== report._id)
+                      : [...prev, report._id || '']
+                  )
+                }
+              }}
+            >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
+                    {selectedReports.length > 0 && (
+                      <input
+                        type="checkbox"
+                        checked={selectedReports.includes(report._id || '')}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          setSelectedReports(prev => 
+                            prev.includes(report._id || '') 
+                              ? prev.filter(id => id !== report._id)
+                              : [...prev, report._id || '']
+                          )
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded"
+                      />
+                    )}
                     <button
-                      onClick={() => toggleFavorite(report._id!)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleFavorite(report._id!)
+                      }}
                       className={`p-1 rounded ${favoriteReports.includes(report._id || '') ? 'text-yellow-500' : 'text-gray-400 hover:text-yellow-500'}`}
                     >
                       <StarIcon className={`h-5 w-5 ${favoriteReports.includes(report._id || '') ? 'fill-current' : ''}`} />
                     </button>
                     <h3 className="text-xl font-semibold text-gray-800">{report.name}</h3>
+                    {report.tags && report.tags.length > 0 && (
+                      <div className="flex gap-1 ml-2">
+                        {report.tags.map(tag => (
+                          <span key={tag} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded flex items-center gap-1">
+                            <TagIcon className="h-3 w-3" />
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {report.description && (
                     <p className="text-gray-600 mt-1">{report.description}</p>
+                  )}
+                  {report.notes && (
+                    <div className="mt-2 p-2 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                      <p className="text-sm text-gray-700">{report.notes}</p>
+                    </div>
                   )}
                   <div className="mt-3 flex gap-4 text-sm text-gray-500">
                     <span>{report.fields.length} fields</span>
                     <span>{report.filters.length} filters</span>
                     <span>Date range: {report.dateRange.type}</span>
                     {report.comparison?.enabled && <span>Comparison enabled</span>}
+                    {report.createdAt && (
+                      <span>Created: {new Date(report.createdAt).toLocaleDateString()}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -1015,6 +1079,32 @@ export default function CustomReportsPage() {
                     className="w-full border rounded-lg px-4 py-2"
                     rows={2}
                     placeholder="Optional description"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Tags (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={formData.tags?.join(', ') || ''}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)
+                    })}
+                    className="w-full border rounded-lg px-4 py-2"
+                    placeholder="e.g., monthly, payments, finance"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Use tags to categorize and filter reports</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Notes/Comments</label>
+                  <textarea
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full border rounded-lg px-4 py-2"
+                    rows={3}
+                    placeholder="Add notes or comments about this report..."
                   />
                 </div>
 
