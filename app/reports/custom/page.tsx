@@ -66,14 +66,72 @@ const AVAILABLE_FIELDS = [
     { fieldName: 'payment.paymentDate', label: 'Payment Date', dataType: 'date' as const },
     { fieldName: 'payment.type', label: 'Payment Type', dataType: 'string' as const },
     { fieldName: 'payment.paymentMethod', label: 'Payment Method', dataType: 'string' as const },
-    { fieldName: 'payment.family', label: 'Family Name', dataType: 'string' as const },
     { fieldName: 'payment.year', label: 'Year', dataType: 'number' as const },
+    { fieldName: 'payment.notes', label: 'Payment Notes', dataType: 'string' as const },
+    { fieldName: 'payment.refundedAmount', label: 'Refunded Amount', dataType: 'currency' as const },
+    { fieldName: 'payment.isFullyRefunded', label: 'Fully Refunded', dataType: 'boolean' as const },
+    { fieldName: 'payment.paymentFrequency', label: 'Payment Frequency', dataType: 'string' as const },
   ]},
   { category: 'Family', fields: [
     { fieldName: 'family.name', label: 'Family Name', dataType: 'string' as const },
+    { fieldName: 'family.hebrewName', label: 'Hebrew Name', dataType: 'string' as const },
+    { fieldName: 'family.weddingDate', label: 'Wedding Date', dataType: 'date' as const },
     { fieldName: 'family.email', label: 'Email', dataType: 'string' as const },
     { fieldName: 'family.phone', label: 'Phone', dataType: 'string' as const },
+    { fieldName: 'family.husbandCellPhone', label: 'Husband Cell Phone', dataType: 'string' as const },
+    { fieldName: 'family.wifeCellPhone', label: 'Wife Cell Phone', dataType: 'string' as const },
+    { fieldName: 'family.address', label: 'Address', dataType: 'string' as const },
+    { fieldName: 'family.street', label: 'Street', dataType: 'string' as const },
     { fieldName: 'family.city', label: 'City', dataType: 'string' as const },
+    { fieldName: 'family.state', label: 'State', dataType: 'string' as const },
+    { fieldName: 'family.zip', label: 'ZIP Code', dataType: 'string' as const },
+    { fieldName: 'family.husbandFirstName', label: 'Husband First Name', dataType: 'string' as const },
+    { fieldName: 'family.husbandHebrewName', label: 'Husband Hebrew Name', dataType: 'string' as const },
+    { fieldName: 'family.wifeFirstName', label: 'Wife First Name', dataType: 'string' as const },
+    { fieldName: 'family.wifeHebrewName', label: 'Wife Hebrew Name', dataType: 'string' as const },
+    { fieldName: 'family.openBalance', label: 'Open Balance', dataType: 'currency' as const },
+    { fieldName: 'family.receiveEmails', label: 'Receives Emails', dataType: 'boolean' as const },
+    { fieldName: 'family.receiveSMS', label: 'Receives SMS', dataType: 'boolean' as const },
+  ]},
+  { category: 'Member', fields: [
+    { fieldName: 'member.firstName', label: 'First Name', dataType: 'string' as const },
+    { fieldName: 'member.hebrewFirstName', label: 'Hebrew First Name', dataType: 'string' as const },
+    { fieldName: 'member.lastName', label: 'Last Name', dataType: 'string' as const },
+    { fieldName: 'member.hebrewLastName', label: 'Hebrew Last Name', dataType: 'string' as const },
+    { fieldName: 'member.birthDate', label: 'Birth Date', dataType: 'date' as const },
+    { fieldName: 'member.hebrewBirthDate', label: 'Hebrew Birth Date', dataType: 'string' as const },
+    { fieldName: 'member.gender', label: 'Gender', dataType: 'string' as const },
+    { fieldName: 'member.barMitzvahDate', label: 'Bar Mitzvah Date', dataType: 'date' as const },
+    { fieldName: 'member.batMitzvahDate', label: 'Bat Mitzvah Date', dataType: 'date' as const },
+    { fieldName: 'member.weddingDate', label: 'Wedding Date', dataType: 'date' as const },
+    { fieldName: 'member.phone', label: 'Phone', dataType: 'string' as const },
+    { fieldName: 'member.email', label: 'Email', dataType: 'string' as const },
+    { fieldName: 'member.address', label: 'Address', dataType: 'string' as const },
+    { fieldName: 'member.city', label: 'City', dataType: 'string' as const },
+    { fieldName: 'member.state', label: 'State', dataType: 'string' as const },
+    { fieldName: 'member.zip', label: 'ZIP Code', dataType: 'string' as const },
+  ]},
+  { category: 'Lifecycle Event', fields: [
+    { fieldName: 'event.eventType', label: 'Event Type', dataType: 'string' as const },
+    { fieldName: 'event.eventDate', label: 'Event Date', dataType: 'date' as const },
+    { fieldName: 'event.amount', label: 'Event Amount', dataType: 'currency' as const },
+    { fieldName: 'event.year', label: 'Year', dataType: 'number' as const },
+    { fieldName: 'event.notes', label: 'Event Notes', dataType: 'string' as const },
+  ]},
+  { category: 'Withdrawal', fields: [
+    { fieldName: 'withdrawal.amount', label: 'Withdrawal Amount', dataType: 'currency' as const },
+    { fieldName: 'withdrawal.withdrawalDate', label: 'Withdrawal Date', dataType: 'date' as const },
+    { fieldName: 'withdrawal.reason', label: 'Reason', dataType: 'string' as const },
+    { fieldName: 'withdrawal.notes', label: 'Notes', dataType: 'string' as const },
+  ]},
+  { category: 'Statement', fields: [
+    { fieldName: 'statement.statementDate', label: 'Statement Date', dataType: 'date' as const },
+    { fieldName: 'statement.startDate', label: 'Start Date', dataType: 'date' as const },
+    { fieldName: 'statement.endDate', label: 'End Date', dataType: 'date' as const },
+    { fieldName: 'statement.totalCharges', label: 'Total Charges', dataType: 'currency' as const },
+    { fieldName: 'statement.totalPayments', label: 'Total Payments', dataType: 'currency' as const },
+    { fieldName: 'statement.balance', label: 'Balance', dataType: 'currency' as const },
+    { fieldName: 'statement.status', label: 'Status', dataType: 'string' as const },
   ]},
 ]
 
@@ -179,6 +237,17 @@ export default function CustomReportsPage() {
   }
 
   const saveReport = async () => {
+    // Validation
+    if (!formData.name || formData.name.trim() === '') {
+      alert('Please enter a report name')
+      return
+    }
+
+    if (!formData.fields || formData.fields.length === 0) {
+      alert('Please select at least one field for the report')
+      return
+    }
+
     try {
       const token = localStorage.getItem('token')
       const res = await fetch('/api/kasa/reports/custom', {
@@ -188,7 +257,21 @@ export default function CustomReportsPage() {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name.trim(),
+          description: formData.description || '',
+          fields: formData.fields || [],
+          filters: formData.filters || [],
+          dateRange: formData.dateRange || { type: 'this_year' },
+          groupBy: formData.groupBy || [],
+          sortBy: formData.sortBy || 'payment.paymentDate',
+          sortOrder: formData.sortOrder || 'desc',
+          comparison: formData.comparison || { enabled: false, type: 'year_over_year' },
+          exportSettings: formData.exportSettings || {
+            includeSummary: true,
+            includeCharts: true,
+            pageOrientation: 'portrait',
+            pageSize: 'letter'
+          },
           _id: editingReport?._id
         })
       })
@@ -216,12 +299,13 @@ export default function CustomReportsPage() {
         })
         alert('Report saved successfully!')
       } else {
-        const error = await res.json()
-        alert(`Error: ${error.error || 'Failed to save report'}`)
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Save error response:', errorData)
+        alert(`Error: ${errorData.error || errorData.details || 'Failed to save report'}`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving report:', error)
-      alert('Failed to save report')
+      alert(`Failed to save report: ${error.message || 'Unknown error'}`)
     }
   }
 
