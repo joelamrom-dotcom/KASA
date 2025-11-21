@@ -79,6 +79,38 @@ export async function POST(request: NextRequest) {
         case 'last_365_days':
           startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
           break
+        case 'this_quarter':
+          const currentQuarter = Math.floor(now.getMonth() / 3)
+          startDate = new Date(now.getFullYear(), currentQuarter * 3, 1)
+          break
+        case 'last_quarter':
+          const lastQuarter = Math.floor(now.getMonth() / 3) - 1
+          if (lastQuarter < 0) {
+            startDate = new Date(now.getFullYear() - 1, 9, 1)
+            endDate = new Date(now.getFullYear() - 1, 11, 31)
+          } else {
+            startDate = new Date(now.getFullYear(), lastQuarter * 3, 1)
+            endDate = new Date(now.getFullYear(), (lastQuarter + 1) * 3, 0)
+          }
+          break
+        case 'this_fiscal_year':
+          // Assuming fiscal year starts in January (can be customized)
+          startDate = new Date(now.getFullYear(), 0, 1)
+          break
+        case 'last_fiscal_year':
+          startDate = new Date(now.getFullYear() - 1, 0, 1)
+          endDate = new Date(now.getFullYear() - 1, 11, 31)
+          break
+        case 'mtd': // Month to Date
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+          break
+        case 'qtd': // Quarter to Date
+          const qtr = Math.floor(now.getMonth() / 3)
+          startDate = new Date(now.getFullYear(), qtr * 3, 1)
+          break
+        case 'ytd': // Year to Date
+          startDate = new Date(now.getFullYear(), 0, 1)
+          break
         default:
           startDate = new Date(now.getFullYear(), 0, 1)
       }

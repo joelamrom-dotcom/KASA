@@ -39,7 +39,7 @@ interface CustomReport {
   fields: ReportField[]
   filters: ReportFilter[]
   dateRange: {
-    type: 'custom' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'last_30_days' | 'last_90_days' | 'last_365_days'
+    type: 'custom' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'last_30_days' | 'last_90_days' | 'last_365_days' | 'this_quarter' | 'last_quarter' | 'this_fiscal_year' | 'last_fiscal_year' | 'ytd' | 'mtd' | 'qtd'
     startDate?: string
     endDate?: string
   }
@@ -58,6 +58,34 @@ interface CustomReport {
     pageOrientation: 'portrait' | 'landscape'
     pageSize: 'letter' | 'a4' | 'legal'
   }
+  chartSettings?: {
+    enabled: boolean
+    chartType: 'bar' | 'line' | 'pie' | 'area' | 'column'
+    xAxisField?: string
+    yAxisField?: string
+    showLegend: boolean
+    showDataLabels: boolean
+  }
+  conditionalFormatting?: {
+    enabled: boolean
+    rules: Array<{
+      field: string
+      operator: 'greater_than' | 'less_than' | 'equals' | 'between'
+      value: any
+      value2?: any
+      backgroundColor?: string
+      textColor?: string
+      bold?: boolean
+    }>
+  }
+  emailSettings?: {
+    enabled: boolean
+    recipients: string[]
+    subject?: string
+    includeData: boolean
+    includeCharts: boolean
+  }
+  sharedWith?: string[] // User IDs who can view this report
 }
 
 const AVAILABLE_FIELDS = [
@@ -856,32 +884,222 @@ export default function CustomReportsPage() {
                 </div>
 
                 {/* Comparison */}
-                <div>
-                  <label className="flex items-center gap-2">
+                <div className="border-t pt-4">
+                  <label className="flex items-center gap-2 mb-3">
                     <input
                       type="checkbox"
-                      checked={formData.comparison?.enabled}
+                      checked={formData.comparison?.enabled || false}
                       onChange={(e) => setFormData({
                         ...formData,
-                        comparison: { ...formData.comparison!, enabled: e.target.checked }
+                        comparison: { ...(formData.comparison || { enabled: false, type: 'year_over_year' }), enabled: e.target.checked }
                       })}
                     />
                     <span className="font-medium">Enable Comparison</span>
                   </label>
                   {formData.comparison?.enabled && (
-                    <select
-                      value={formData.comparison.type}
+                    <div className="ml-6 space-y-2">
+                      <select
+                        value={formData.comparison.type}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          comparison: { ...formData.comparison!, type: e.target.value as any }
+                        })}
+                        className="w-full border rounded-lg px-4 py-2"
+                      >
+                        <option value="year_over_year">Year over Year</option>
+                        <option value="period_over_period">Period over Period</option>
+                        <option value="custom">Custom Period</option>
+                      </select>
+                      {formData.comparison.type === 'custom' && (
+                        <div className="grid grid-cols-2 gap-4 mt-2">
+                          <input
+                            type="date"
+                            value={formData.comparison.compareToStartDate || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              comparison: { ...formData.comparison!, compareToStartDate: e.target.value }
+                            })}
+                            className="border rounded-lg px-4 py-2"
+                            placeholder="Start Date"
+                          />
+                          <input
+                            type="date"
+                            value={formData.comparison.compareToEndDate || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              comparison: { ...formData.comparison!, compareToEndDate: e.target.value }
+                            })}
+                            className="border rounded-lg px-4 py-2"
+                            placeholder="End Date"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Chart Settings */}
+                <div className="border-t pt-4">
+                  <label className="flex items-center gap-2 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={formData.chartSettings?.enabled || false}
                       onChange={(e) => setFormData({
                         ...formData,
-                        comparison: { ...formData.comparison!, type: e.target.value as any }
+                        chartSettings: {
+                          ...(formData.chartSettings || {
+                            enabled: false,
+                            chartType: 'bar',
+                            showLegend: true,
+                            showDataLabels: false
+                          }),
+                          enabled: e.target.checked
+                        }
                       })}
-                      className="mt-2 border rounded-lg px-4 py-2"
-                    >
-                      <option value="year_over_year">Year over Year</option>
-                      <option value="period_over_period">Period over Period</option>
-                      <option value="custom">Custom Period</option>
-                    </select>
+                    />
+                    <span className="font-medium">Enable Charts/Visualizations</span>
+                  </label>
+                  {formData.chartSettings?.enabled && (
+                    <div className="ml-6 space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Chart Type</label>
+                        <select
+                          value={formData.chartSettings?.chartType || 'bar'}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            chartSettings: { ...formData.chartSettings!, chartType: e.target.value as any }
+                          })}
+                          className="w-full border rounded-lg px-4 py-2"
+                        >
+                          <option value="bar">Bar Chart</option>
+                          <option value="line">Line Chart</option>
+                          <option value="pie">Pie Chart</option>
+                          <option value="area">Area Chart</option>
+                          <option value="column">Column Chart</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">X-Axis Field</label>
+                          <select
+                            value={formData.chartSettings?.xAxisField || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              chartSettings: { ...formData.chartSettings!, xAxisField: e.target.value }
+                            })}
+                            className="w-full border rounded-lg px-4 py-2"
+                          >
+                            <option value="">Select field...</option>
+                            {formData.fields.filter(f => f.dataType === 'string' || f.dataType === 'date').map(field => (
+                              <option key={field.fieldName} value={field.fieldName}>{field.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Y-Axis Field</label>
+                          <select
+                            value={formData.chartSettings?.yAxisField || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              chartSettings: { ...formData.chartSettings!, yAxisField: e.target.value }
+                            })}
+                            className="w-full border rounded-lg px-4 py-2"
+                          >
+                            <option value="">Select field...</option>
+                            {formData.fields.filter(f => f.dataType === 'number' || f.dataType === 'currency').map(field => (
+                              <option key={field.fieldName} value={field.fieldName}>{field.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.chartSettings?.showLegend !== false}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              chartSettings: { ...formData.chartSettings!, showLegend: e.target.checked }
+                            })}
+                          />
+                          <span className="text-sm">Show Legend</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.chartSettings?.showDataLabels || false}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              chartSettings: { ...formData.chartSettings!, showDataLabels: e.target.checked }
+                            })}
+                          />
+                          <span className="text-sm">Show Data Labels</span>
+                        </label>
+                      </div>
+                    </div>
                   )}
+                </div>
+
+                {/* Export Settings */}
+                <div className="border-t pt-4">
+                  <h3 className="font-medium mb-3">Export Settings</h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Page Size</label>
+                        <select
+                          value={formData.exportSettings.pageSize}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            exportSettings: { ...formData.exportSettings, pageSize: e.target.value as any }
+                          })}
+                          className="w-full border rounded-lg px-4 py-2"
+                        >
+                          <option value="letter">Letter</option>
+                          <option value="a4">A4</option>
+                          <option value="legal">Legal</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Orientation</label>
+                        <select
+                          value={formData.exportSettings.pageOrientation}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            exportSettings: { ...formData.exportSettings, pageOrientation: e.target.value as any }
+                          })}
+                          className="w-full border rounded-lg px-4 py-2"
+                        >
+                          <option value="portrait">Portrait</option>
+                          <option value="landscape">Landscape</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.exportSettings.includeSummary}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            exportSettings: { ...formData.exportSettings, includeSummary: e.target.checked }
+                          })}
+                        />
+                        <span className="text-sm">Include Summary</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.exportSettings.includeCharts}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            exportSettings: { ...formData.exportSettings, includeCharts: e.target.checked }
+                          })}
+                        />
+                        <span className="text-sm">Include Charts</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Actions */}
