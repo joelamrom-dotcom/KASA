@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (format === 'csv') {
       return generateCSV(reportData, report)
     } else if (format === 'excel') {
-      return generateExcel(reportData, report)
+      return await generateExcel(reportData, report)
     } else if (format === 'pdf') {
       return await generatePDF(reportData, report)
     }
@@ -113,10 +113,152 @@ function generateCSV(reportData: any, report: any): NextResponse {
   })
 }
 
-function generateExcel(reportData: any, report: any): NextResponse {
-  // For Excel, we'll return CSV format for now (can be enhanced with exceljs library)
-  // In production, use a library like exceljs to create proper Excel files
-  return generateCSV(reportData, report)
+async function generateExcel(reportData: any, report: any): Promise<NextResponse> {
+  try {
+    const ExcelJS = require('exceljs')
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Report')
+    
+    // Add title
+    worksheet.mergeCells('A1', `${String.fromCharCode(64 + report.fields.length)}1`)
+    const titleCell = worksheet.getCell('A1')
+    titleCell.value = report.name
+    titleCell.font = { size: 16, bold: true }
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+    
+    let currentRow = 2
+    
+    // Add description if available
+    if (report.description) {
+      worksheet.mergeCells(`A${currentRow}`, `${String.fromCharCode(64 + report.fields.length)}${currentRow}`)
+      const descCell = worksheet.getCell(`A${currentRow}`)
+      descCell.value = report.description
+      descCell.alignment = { wrapText: true }
+      currentRow++
+    }
+    
+    // Add generated date
+    worksheet.mergeCells(`A${currentRow}`, `${String.fromCharCode(64 + report.fields.length)}${currentRow}`)
+    const dateCell = worksheet.getCell(`A${currentRow}`)
+    dateCell.value = `Generated: ${new Date().toLocaleString()}`
+    currentRow += 2
+    
+    // Add summary if available
+    if (reportData.summary && Object.keys(reportData.summary).length > 0) {
+      worksheet.mergeCells(`A${currentRow}`, `${String.fromCharCode(64 + report.fields.length)}${currentRow}`)
+      const summaryTitle = worksheet.getCell(`A${currentRow}`)
+      summaryTitle.value = 'SUMMARY'
+      summaryTitle.font = { bold: true, size: 12 }
+      currentRow++
+      
+      Object.entries(reportData.summary).forEach(([key, value]) => {
+        worksheet.getCell(`A${currentRow}`).value = key
+        worksheet.getCell(`B${currentRow}`).value = typeof value === 'number' ? value : String(value)
+        if (typeof value === 'number') {
+          worksheet.getCell(`B${currentRow}`).numFmt = '#,##0.00'
+        }
+        currentRow++
+      })
+      currentRow++
+    }
+    
+    // Add data headers
+    if (reportData.data && reportData.data.length > 0) {
+      const headers = report.fields.map((f: any) => f.label)
+      headers.forEach((header: string, index: number) => {
+        const cell = worksheet.getCell(currentRow, index + 1)
+        cell.value = header
+        cell.font = { bold: true }
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' }
+        }
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        }
+      })
+      currentRow++
+      
+      // Add data rows
+      reportData.data.forEach((row: any) => {
+        report.fields.forEach((field: any, index: number) => {
+          const val = row[field.label] || ''
+          const cell = worksheet.getCell(currentRow, index + 1)
+          
+          if (typeof val === 'number') {
+            cell.value = val
+            if (field.dataType === 'currency') {
+              cell.numFmt = '$#,##0.00'
+            } else {
+              cell.numFmt = '#,##0.00'
+            }
+          } else if (val instanceof Date) {
+            cell.value = val
+            cell.numFmt = 'mm/dd/yyyy'
+          } else {
+            cell.value = String(val)
+          }
+          
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          }
+        })
+        currentRow++
+      })
+      
+      // Auto-size columns
+      report.fields.forEach((field: any, index: number) => {
+        worksheet.getColumn(index + 1).width = 15
+      })
+    }
+    
+    // Add comparison data if available
+    if (reportData.comparison) {
+      currentRow++
+      worksheet.mergeCells(`A${currentRow}`, `${String.fromCharCode(64 + report.fields.length)}${currentRow}`)
+      const compTitle = worksheet.getCell(`A${currentRow}`)
+      compTitle.value = 'COMPARISON PERIOD'
+      compTitle.font = { bold: true, size: 12 }
+      currentRow++
+      
+      const compPeriod = worksheet.getCell(`A${currentRow}`)
+      compPeriod.value = `Period: ${new Date(reportData.comparison.period.start).toLocaleDateString()} - ${new Date(reportData.comparison.period.end).toLocaleDateString()}`
+      currentRow++
+      
+      if (reportData.comparison.summary) {
+        Object.entries(reportData.comparison.summary).forEach(([key, value]) => {
+          worksheet.getCell(`A${currentRow}`).value = key
+          worksheet.getCell(`B${currentRow}`).value = typeof value === 'number' ? value : String(value)
+          if (typeof value === 'number') {
+            worksheet.getCell(`B${currentRow}`).numFmt = '#,##0.00'
+          }
+          currentRow++
+        })
+      }
+    }
+    
+    // Generate buffer
+    const buffer = await workbook.xlsx.writeBuffer()
+    
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx"`
+      }
+    })
+  } catch (error: any) {
+    console.error('Error generating Excel file:', error)
+    // Fallback to CSV if Excel generation fails
+    console.warn('Falling back to CSV format')
+    return generateCSV(reportData, report)
+  }
 }
 
 async function generatePDF(reportData: any, report: any): Promise<NextResponse> {
