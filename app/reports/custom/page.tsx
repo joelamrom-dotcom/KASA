@@ -1921,6 +1921,156 @@ export default function CustomReportsPage() {
             </div>
           </div>
         )}
+
+        {/* Share Report Modal */}
+        {showShareModal && shareReport && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Share Report: {shareReport.name}</h2>
+                <button
+                  onClick={() => {
+                    setShowShareModal(false)
+                    setShareReport(null)
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <ShareReportForm
+                report={shareReport}
+                users={users}
+                onShare={shareReportWithUsers}
+                onCancel={() => {
+                  setShowShareModal(false)
+                  setShareReport(null)
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Snapshots Panel */}
+        {showSnapshots && reportSnapshots[showSnapshots] && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Report Snapshots</h2>
+                <button
+                  onClick={() => setShowSnapshots(null)}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6 space-y-3">
+                {reportSnapshots[showSnapshots].map((snapshot, idx) => (
+                  <div key={idx} className="border rounded-lg p-4 hover:bg-gray-50">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">{snapshot.reportName}</h3>
+                        <p className="text-sm text-gray-500">
+                          Created: {new Date(snapshot.createdAt).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          By: {snapshot.createdBy}
+                        </p>
+                        {snapshot.reportData?.data && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            {snapshot.reportData.data.length} rows
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          loadReportSnapshot(showSnapshots, snapshot)
+                          setShowSnapshots(null)
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                      >
+                        Load Snapshot
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {reportSnapshots[showSnapshots].length === 0 && (
+                  <p className="text-center text-gray-500 py-8">No snapshots available</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ShareReportForm({ report, users, onShare, onCancel }: { report: CustomReport, users: any[], onShare: (report: CustomReport, userIds: string[], permission: 'view' | 'edit') => void, onCancel: () => void }) {
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [permission, setPermission] = useState<'view' | 'edit'>('view')
+
+  const handleShare = () => {
+    if (selectedUsers.length === 0) {
+      alert('Please select at least one user')
+      return
+    }
+    onShare(report, selectedUsers, permission)
+  }
+
+  return (
+    <div className="p-6 space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Select Users</label>
+        <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
+          {users.filter(u => u._id !== report._id).map(user => (
+            <label key={user._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
+              <input
+                type="checkbox"
+                checked={selectedUsers.includes(user._id)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedUsers([...selectedUsers, user._id])
+                  } else {
+                    setSelectedUsers(selectedUsers.filter(id => id !== user._id))
+                  }
+                }}
+              />
+              <span>{user.name || user.email}</span>
+              {user.role && (
+                <span className="text-xs text-gray-500">({user.role})</span>
+              )}
+            </label>
+          ))}
+          {users.length === 0 && (
+            <p className="text-gray-500 text-sm">No users available</p>
+          )}
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Permission</label>
+        <select
+          value={permission}
+          onChange={(e) => setPermission(e.target.value as 'view' | 'edit')}
+          className="w-full border rounded-lg px-4 py-2"
+        >
+          <option value="view">View Only</option>
+          <option value="edit">Can Edit</option>
+        </select>
+      </div>
+      <div className="flex gap-3 pt-4 border-t">
+        <button
+          onClick={handleShare}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Share Report
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   )
