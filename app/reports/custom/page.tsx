@@ -207,7 +207,6 @@ export default function CustomReportsPage() {
   const [showBulkActions, setShowBulkActions] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const [users, setUsers] = useState<any[]>([])
-  const [showShareModal, setShowShareModal] = useState(false)
   const [shareReport, setShareReport] = useState<CustomReport | null>(null)
   const [reportSnapshots, setReportSnapshots] = useState<Record<string, any[]>>({})
   const [showSnapshots, setShowSnapshots] = useState<string | null>(null)
@@ -976,6 +975,42 @@ export default function CustomReportsPage() {
                     title="Export as CSV"
                   >
                     CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShareReport(report)
+                      setShowShareModal(true)
+                    }}
+                    className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"
+                    title="Share Report"
+                  >
+                    <ShareIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => createReportSnapshot(report)}
+                    className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                    title="Create Snapshot"
+                  >
+                    <CameraIcon className="h-5 w-5" />
+                  </button>
+                  {reportSnapshots[report._id || ''] && reportSnapshots[report._id || ''].length > 0 && (
+                    <button
+                      onClick={() => setShowSnapshots(showSnapshots === report._id ? null : report._id || null)}
+                      className="p-1 text-cyan-600 hover:bg-cyan-50 rounded relative"
+                      title="View Snapshots"
+                    >
+                      <ClockIconSolid className="h-5 w-5" />
+                      <span className="absolute -top-1 -right-1 bg-cyan-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {reportSnapshots[report._id || ''].length}
+                      </span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => exportReportAsJSON(report)}
+                    className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                    title="Export as JSON"
+                  >
+                    <DocumentChartBarIcon className="h-5 w-5" />
                   </button>
                   <button
                     onClick={() => duplicateReport(report)}
