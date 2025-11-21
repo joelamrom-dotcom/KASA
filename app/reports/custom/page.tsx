@@ -678,9 +678,9 @@ export default function CustomReportsPage() {
       sortBy: view.sortBy,
       sortOrder: view.sortOrder,
       columnSettings: {
-        ...report.columnSettings,
         visibility: view.columnVisibility || {},
-        order: view.columnOrder || []
+        order: view.columnOrder || [],
+        widths: report.columnSettings?.widths || {}
       }
     })
     setEditingReport(report)
