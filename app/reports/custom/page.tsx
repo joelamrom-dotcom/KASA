@@ -503,6 +503,97 @@ export default function CustomReportsPage() {
     document.body.removeChild(a)
   }
 
+  const exportReportAsXML = async (report: CustomReport) => {
+    if (!reportData) {
+      alert('Please generate the report first')
+      return
+    }
+
+    const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<report>
+  <metadata>
+    <name>${report.name}</name>
+    <description>${report.description || ''}</description>
+    <exportedAt>${new Date().toISOString()}</exportedAt>
+  </metadata>
+  <data>
+    ${reportData.data?.map((row: any) => `
+    <row>
+      ${reportData.fields.map((field: any) => `
+      <${field.fieldName.replace(/[^a-zA-Z0-9]/g, '_')}>${row[field.label] || ''}</${field.fieldName.replace(/[^a-zA-Z0-9]/g, '_')}>
+      `).join('')}
+    </row>
+    `).join('') || ''}
+  </data>
+  ${reportData.summary ? `
+  <summary>
+    ${Object.entries(reportData.summary).map(([key, value]) => `
+    <${key.replace(/[^a-zA-Z0-9]/g, '_')}>${value}</${key.replace(/[^a-zA-Z0-9]/g, '_')}>
+    `).join('')}
+  </summary>
+  ` : ''}
+</report>`
+
+    const blob = new Blob([xmlData], { type: 'application/xml' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${report.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xml`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  }
+
+  const trackReportAccess = async (reportId: string) => {
+    try {
+      const accessLog = JSON.parse(localStorage.getItem('reportAccessLog') || '[]')
+      accessLog.push({
+        reportId,
+        accessedAt: new Date().toISOString(),
+        user: user?.email || 'Unknown'
+      })
+      // Keep only last 100 entries
+      if (accessLog.length > 100) accessLog.shift()
+      localStorage.setItem('reportAccessLog', JSON.stringify(accessLog))
+
+      // Update usage stats
+      const stats = reportUsageStats[reportId] || { accessCount: 0 }
+      stats.accessCount = (stats.accessCount || 0) + 1
+      stats.lastAccessed = new Date().toISOString()
+      setReportUsageStats(prev => ({
+        ...prev,
+        [reportId]: stats
+      }))
+    } catch (error) {
+      console.error('Error tracking report access:', error)
+    }
+  }
+
+  const refreshReport = async (report: CustomReport) => {
+    await trackReportAccess(report._id!)
+    await generateReport(report)
+  }
+
+  const handleDrillDown = (row: any, report: CustomReport) => {
+    // Create a detailed view of the row
+    setDrillDownData({
+      report,
+      row,
+      fields: report.fields
+    })
+    setShowDrillDown(true)
+  }
+
+  const compareReports = async (reportIds: string[]) => {
+    if (reportIds.length < 2) {
+      alert('Please select at least 2 reports to compare')
+      return
+    }
+    setComparisonReports(reportIds)
+    setShowComparison(true)
+  }
+
   const fetchReports = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -2027,6 +2118,85 @@ export default function CustomReportsPage() {
                 {reportSnapshots[showSnapshots].length === 0 && (
                   <p className="text-center text-gray-500 py-8">No snapshots available</p>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Drill-Down Modal */}
+        {showDrillDown && drillDownData && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Row Details</h2>
+                <button
+                  onClick={() => {
+                    setShowDrillDown(false)
+                    setDrillDownData(null)
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  {drillDownData.fields.map((field: any) => {
+                    const value = drillDownData.row[field.label] || '-'
+                    const isNumeric = typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)) && isFinite(parseFloat(value)))
+                    const isCurrency = field.dataType === 'currency' && isNumeric
+                    return (
+                      <div key={field.fieldName} className="border rounded-lg p-4">
+                        <div className="text-sm text-gray-500 mb-1">{field.label}</div>
+                        <div className="text-lg font-semibold">
+                          {isCurrency 
+                            ? `$${parseFloat(String(value)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : isNumeric
+                              ? parseFloat(String(value)).toLocaleString()
+                              : value}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Report Comparison Modal */}
+        {showComparison && comparisonReports.length > 0 && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Compare Reports</h2>
+                <button
+                  onClick={() => {
+                    setShowComparison(false)
+                    setComparisonReports([])
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  {comparisonReports.map(reportId => {
+                    const report = reports.find(r => r._id === reportId)
+                    return report ? (
+                      <div key={reportId} className="border rounded-lg p-4">
+                        <h3 className="font-semibold mb-2">{report.name}</h3>
+                        <p className="text-sm text-gray-600">{report.description}</p>
+                        <div className="mt-2 text-xs text-gray-500">
+                          <div>{report.fields.length} fields</div>
+                          <div>{report.filters.length} filters</div>
+                          <div>Date range: {report.dateRange.type}</div>
+                        </div>
+                      </div>
+                    ) : null
+                  })}
+                </div>
               </div>
             </div>
           </div>
