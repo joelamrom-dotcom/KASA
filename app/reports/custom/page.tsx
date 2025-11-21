@@ -1240,6 +1240,26 @@ export default function CustomReportsPage() {
                     <DocumentChartBarIcon className="h-5 w-5" />
                   </button>
                   <button
+                    onClick={() => exportReportAsXML(report)}
+                    className="p-1 text-amber-600 hover:bg-amber-50 rounded"
+                    title="Export as XML"
+                  >
+                    <ClipboardDocumentCheckIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => refreshReport(report)}
+                    className="p-1 text-teal-600 hover:bg-teal-50 rounded"
+                    title="Refresh Report"
+                  >
+                    <ArrowPathIcon className="h-5 w-5" />
+                  </button>
+                  {reportUsageStats[report._id || ''] && (
+                    <div className="p-1 text-xs text-gray-500 flex items-center gap-1" title={`Accessed ${reportUsageStats[report._id || ''].accessCount || 0} times`}>
+                      <ArrowTrendingUpIcon className="h-4 w-4" />
+                      <span>{reportUsageStats[report._id || ''].accessCount || 0}</span>
+                    </div>
+                  )}
+                  <button
                     onClick={() => duplicateReport(report)}
                     className="p-1 text-gray-600 hover:bg-gray-50 rounded"
                     title="Duplicate Report"
