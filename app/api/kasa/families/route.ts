@@ -421,20 +421,26 @@ export async function POST(request: NextRequest) {
         } else {
           // Update existing user to link to family if not already linked
           // IMPORTANT: Don't change role if user is already admin/super_admin
-          // Only set role to 'family' if user doesn't have a role or is a regular user
+          // But DO link them to the family so they can use family login
           if (!existingUser.familyId) {
             existingUser.familyId = family._id
             // Only set role to 'family' if user is not already admin or super_admin
             if (existingUser.role !== 'admin' && existingUser.role !== 'super_admin') {
               existingUser.role = 'family'
             }
-            if (!existingUser.phoneNumber) {
+            // Always update phone number if provided (needed for family login)
+            if (phoneNumber && !existingUser.phoneNumber) {
               existingUser.phoneNumber = phoneNumber
             }
             await existingUser.save()
             familyUser = existingUser
-            console.log(`✅ Linked existing user ${existingUser.email} (role: ${existingUser.role}) to family ${family.name}`)
+            console.log(`✅ Linked existing user ${existingUser.email} (role: ${existingUser.role}) to family ${family.name} - can use both admin and family login`)
           } else {
+            // User already linked to a family, but update phone if needed
+            if (phoneNumber && !existingUser.phoneNumber) {
+              existingUser.phoneNumber = phoneNumber
+              await existingUser.save()
+            }
             familyUser = existingUser
           }
         }

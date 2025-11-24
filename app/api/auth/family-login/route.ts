@@ -44,12 +44,20 @@ export async function POST(request: NextRequest) {
       await user.save()
     }
 
-    // Check if user is a family user
-    if (user.role !== 'family') {
+    // Allow family login if:
+    // 1. User role is 'family', OR
+    // 2. User has a familyId set (admin/super_admin can also be linked to a family)
+    if (user.role !== 'family' && !user.familyId) {
       return NextResponse.json(
-        { error: 'This login method is only for family accounts' },
+        { error: 'This login method requires a family account. Please contact support if you need family access.' },
         { status: 403 }
       )
+    }
+    
+    // If user is admin/super_admin but has familyId, allow family login
+    // This allows admins to also view their family's data using family login
+    if ((user.role === 'admin' || user.role === 'super_admin') && user.familyId) {
+      console.log(`ℹ️ Admin ${user.email} logging in as family (familyId: ${user.familyId})`)
     }
 
     // Check if account is active
