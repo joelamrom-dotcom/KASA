@@ -177,8 +177,13 @@ export async function PUT(
     // Always set Hebrew last name from family's Hebrew name (must match family)
     updateData.hebrewLastName = family.hebrewName || null
 
-    // Get old member data for audit log
+    // Get old member data for audit log and to check barMitzvahEventAdded flag
     const oldMember = await FamilyMember.findById(params.memberId)
+    
+    // Preserve barMitzvahEventAdded flag if it exists (don't reset it)
+    if (oldMember && oldMember.barMitzvahEventAdded) {
+      updateData.barMitzvahEventAdded = true
+    }
     
     // Mongoose automatically converts string IDs to ObjectIds, so we don't need explicit conversion
     const member = await FamilyMember.findOneAndUpdate(
@@ -309,32 +314,48 @@ export async function PUT(
 
     // Auto-add bar/bat mitzvah lifecycle event if we can calculate the bar mitzvah date
     // This adds the expense to the yearly calculation for the bar mitzvah year, even if it's in the future
-    if (barMitzvahDate && !member.barMitzvahEventAdded) {
+    // Only create if: 1) bar mitzvah date exists, 2) event hasn't been added before, 3) event doesn't already exist
+    if (barMitzvahDate && !oldMember?.barMitzvahEventAdded) {
       try {
-        // Look up bar_mitzvah event type from database
-        const { LifecycleEvent } = await import('@/lib/models')
-        const barMitzvahEventType = await LifecycleEvent.findOne({ type: 'bar_mitzvah' })
+        // Check if an event already exists for this member's bar mitzvah date
+        const existingEvent = await LifecycleEventPayment.findOne({
+          familyId: params.id,
+          eventType: 'bar_mitzvah',
+          eventDate: barMitzvahDate,
+          notes: { $regex: `${firstName} ${lastName}`, $options: 'i' }
+        })
         
-        if (barMitzvahEventType) {
-          const eventType = 'bar_mitzvah'
-          const eventAmount = barMitzvahEventType.amount // Get amount from database
-          const eventYear = barMitzvahDate.getFullYear()
-
-          await LifecycleEventPayment.create({
-            familyId: params.id, // Mongoose will auto-convert string to ObjectId
-            eventType,
-            amount: eventAmount,
-            eventDate: barMitzvahDate,
-            year: eventYear,
-            notes: `Auto-added: ${gender === 'female' ? 'Bat' : 'Bar'} Mitzvah for ${firstName} ${lastName} (Bar Mitzvah date: ${barMitzvahDate.toLocaleDateString()})`
-          })
-
+        if (existingEvent) {
+          // Event already exists, mark member as having event added
           member.barMitzvahEventAdded = true
           await member.save()
-          
-          console.log(`✅ Added Bar Mitzvah event for ${firstName} ${lastName} (will appear in year ${eventYear} calculation)`)
+          console.log(`ℹ️ Bar Mitzvah event already exists for ${firstName} ${lastName}, skipping creation`)
         } else {
-          console.warn('Bar Mitzvah event type not found in database. Skipping auto-add.')
+          // Look up bar_mitzvah event type from database
+          const { LifecycleEvent } = await import('@/lib/models')
+          const barMitzvahEventType = await LifecycleEvent.findOne({ type: 'bar_mitzvah' })
+          
+          if (barMitzvahEventType) {
+            const eventType = 'bar_mitzvah'
+            const eventAmount = barMitzvahEventType.amount // Get amount from database
+            const eventYear = barMitzvahDate.getFullYear()
+
+            await LifecycleEventPayment.create({
+              familyId: params.id, // Mongoose will auto-convert string to ObjectId
+              eventType,
+              amount: eventAmount,
+              eventDate: barMitzvahDate,
+              year: eventYear,
+              notes: `Auto-added: ${gender === 'female' ? 'Bat' : 'Bar'} Mitzvah for ${firstName} ${lastName} (Bar Mitzvah date: ${barMitzvahDate.toLocaleDateString()})`
+            })
+
+            member.barMitzvahEventAdded = true
+            await member.save()
+            
+            console.log(`✅ Added Bar Mitzvah event for ${firstName} ${lastName} (will appear in year ${eventYear} calculation)`)
+          } else {
+            console.warn('Bar Mitzvah event type not found in database. Skipping auto-add.')
+          }
         }
       } catch (eventError: any) {
         console.error('Error auto-adding bar/bat mitzvah event:', eventError)
