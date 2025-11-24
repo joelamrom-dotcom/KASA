@@ -32,17 +32,26 @@ export default function Modal({
 }: ModalProps) {
   const justOpenedRef = useRef(false)
   const openTimeRef = useRef<number | null>(null)
+  const preventBackdropClickRef = useRef(false)
 
   useEffect(() => {
     if (isOpen) {
       justOpenedRef.current = true
       openTimeRef.current = Date.now()
+      preventBackdropClickRef.current = true
       document.body.style.overflow = 'hidden'
-      // Reset the flag after a delay to allow normal closing
+      
+      // Prevent backdrop clicks for a longer period to catch any delayed click events
       setTimeout(() => {
         justOpenedRef.current = false
         console.log('Modal opening guard disabled')
-      }, 300)
+      }, 1000)
+      
+      // Keep preventing backdrop clicks for even longer to catch any event propagation issues
+      setTimeout(() => {
+        preventBackdropClickRef.current = false
+        console.log('Modal backdrop click prevention disabled')
+      }, 2000)
     } else {
       document.body.style.overflow = 'unset'
       justOpenedRef.current = false
@@ -71,11 +80,12 @@ export default function Modal({
   if (!isOpen) return null
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Prevent closing if modal was just opened (within last 300ms)
+    // Prevent closing if modal was just opened or if backdrop clicks are prevented
     const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-    if (justOpenedRef.current || timeSinceOpen < 300) {
-      console.log('Modal just opened - preventing backdrop close', {
+    if (justOpenedRef.current || preventBackdropClickRef.current || timeSinceOpen < 2000) {
+      console.log('Modal backdrop click prevented', {
         justOpened: justOpenedRef.current,
+        preventBackdropClick: preventBackdropClickRef.current,
         timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
       })
       e.preventDefault()
@@ -88,9 +98,30 @@ export default function Modal({
     const target = e.target as HTMLElement
     const currentTarget = e.currentTarget as HTMLElement
     
+    // Check if the click originated from a button by checking the event path
+    const nativeEvent = e.nativeEvent as any
+    const path = nativeEvent.path || (nativeEvent.composedPath && nativeEvent.composedPath()) || []
+    const clickedButton = path.find((el: any) => {
+      if (!el) return false
+      return el.tagName === 'BUTTON' || (el.closest && el.closest('button'))
+    })
+    
+    if (clickedButton) {
+      console.log('Backdrop click originated from button - preventing close', {
+        buttonTag: clickedButton.tagName || 'unknown'
+      })
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    
     // Only close if clicking exactly on the backdrop (not on any child)
     if (target === currentTarget) {
-      console.log('Backdrop clicked - closing modal')
+      console.log('Backdrop clicked - closing modal', {
+        targetTag: target.tagName,
+        currentTargetTag: currentTarget.tagName,
+        timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+      })
       onClose()
     } else {
       console.log('Click was on modal content, not backdrop - preventing close', {
