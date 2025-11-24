@@ -492,7 +492,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Send welcome SMS (if enabled in settings and phone number available)
-    if (phoneNumber) {
+    // BUT: Don't send if email belongs to an admin/super_admin
+    if (phoneNumber && shouldCreateFamilyUser && familyUser) {
       try {
         const { AutomationSettings } = await import('@/lib/models')
         const mongoose = require('mongoose')
