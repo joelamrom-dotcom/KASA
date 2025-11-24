@@ -50,33 +50,39 @@ export async function GET(request: NextRequest) {
     }
     
     // Filter payments by user's families
-    // If impersonating, treat as the impersonated user (not super_admin)
-    // Only non-impersonating super_admin sees all payments
-    if (impersonating || user.role !== 'super_admin') {
-      let userFamilyIds: string[] = []
-      
-      if (user.role === 'family' && user.familyId) {
-        // Family users see only their own family's payments
-        userFamilyIds = [user.familyId.toString()]
-      } else {
-        // Regular admins see only their own families' payments
-        const userFamilies = await Family.find({ userId: user.userId }).select('_id').lean()
-        userFamilyIds = userFamilies.map((f: any) => f._id.toString())
-      }
-      
-      // If user has no families, they should see no payments
-      if (userFamilyIds.length === 0) {
-        payments = []
-      } else {
-        // Filter payments to only those belonging to user's families
-        payments = payments.filter((payment: any) => {
-          if (!payment.familyId) {
-            return false // Exclude payments with no family
-          }
-          const paymentFamilyId = payment.familyId?._id?.toString() || payment.familyId?.toString()
-          return paymentFamilyId && userFamilyIds.includes(paymentFamilyId)
-        })
-      }
+    // Super_admin should see only their own families' payments (not all payments)
+    // When impersonating, they see the impersonated user's payments
+    // To see all payments, super_admin must impersonate a user who has access to those families
+    let userFamilyIds: string[] = []
+    
+    if (user.role === 'family' && user.familyId) {
+      // Family users see only their own family's payments
+      userFamilyIds = [user.familyId.toString()]
+    } else {
+      // Regular admins and super_admins see only their own families' payments
+      // Include legacy families (without userId) for backward compatibility
+      const userFamilies = await Family.find({
+        $or: [
+          { userId: user.userId },
+          { userId: { $exists: false } }, // Legacy families without userId
+          { userId: null } // Families with null userId
+        ]
+      }).select('_id').lean()
+      userFamilyIds = userFamilies.map((f: any) => f._id.toString())
+    }
+    
+    // If user has no families, they should see no payments
+    if (userFamilyIds.length === 0) {
+      payments = []
+    } else {
+      // Filter payments to only those belonging to user's families
+      payments = payments.filter((payment: any) => {
+        if (!payment.familyId) {
+          return false // Exclude payments with no family
+        }
+        const paymentFamilyId = payment.familyId?._id?.toString() || payment.familyId?.toString()
+        return paymentFamilyId && userFamilyIds.includes(paymentFamilyId)
+      })
     }
 
     return NextResponse.json(payments)
