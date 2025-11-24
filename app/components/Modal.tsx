@@ -144,7 +144,7 @@ export default function Modal({
   return (
     <div
       className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
-      onClick={handleBackdropClick}
+      onClick={disableBackdropClick ? undefined : handleBackdropClick}
       onMouseDown={(e) => {
         // Prevent any mousedown events from propagating
         const target = e.target as HTMLElement

@@ -37,9 +37,9 @@ export default function ConfirmationDialog({
       return
     }
     
-    // Prevent closing if dialog was just opened (within 500ms)
+    // Prevent closing if dialog was just opened (within 5000ms = 5 seconds)
     const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
-    if (timeSinceOpen < 500) {
+    if (timeSinceOpen < 5000) {
       console.log('ConfirmationDialog: handleClose prevented - dialog just opened', {
         timeSinceOpen: `${timeSinceOpen}ms`,
         openingTime: openingTimeRef.current
@@ -61,11 +61,11 @@ export default function ConfirmationDialog({
       openingTimeRef.current = Date.now()
       isOpeningRef.current = true
       console.log('ConfirmationDialog: Dialog opened', { title, message })
-      // Reset opening flag after a delay
+      // Reset opening flag after a delay (but keep preventing closes for longer)
       setTimeout(() => {
         isOpeningRef.current = false
         console.log('ConfirmationDialog: Opening guard disabled')
-      }, 500)
+      }, 5000)
     } else {
       openingTimeRef.current = null
       isOpeningRef.current = false

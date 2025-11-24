@@ -412,11 +412,11 @@ export default function FamiliesPage() {
     })
     console.log('Delete confirm state set to open')
     
-    // Reset opening flag after delay
+    // Reset opening flag after delay (extended to 5 seconds)
     setTimeout(() => {
       deleteConfirmOpeningRef.current = false
       console.log('Delete confirm opening guard disabled')
-    }, 1000)
+    }, 5000)
   }
   
   // Monitor deleteConfirm state changes
@@ -1597,13 +1597,14 @@ export default function FamiliesPage() {
             cancelText="Cancel"
             onConfirm={handleDeleteConfirm}
             onClose={() => {
-              // Double-check the guard before closing
+              // Double-check the guard before closing (extended to 5 seconds)
               const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
-              if (deleteConfirmOpeningRef.current || timeSinceOpen < 1000) {
+              if (deleteConfirmOpeningRef.current || timeSinceOpen < 5000) {
                 console.log('onClose prevented by parent guard', {
                   openingGuard: deleteConfirmOpeningRef.current,
                   timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
                 })
+                console.trace('Stack trace for prevented onClose')
                 return
               }
               handleDeleteCancel()
