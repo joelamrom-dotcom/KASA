@@ -397,12 +397,28 @@ export async function POST(request: NextRequest) {
         // Get phone number (prefer husbandCellPhone, then wifeCellPhone, then phone)
         phoneNumber = husbandCellPhone || wifeCellPhone || phone || ''
         
-        // If user exists and is admin/super_admin, don't create family user account
-        // Admins manage families, they don't login as family users
+        // If user exists and is admin/super_admin, link them to family but keep their admin role
+        // This allows admins to also login as family to view their own family's data
         if (existingUser && (existingUser.role === 'admin' || existingUser.role === 'super_admin')) {
-          console.log(`ℹ️ Skipping family user creation - email ${email} belongs to admin/super_admin ${existingUser.role}`)
-          shouldCreateFamilyUser = false
-          familyUser = null
+          console.log(`ℹ️ Admin/super_admin ${existingUser.role} creating family - linking to family for dual login capability`)
+          // Link admin to family so they can use family login
+          if (!existingUser.familyId) {
+            existingUser.familyId = family._id
+            // Always update phone number if provided (needed for family login)
+            if (phoneNumber && !existingUser.phoneNumber) {
+              existingUser.phoneNumber = phoneNumber
+            }
+            await existingUser.save()
+            console.log(`✅ Linked admin ${existingUser.email} to family ${family.name} - can use both admin and family login`)
+          } else {
+            // Already linked, but update phone if needed
+            if (phoneNumber && !existingUser.phoneNumber) {
+              existingUser.phoneNumber = phoneNumber
+              await existingUser.save()
+            }
+          }
+          familyUser = existingUser
+          shouldCreateFamilyUser = true // Allow welcome email/SMS if enabled
         } else if (!existingUser) {
           // Create user account for family (only if email doesn't belong to admin)
           familyUser = await User.create({
