@@ -9,7 +9,10 @@ export default function ServiceWorkerRegistration() {
       const isProduction = process.env.NODE_ENV === 'production'
       const enableServiceWorker = process.env.NEXT_PUBLIC_ENABLE_SW !== 'false'
       
-      if (isProduction && enableServiceWorker) {
+      // Disable service worker registration for now due to Vercel redirect issues
+      // The service worker file is behind a redirect which causes registration to fail
+      // This is non-critical and can be re-enabled when hosting allows direct access to sw.js
+      if (false && isProduction && enableServiceWorker) {
         // Register service worker with proper scope
         navigator.serviceWorker
           .register('/sw.js', { scope: '/' })

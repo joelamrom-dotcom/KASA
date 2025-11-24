@@ -97,11 +97,19 @@ function LoginForm() {
         localStorage.setItem('user', JSON.stringify(data.user))
         localStorage.setItem('token', data.token)
         
-        // Set cookie for server-side access (with explicit path and domain)
+        // Set cookie for server-side access
+        // For Vercel, don't set domain - let browser handle it
         const isProduction = window.location.hostname !== 'localhost'
-        const cookieDomain = isProduction ? `.${window.location.hostname.split('.').slice(-2).join('.')}` : ''
-        const cookieOptions = `path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${cookieDomain ? `; domain=${cookieDomain}` : ''}`
-        document.cookie = `token=${data.token}; ${cookieOptions}`
+        const isHttps = window.location.protocol === 'https:'
+        
+        // Set cookie with appropriate attributes
+        // Use Secure only in production with HTTPS
+        if (isProduction && isHttps) {
+          document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; Secure`
+        } else {
+          // For local dev or HTTP, don't use Secure
+          document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
+        }
         
         // Verify token was stored
         const storedToken = localStorage.getItem('token')

@@ -46,6 +46,13 @@ export function setAuth(token: string, user: User): void {
   localStorage.setItem('token', token)
   localStorage.setItem('user', JSON.stringify(user))
   // Also set cookie for server-side access
-  document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 days
+  const isProduction = window.location.hostname !== 'localhost'
+  const isHttps = window.location.protocol === 'https:'
+  
+  if (isProduction && isHttps) {
+    document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; Secure`
+  } else {
+    document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
+  }
 }
 

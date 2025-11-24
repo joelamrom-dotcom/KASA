@@ -33,8 +33,12 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value || 
                 request.headers.get('authorization')?.replace('Bearer ', '')
 
-  // If no token, redirect to login
+  // If no token, redirect to login (but allow the redirect itself)
   if (!token) {
+    // Don't redirect if already going to login to prevent loops
+    if (pathname === '/login') {
+      return NextResponse.next()
+    }
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
