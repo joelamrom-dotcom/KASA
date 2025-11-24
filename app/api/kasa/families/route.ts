@@ -411,15 +411,20 @@ export async function POST(request: NextRequest) {
           console.log(`✅ Created user account for family ${family.name}: ${familyUser.email}`)
         } else {
           // Update existing user to link to family if not already linked
+          // IMPORTANT: Don't change role if user is already admin/super_admin
+          // Only set role to 'family' if user doesn't have a role or is a regular user
           if (!existingUser.familyId) {
             existingUser.familyId = family._id
-            existingUser.role = 'family'
+            // Only set role to 'family' if user is not already admin or super_admin
+            if (existingUser.role !== 'admin' && existingUser.role !== 'super_admin') {
+              existingUser.role = 'family'
+            }
             if (!existingUser.phoneNumber) {
               existingUser.phoneNumber = phoneNumber
             }
             await existingUser.save()
             familyUser = existingUser
-            console.log(`✅ Linked existing user ${existingUser.email} to family ${family.name}`)
+            console.log(`✅ Linked existing user ${existingUser.email} (role: ${existingUser.role}) to family ${family.name}`)
           } else {
             familyUser = existingUser
           }
