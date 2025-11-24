@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { invalidateCache, CacheKeys } from '@/lib/cache'
-import { Family, FamilyMember, Payment, Withdrawal, LifecycleEventPayment, PaymentPlan } from '@/lib/models'
+import { Family, FamilyMember, Payment, Withdrawal, LifecycleEventPayment, PaymentPlan, User } from '@/lib/models'
 import { calculateFamilyBalance } from '@/lib/calculations'
 import { moveToRecycleBin } from '@/lib/recycle-bin'
 import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
