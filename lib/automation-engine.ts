@@ -808,7 +808,7 @@ async function executeSendStatement(config: any, family: any, member: any, trigg
   }
   
   // Send statement via email
-  const { sendEmail } = await import('./email-utils')
+  const { sendEmail } = await import('./email-helpers')
   const subject = resolveTemplate(config.subject || 'Your Statement', family, member, triggerData)
   const body = resolveTemplate(config.body || 'Please find your statement attached.', family, member, triggerData)
   
@@ -825,7 +825,7 @@ async function executeGenerateInvoice(config: any, family: any, member: any, tri
 
 async function executeSendInvoice(config: any, family: any, member: any, triggerData: any, userId: string) {
   // Send invoice via email
-  const { sendEmail } = await import('./email-utils')
+  const { sendEmail } = await import('./email-helpers')
   const invoiceId = config.invoiceId || triggerData.invoiceId
   
   if (!family) {
