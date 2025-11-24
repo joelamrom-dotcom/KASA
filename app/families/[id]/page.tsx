@@ -104,6 +104,58 @@ interface LifecycleEventType {
   amount: number
 }
 
+// Helper function to format changes for display
+function formatChanges(changes: any): React.ReactNode {
+  if (!changes || typeof changes !== 'object') {
+    return <span className="text-gray-500">No changes details</span>
+  }
+
+  // Handle different change formats
+  const changeItems: string[] = []
+  
+  for (const [key, value] of Object.entries(changes)) {
+    if (value && typeof value === 'object') {
+      // Format: { "phone": { "to": "8454679683" } }
+      if ('to' in value) {
+        const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()
+        changeItems.push(`${fieldName}: ${value.to}`)
+      }
+      // Format: { "phone": { "from": "old", "to": "new" } }
+      else if ('from' in value && 'to' in value) {
+        const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()
+        changeItems.push(`${fieldName}: ${value.from} → ${value.to}`)
+      }
+      // Format: { "phone": { "old": "old", "new": "new" } }
+      else if ('old' in value && 'new' in value) {
+        const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()
+        changeItems.push(`${fieldName}: ${value.old} → ${value.new}`)
+      }
+      // Fallback: stringify the value
+      else {
+        changeItems.push(`${key}: ${JSON.stringify(value)}`)
+      }
+    } else {
+      // Simple key-value pair
+      const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()
+      changeItems.push(`${fieldName}: ${value}`)
+    }
+  }
+
+  if (changeItems.length === 0) {
+    return <span className="text-gray-500">No changes details</span>
+  }
+
+  return (
+    <div className="space-y-1">
+      {changeItems.map((item, index) => (
+        <div key={index} className="text-gray-700">
+          <span className="font-medium">Changed:</span> {item}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function FamilyDetailPage() {
   const params = useParams()
   const router = useRouter()
