@@ -205,15 +205,14 @@ export default function VisualWorkflowBuilder({ onSave, onClose, initialNodes = 
                     onDragStart={(e) => {
                       setDraggedNode(node)
                     }}
-                    onDragEnd={(e) => {
+                    onDragEnd={(e: React.DragEvent<HTMLDivElement>) => {
                       if (draggedNode) {
                         const target = e.currentTarget as HTMLElement
                         const parentElement = target?.parentElement as HTMLElement | null
                         if (parentElement) {
                           const rect = parentElement.getBoundingClientRect()
-                          const dragEvent = e as React.DragEvent<HTMLDivElement>
-                          const clientX = dragEvent.clientX || 0
-                          const clientY = dragEvent.clientY || 0
+                          const clientX = e.clientX || 0
+                          const clientY = e.clientY || 0
                           updateNodePosition(draggedNode.id, {
                             x: clientX - rect.left - 75,
                             y: clientY - rect.top - 40,
