@@ -212,12 +212,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for duplicate email address (if email is provided)
+    // Validation depends on the logged-in user's role (admin vs family)
     if (email && email.trim()) {
       const emailLower = email.toLowerCase().trim()
       
+      // If logged in as a family user, they can only create families with their own email
+      if (user.role === 'family') {
+        if (emailLower !== user.email.toLowerCase().trim()) {
+          return NextResponse.json(
+            { 
+              error: 'Family users can only create families with their own email address',
+              details: `You are logged in as a family user with email "${user.email}". You can only create a family with this email address.`
+            },
+            { status: 403 } // 403 Forbidden
+          )
+        }
+      }
+      
       // Check if another family already has this email
       // For non-super-admin users, check within their own families
-      // For super-admin, check globally (but still warn)
+      // For super-admin, check globally
       let emailQuery: any = { email: emailLower }
       
       // If not super_admin, only check within user's own families
@@ -242,43 +256,43 @@ export async function POST(request: NextRequest) {
       // Check if a User account exists with this email (to prevent login conflicts)
       const existingUser = await User.findOne({ email: emailLower })
       if (existingUser) {
-        // If user exists with role 'family', they're already linked to a family account
-        if (existingUser.role === 'family') {
-          if (existingUser.familyId) {
-            const linkedFamily = await Family.findById(existingUser.familyId)
-            if (linkedFamily) {
-              return NextResponse.json(
-                { 
-                  error: 'This email address is already associated with a family account',
-                  details: `Email "${email}" is already linked to family "${linkedFamily.name}" and can be used for family login`,
-                  existingFamilyId: linkedFamily._id.toString(),
-                  existingFamilyName: linkedFamily.name,
-                  loginType: 'family'
-                },
-                { status: 409 } // 409 Conflict
-              )
+        // If logged in as admin/super_admin, check if email conflicts with existing user roles
+        if (user.role === 'admin' || user.role === 'super_admin') {
+          // Admin users can create families, but check for conflicts
+          if (existingUser.role === 'family') {
+            if (existingUser.familyId) {
+              const linkedFamily = await Family.findById(existingUser.familyId)
+              if (linkedFamily) {
+                return NextResponse.json(
+                  { 
+                    error: 'This email address is already associated with a family account',
+                    details: `Email "${email}" is already linked to family "${linkedFamily.name}" and is used for family login. Please use a different email.`,
+                    existingFamilyId: linkedFamily._id.toString(),
+                    existingFamilyName: linkedFamily.name,
+                    loginType: 'family'
+                  },
+                  { status: 409 } // 409 Conflict
+                )
+              }
             }
-          } else {
-            // User exists with family role but no familyId - this is a conflict
+          } else if (existingUser.role === 'admin' || existingUser.role === 'super_admin') {
+            // If email belongs to another admin, allow it (admins can manage multiple families)
+            // But warn if it's a different admin
+            if (existingUser._id.toString() !== user.userId) {
+              console.warn(`Admin ${user.email} is creating a family with email ${email} that belongs to another admin ${existingUser.email}`)
+            }
+          }
+        } else if (user.role === 'family') {
+          // Family users can only use their own email
+          if (existingUser._id.toString() !== user.userId) {
             return NextResponse.json(
               { 
-                error: 'This email address is already registered as a family user',
-                details: `Email "${email}" is already registered for family login. Please use a different email or contact support.`,
-                loginType: 'family'
+                error: 'This email address belongs to another account',
+                details: `Email "${email}" is already registered. Family users can only create families with their own email address.`
               },
               { status: 409 } // 409 Conflict
             )
           }
-        } else if (existingUser.role === 'admin' || existingUser.role === 'super_admin') {
-          // If user exists with admin role, they can't use this email for a family
-          return NextResponse.json(
-            { 
-              error: 'This email address is already registered as an admin account',
-              details: `Email "${email}" is already registered for admin login. Family accounts cannot use admin email addresses.`,
-              loginType: 'admin'
-            },
-            { status: 409 } // 409 Conflict
-          )
         }
       }
     }
