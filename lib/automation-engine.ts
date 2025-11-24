@@ -2,7 +2,7 @@
 // Executes automation rules based on triggers and conditions
 
 import { AutomationRule, AutomationRuleExecution, Family, FamilyMember, Payment, Task, Notification, LifecycleEventPayment } from './models'
-import { sendEmail } from './email-utils'
+import { sendEmail } from './email-helpers'
 import { sendSMS } from './sms-helpers'
 
 export interface TriggerData {

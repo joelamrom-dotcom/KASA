@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
       for (const member of members) {
         if (!member.birthDate) continue
         
-        const birthDate = new Date(member.birthDate)
+        const memberDoc = member as any
+        const birthDate = new Date(memberDoc.birthDate)
         const todayMonth = today.getMonth()
         const todayDate = today.getDate()
         const birthMonth = birthDate.getMonth()
@@ -45,20 +46,20 @@ export async function POST(request: NextRequest) {
           
           // Calculate age
           const referenceDate = new Date(today.getFullYear(), 11, 31) // December 31
-          const age = calculateAge(member.birthDate, referenceDate)
+          const age = calculateAge(memberDoc.birthDate, referenceDate)
           
           // Trigger member_birthday automation rules
-          const family = await Family.findById(member.familyId)
+          const family = await Family.findById(memberDoc.familyId)
           if (family) {
             const triggerResult = await executeAutomationRules(
               {
                 type: 'member_birthday',
-                familyId: member.familyId?.toString(),
-                memberId: member._id.toString(),
+                familyId: memberDoc.familyId?.toString(),
+                memberId: memberDoc._id?.toString() || '',
                 data: {
-                  firstName: member.firstName,
-                  lastName: member.lastName,
-                  birthDate: member.birthDate,
+                  firstName: memberDoc.firstName,
+                  lastName: memberDoc.lastName,
+                  birthDate: memberDoc.birthDate,
                   age,
                 },
               },
@@ -86,10 +87,11 @@ export async function POST(request: NextRequest) {
       }).lean()
       
       for (const task of dueTasks) {
+        const taskDoc = task as any
         results.taskDue.checked++
         
         // Check if task is due today (within 24 hours)
-        const taskDueDate = new Date(task.dueDate)
+        const taskDueDate = new Date(taskDoc.dueDate)
         const hoursUntilDue = (taskDueDate.getTime() - today.getTime()) / (1000 * 60 * 60)
         
         if (hoursUntilDue <= 24 && hoursUntilDue >= 0) {
@@ -97,17 +99,17 @@ export async function POST(request: NextRequest) {
           const triggerResult = await executeAutomationRules(
             {
               type: 'task_due',
-              taskId: task._id.toString(),
-              familyId: task.relatedFamilyId?.toString(),
-              memberId: task.relatedMemberId?.toString(),
+              taskId: taskDoc._id?.toString() || '',
+              familyId: taskDoc.relatedFamilyId?.toString(),
+              memberId: taskDoc.relatedMemberId?.toString(),
               data: {
-                title: task.title,
-                dueDate: task.dueDate,
-                priority: task.priority,
-                status: task.status,
+                title: taskDoc.title,
+                dueDate: taskDoc.dueDate,
+                priority: taskDoc.priority,
+                status: taskDoc.status,
               },
             },
-            task.userId?.toString()
+            taskDoc.userId?.toString()
           )
           
           if (triggerResult.executed > 0) {
