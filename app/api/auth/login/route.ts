@@ -73,16 +73,29 @@ export async function POST(request: NextRequest) {
     // AUTO-FIX: If user has password (admin) but role is 'family', restore admin role
     // This fixes cases where admin role was incorrectly changed when creating a family
     if (user.role === 'family' && user.password) {
-      console.log('⚠️ AUTO-FIX: User has password but role is "family" - restoring to admin')
-      // Check if user email matches common admin patterns or if they have admin permissions
-      // For now, restore to 'admin' (can be upgraded to 'super_admin' manually if needed)
-      user.role = 'admin'
+      console.log('⚠️ AUTO-FIX: User has password but role is "family" - checking original role')
+      
+      // Try to determine original role - check if email matches known super_admin emails
+      // Or check if user was previously admin/super_admin (check audit logs or other indicators)
+      // For now, check if email is a known admin email pattern
+      const adminEmails = [
+        'joelamrom@gmail.com',
+        'yoelamrom@gmail.com',
+        // Add other known admin emails here
+      ]
+      
+      const isKnownAdmin = adminEmails.includes(user.email.toLowerCase().trim())
+      const restoredRole = isKnownAdmin ? 'super_admin' : 'admin'
+      
+      console.log(`⚠️ AUTO-FIX: Restoring role to ${restoredRole} (email: ${user.email})`)
+      user.role = restoredRole
+      
       // Remove familyId if it was incorrectly set
       if (user.familyId) {
         user.familyId = undefined
       }
       await user.save()
-      console.log('✅ AUTO-FIX: Role restored to admin')
+      console.log(`✅ AUTO-FIX: Role restored to ${restoredRole}`)
     }
 
     // Update last login
