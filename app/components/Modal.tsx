@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface ModalProps {
@@ -30,11 +30,22 @@ export default function Modal({
   showCloseButton = true,
   className = '',
 }: ModalProps) {
+  const justOpenedRef = useRef(false)
+  const openTimeRef = useRef<number | null>(null)
+
   useEffect(() => {
     if (isOpen) {
+      justOpenedRef.current = true
+      openTimeRef.current = Date.now()
       document.body.style.overflow = 'hidden'
+      // Reset the flag after a short delay to allow normal closing
+      setTimeout(() => {
+        justOpenedRef.current = false
+      }, 100)
     } else {
       document.body.style.overflow = 'unset'
+      justOpenedRef.current = false
+      openTimeRef.current = null
     }
     return () => {
       document.body.style.overflow = 'unset'
@@ -53,13 +64,37 @@ export default function Modal({
 
   if (!isOpen) return null
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Prevent closing if modal was just opened (within last 100ms)
+    if (justOpenedRef.current || (openTimeRef.current && Date.now() - openTimeRef.current < 100)) {
+      console.log('Modal just opened - preventing backdrop close')
+      return
+    }
+
+    // Only close if clicking directly on the backdrop element itself
+    // Check if the click target is the backdrop div, not any child element
+    const target = e.target as HTMLElement
+    const currentTarget = e.currentTarget as HTMLElement
+    
+    // Only close if clicking exactly on the backdrop (not on any child)
+    if (target === currentTarget) {
+      console.log('Backdrop clicked - closing modal')
+      onClose()
+    } else {
+      console.log('Click was on modal content, not backdrop - preventing close')
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
-      onClick={(e) => {
-        // Only close if clicking directly on the backdrop, not on the modal content
-        if (e.target === e.currentTarget) {
-          onClose()
+      onClick={handleBackdropClick}
+      onMouseDown={(e) => {
+        // Prevent any mousedown events from propagating
+        const target = e.target as HTMLElement
+        const currentTarget = e.currentTarget as HTMLElement
+        if (target !== currentTarget) {
+          e.stopPropagation()
         }
       }}
     >
@@ -71,7 +106,14 @@ export default function Modal({
           animate-slide-up
           ${className}
         `}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }}
       >
         {(title || showCloseButton) && (
           <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">

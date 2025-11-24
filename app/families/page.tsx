@@ -398,14 +398,13 @@ export default function FamiliesPage() {
 
   const handleDeleteClick = (family: Family) => {
     console.log('Delete button clicked for family:', family.name, family._id)
-    // Use setTimeout to ensure state update happens after click event completes
-    setTimeout(() => {
-      setDeleteConfirm({
-        isOpen: true,
-        familyId: family._id,
-        familyName: family.name
-      })
-    }, 0)
+    // Immediately set the state - don't use setTimeout as it can cause timing issues
+    setDeleteConfirm({
+      isOpen: true,
+      familyId: family._id,
+      familyName: family.name
+    })
+    console.log('Delete confirm state set to open')
   }
 
   const handleDeleteConfirm = async () => {

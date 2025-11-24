@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { ExclamationTriangleIcon, InformationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import Modal from './Modal'
 
@@ -29,9 +30,21 @@ export default function ConfirmationDialog({
   // Prevent closing during loading
   const handleClose = () => {
     if (!isLoading) {
+      console.log('ConfirmationDialog: handleClose called')
       onClose()
+    } else {
+      console.log('ConfirmationDialog: handleClose prevented - isLoading is true')
     }
   }
+
+  // Log when dialog opens/closes for debugging
+  React.useEffect(() => {
+    if (isOpen) {
+      console.log('ConfirmationDialog: Dialog opened', { title, message })
+    } else {
+      console.log('ConfirmationDialog: Dialog closed')
+    }
+  }, [isOpen, title, message])
   const icons = {
     danger: ExclamationTriangleIcon,
     warning: ExclamationTriangleIcon,
