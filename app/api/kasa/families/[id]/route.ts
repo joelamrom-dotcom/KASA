@@ -163,6 +163,56 @@ export async function PUT(
       updateData.weddingDate = new Date(body.weddingDate)
     }
     
+    // Check for duplicate email address if email is being updated
+    if ('email' in body && body.email && body.email.trim()) {
+      const emailLower = body.email.toLowerCase().trim()
+      
+      // Check if another family (other than this one) already has this email
+      let emailQuery: any = { 
+        email: emailLower,
+        _id: { $ne: params.id } // Exclude current family
+      }
+      
+      // If not super_admin, only check within user's own families
+      if (user.role !== 'super_admin') {
+        emailQuery.userId = user.userId
+      }
+      
+      const existingFamilyWithEmail = await Family.findOne(emailQuery)
+      
+      if (existingFamilyWithEmail) {
+        return NextResponse.json(
+          { 
+            error: 'A family with this email address already exists',
+            details: `Email "${body.email}" is already associated with family "${existingFamilyWithEmail.name}"`,
+            existingFamilyId: existingFamilyWithEmail._id.toString(),
+            existingFamilyName: existingFamilyWithEmail.name
+          },
+          { status: 409 } // 409 Conflict
+        )
+      }
+      
+      // Also check if a User account exists with this email (to prevent conflicts)
+      const existingUser = await User.findOne({ email: emailLower })
+      if (existingUser && existingUser.role === 'family') {
+        // If user exists and is a family user, check if they're already linked to a different family
+        if (existingUser.familyId && existingUser.familyId.toString() !== params.id) {
+          const linkedFamily = await Family.findById(existingUser.familyId)
+          if (linkedFamily) {
+            return NextResponse.json(
+              { 
+                error: 'This email address is already associated with a family account',
+                details: `Email "${body.email}" is already linked to family "${linkedFamily.name}"`,
+                existingFamilyId: linkedFamily._id.toString(),
+                existingFamilyName: linkedFamily.name
+              },
+              { status: 409 } // 409 Conflict
+            )
+          }
+        }
+      }
+    }
+    
     // Handle paymentPlanId separately
     if ('paymentPlanId' in body && body.paymentPlanId) {
       try {

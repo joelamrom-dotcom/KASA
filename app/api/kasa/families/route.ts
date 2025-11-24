@@ -211,6 +211,55 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check for duplicate email address (if email is provided)
+    if (email && email.trim()) {
+      const emailLower = email.toLowerCase().trim()
+      
+      // Check if another family already has this email
+      // For non-super-admin users, check within their own families
+      // For super-admin, check globally (but still warn)
+      let emailQuery: any = { email: emailLower }
+      
+      // If not super_admin, only check within user's own families
+      if (user.role !== 'super_admin') {
+        emailQuery.userId = user.userId
+      }
+      
+      const existingFamilyWithEmail = await Family.findOne(emailQuery)
+      
+      if (existingFamilyWithEmail) {
+        return NextResponse.json(
+          { 
+            error: 'A family with this email address already exists',
+            details: `Email "${email}" is already associated with family "${existingFamilyWithEmail.name}"`,
+            existingFamilyId: existingFamilyWithEmail._id.toString(),
+            existingFamilyName: existingFamilyWithEmail.name
+          },
+          { status: 409 } // 409 Conflict
+        )
+      }
+      
+      // Also check if a User account exists with this email (to prevent conflicts)
+      const existingUser = await User.findOne({ email: emailLower })
+      if (existingUser && existingUser.role === 'family') {
+        // If user exists and is a family user, check if they're already linked to a family
+        if (existingUser.familyId && existingUser.familyId.toString() !== existingFamilyWithEmail?._id?.toString()) {
+          const linkedFamily = await Family.findById(existingUser.familyId)
+          if (linkedFamily) {
+            return NextResponse.json(
+              { 
+                error: 'This email address is already associated with a family account',
+                details: `Email "${email}" is already linked to family "${linkedFamily.name}"`,
+                existingFamilyId: linkedFamily._id.toString(),
+                existingFamilyName: linkedFamily.name
+              },
+              { status: 409 } // 409 Conflict
+            )
+          }
+        }
+      }
+    }
+
     // Find payment plan by ID only
     let paymentPlan = null
     try {
