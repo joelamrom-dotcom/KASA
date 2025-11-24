@@ -174,6 +174,27 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Trigger automation rules for statement generated
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'statement_generated',
+          familyId: familyId,
+          data: {
+            statementNumber: statement.statementNumber,
+            fromDate: from.toISOString(),
+            toDate: to.toISOString(),
+            closingBalance: closingBalance,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for statement:', automationError)
+      // Don't fail the statement creation if automation fails
+    }
+
     return NextResponse.json(statement, { status: 201 })
   } catch (error: any) {
     console.error('Error generating statement:', error)

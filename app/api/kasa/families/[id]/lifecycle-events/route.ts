@@ -122,6 +122,27 @@ export async function POST(
       notes: notes || undefined
     })
 
+    // Trigger automation rules for lifecycle event created
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'lifecycle_event_created',
+          familyId: params.id,
+          eventId: event._id.toString(),
+          data: {
+            eventType: eventType,
+            amount: eventAmount,
+            eventDate: eventDate,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for lifecycle event:', automationError)
+      // Don't fail the event creation if automation fails
+    }
+
     // Create audit log entry
     await auditLogFromRequest(request, user, 'lifecycle_event_create', 'lifecycle_event', {
       entityId: event._id.toString(),

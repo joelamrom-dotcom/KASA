@@ -129,6 +129,24 @@ export async function POST(request: NextRequest) {
       console.error('Error processing payment reminders:', error)
     }
 
+    // Execute scheduled automation rules (member birthdays, task due, scheduled)
+    try {
+      const scheduledRes = await fetch(`${baseUrl}/api/kasa/automations/scheduled`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.CRON_SECRET || 'cron-secret'}`,
+        },
+      })
+      
+      if (scheduledRes.ok) {
+        const scheduledData = await scheduledRes.json()
+        results.scheduled = scheduledData.results || {}
+      }
+    } catch (error) {
+      console.error('Error executing scheduled automations:', error)
+    }
+
     // Process overdue payment reminders
     try {
       const overdueRes = await fetch(`${baseUrl}/api/kasa/payments/send-overdue-reminders`, {

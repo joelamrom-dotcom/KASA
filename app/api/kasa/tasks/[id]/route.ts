@@ -157,6 +157,30 @@ export async function PUT(
     // Type assertion: findByIdAndUpdate().lean() returns a single document or null, not an array
     const updatedTaskDoc = updatedTask as { title?: string; status?: string; [key: string]: any }
 
+    // Trigger automation rules for task updated/completed
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      const triggerType = status === 'completed' ? 'task_completed' : 'task_updated'
+      await executeAutomationRules(
+        {
+          type: triggerType,
+          taskId: params.id,
+          familyId: (updatedTaskDoc as any).relatedFamilyId?.toString(),
+          memberId: (updatedTaskDoc as any).relatedMemberId?.toString(),
+          data: {
+            title: updatedTaskDoc.title,
+            status: updatedTaskDoc.status,
+            priority: (updatedTaskDoc as any).priority,
+            oldStatus: (oldTask as any)?.status,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for task:', automationError)
+      // Don't fail the task update if automation fails
+    }
+
     // Create audit log entry
     if (oldTask && Object.keys(updateData).length > 0) {
       const changedFields: any = {}

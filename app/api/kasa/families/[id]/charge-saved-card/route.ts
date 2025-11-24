@@ -75,6 +75,25 @@ export async function POST(
     if (paymentIntent.status !== 'succeeded') {
       const errorMsg = `Payment failed. Status: ${paymentIntent.status}`
       
+      // Trigger automation rules for payment failed
+      try {
+        const { executeAutomationRules } = await import('@/lib/automation-engine')
+        await executeAutomationRules(
+          {
+            type: 'payment_failed',
+            familyId: params.id,
+            data: {
+              amount: amount,
+              error: errorMsg,
+              status: paymentIntent.status,
+            },
+          },
+          user.userId
+        )
+      } catch (automationError) {
+        console.error('Error executing automation rules for payment failure:', automationError)
+      }
+      
       // Create task for declined payment
       await createPaymentDeclinedTask(
         params.id,
@@ -153,6 +172,26 @@ export async function POST(
           notes: notes || `Monthly ${type || 'membership'} payment`
         })
         recurringPaymentId = recurringPayment._id.toString()
+        
+        // Trigger automation rules for recurring payment created
+        try {
+          const { executeAutomationRules } = await import('@/lib/automation-engine')
+          await executeAutomationRules(
+            {
+              type: 'recurring_payment_created',
+              familyId: params.id,
+              data: {
+                amount: amount,
+                frequency: 'monthly',
+                startDate: startDate.toISOString(),
+                nextPaymentDate: nextPaymentDate.toISOString(),
+              },
+            },
+            user.userId
+          )
+        } catch (automationError) {
+          console.error('Error executing automation rules for recurring payment creation:', automationError)
+        }
       }
 
       // Update payment with recurring payment ID

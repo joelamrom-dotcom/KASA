@@ -779,6 +779,207 @@ const AutomationSettingsSchema = new Schema({
 
 AutomationSettingsSchema.index({ userId: 1 }, { unique: true })
 
+// Automation Rule Schema (Visual workflow builder rules)
+const AutomationRuleSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  description: String,
+  isActive: { type: Boolean, default: true },
+  
+  // Trigger: When should this rule run?
+  trigger: {
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        'payment_received',
+        'payment_failed',
+        'payment_overdue',
+        'payment_plan_changed',
+        'member_added',
+        'member_updated',
+        'member_deleted',
+        'member_age_changed',
+        'member_birthday',
+        'family_created',
+        'family_updated',
+        'family_deleted',
+        'family_balance_changed',
+        'lifecycle_event_created',
+        'lifecycle_event_updated',
+        'withdrawal_created',
+        'recurring_payment_created',
+        'recurring_payment_processed',
+        'recurring_payment_failed',
+        'task_created',
+        'task_updated',
+        'task_completed',
+        'task_due',
+        'statement_generated',
+        'statement_sent',
+        'invoice_generated',
+        'document_uploaded',
+        'note_added',
+        'reminder_sent',
+        'balance_threshold',
+        'scheduled', // Run on a schedule
+      ],
+    },
+    // Trigger-specific configuration
+    config: {
+      // For scheduled triggers
+      schedule: String, // Cron expression
+      // For balance_threshold
+      threshold: Number,
+      operator: { type: String, enum: ['greater_than', 'less_than', 'equals'] },
+      // For member_age_changed
+      targetAge: Number,
+      // For payment_overdue
+      daysOverdue: Number,
+    },
+  },
+  
+  // Conditions: When should actions execute? (optional - if empty, always execute)
+  conditions: [{
+    field: { type: String, required: true }, // e.g., 'family.balance', 'member.age', 'payment.amount'
+    operator: {
+      type: String,
+      required: true,
+      enum: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_or_equal', 'less_or_equal', 'contains', 'not_contains', 'is_empty', 'is_not_empty'],
+    },
+    value: Schema.Types.Mixed, // Can be string, number, boolean, etc.
+    logicalOperator: { type: String, enum: ['AND', 'OR'], default: 'AND' }, // How to combine with next condition
+  }],
+  
+  // Actions: What should happen when trigger fires and conditions match?
+  actions: [{
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        'send_email',
+        'send_sms',
+        'send_push_notification',
+        'create_task',
+        'update_task',
+        'create_notification',
+        'update_payment_plan',
+        'update_recurring_payment',
+        'create_lifecycle_event',
+        'update_lifecycle_event',
+        'create_withdrawal',
+        'update_family',
+        'update_member',
+        'add_family_note',
+        'add_family_tag',
+        'remove_family_tag',
+        'generate_statement',
+        'send_statement',
+        'generate_invoice',
+        'send_invoice',
+        'create_payment_link',
+        'create_document',
+        'update_family_balance',
+        'archive_family',
+        'restore_family',
+        'create_audit_log',
+        'export_data',
+        'webhook', // Call external webhook
+      ],
+    },
+    config: {
+      // For send_email
+      emailTemplate: String,
+      to: String, // 'family', 'admin', or specific email
+      subject: String,
+      body: String,
+      
+      // For send_sms
+      smsTemplate: String,
+      phoneNumber: String, // 'family', 'admin', or specific number
+      message: String,
+      
+      // For create_task
+      taskTitle: String,
+      taskDescription: String,
+      taskDueDate: String, // Relative date like '+7 days' or absolute
+      taskPriority: { type: String, enum: ['low', 'medium', 'high', 'urgent'] },
+      taskAssignee: String, // 'admin', 'family', or user ID
+      
+      // For create_notification
+      notificationMessage: String,
+      notificationType: { type: String, enum: ['info', 'success', 'warning', 'error'] },
+      
+      // For update_payment_plan
+      paymentPlanId: Schema.Types.ObjectId,
+      paymentPlanNumber: Number,
+      
+      // For create_lifecycle_event
+      eventType: String,
+      eventAmount: Number,
+      eventDate: String, // Relative or absolute
+      
+      // For update_family / update_member
+      updates: Schema.Types.Mixed, // Object with fields to update
+      
+      // For webhook
+      webhookUrl: String,
+      webhookMethod: { type: String, enum: ['GET', 'POST', 'PUT'], default: 'POST' },
+      webhookHeaders: Schema.Types.Mixed,
+      webhookBody: Schema.Types.Mixed,
+    },
+    order: { type: Number, default: 0 }, // Execution order
+  }],
+  
+  // Execution tracking
+  executionCount: { type: Number, default: 0 },
+  lastExecutedAt: Date,
+  lastExecutionResult: {
+    success: Boolean,
+    message: String,
+    executedActions: Number,
+    failedActions: Number,
+  },
+  
+  // Error handling
+  onError: {
+    type: String,
+    enum: ['stop', 'continue', 'notify'],
+    default: 'notify',
+  },
+  
+  // Rate limiting
+  maxExecutionsPerDay: { type: Number, default: 100 },
+  executionsToday: { type: Number, default: 0 },
+  lastResetDate: { type: Date, default: Date.now },
+}, { timestamps: true })
+
+AutomationRuleSchema.index({ userId: 1, isActive: 1 })
+AutomationRuleSchema.index({ 'trigger.type': 1, isActive: 1 })
+
+// Automation Rule Execution Log Schema (Track rule executions)
+const AutomationRuleExecutionSchema = new Schema({
+  ruleId: { type: Schema.Types.ObjectId, ref: 'AutomationRule', required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  triggerType: { type: String, required: true },
+  triggerData: Schema.Types.Mixed, // Data that triggered the rule
+  conditionsMatched: { type: Boolean, default: true },
+  actionsExecuted: [{
+    actionType: String,
+    actionConfig: Schema.Types.Mixed,
+    success: Boolean,
+    result: Schema.Types.Mixed,
+    error: String,
+    executedAt: { type: Date, default: Date.now },
+  }],
+  executionTime: { type: Number, default: 0 }, // Milliseconds
+  success: { type: Boolean, default: true },
+  error: String,
+}, { timestamps: true })
+
+AutomationRuleExecutionSchema.index({ ruleId: 1, createdAt: -1 })
+AutomationRuleExecutionSchema.index({ userId: 1, createdAt: -1 })
+
 // Audit Log Schema (Track all changes in the system)
 const AuditLogSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true }, // Who made the change
@@ -827,6 +1028,8 @@ export const InvoiceTemplate = mongoose.models.InvoiceTemplate || mongoose.model
 export const CycleConfig = mongoose.models.CycleConfig || mongoose.model('CycleConfig', CycleConfigSchema)
 export const StripeConfig = mongoose.models.StripeConfig || mongoose.model('StripeConfig', StripeConfigSchema)
 export const AutomationSettings = mongoose.models.AutomationSettings || mongoose.model('AutomationSettings', AutomationSettingsSchema)
+export const AutomationRule = mongoose.models.AutomationRule || mongoose.model('AutomationRule', AutomationRuleSchema)
+export const AutomationRuleExecution = mongoose.models.AutomationRuleExecution || mongoose.model('AutomationRuleExecution', AutomationRuleExecutionSchema)
 export const SavedPaymentMethod = mongoose.models.SavedPaymentMethod || mongoose.model('SavedPaymentMethod', SavedPaymentMethodSchema)
 export const RecurringPayment = mongoose.models.RecurringPayment || mongoose.model('RecurringPayment', RecurringPaymentSchema)
 export const Refund = mongoose.models.Refund || mongoose.model('Refund', RefundSchema)

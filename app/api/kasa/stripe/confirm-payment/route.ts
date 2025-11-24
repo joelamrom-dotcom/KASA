@@ -46,6 +46,31 @@ export async function POST(request: NextRequest) {
     if (paymentIntent.status !== 'succeeded') {
       const errorMsg = `Payment not succeeded. Status: ${paymentIntent.status}`
       
+      // Trigger automation rules for payment failed
+      try {
+        const { executeAutomationRules } = await import('@/lib/automation-engine')
+        const { getAuthenticatedUser } = await import('@/lib/middleware')
+        const user = getAuthenticatedUser(request)
+        
+        if (user) {
+          await executeAutomationRules(
+            {
+              type: 'payment_failed',
+              familyId: familyId,
+              data: {
+                amount: paymentIntent.amount / 100,
+                error: errorMsg,
+                status: paymentIntent.status,
+                paymentIntentId: paymentIntent.id,
+              },
+            },
+            user.userId
+          )
+        }
+      } catch (automationError) {
+        console.error('Error executing automation rules for payment failure:', automationError)
+      }
+      
       // Create task for declined payment
       await createPaymentDeclinedTask(
         familyId,

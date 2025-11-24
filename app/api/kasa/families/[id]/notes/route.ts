@@ -50,6 +50,30 @@ export async function POST(
       checked: false
     })
     
+    // Trigger automation rules for note added
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      const { getAuthenticatedUser } = await import('@/lib/middleware')
+      const user = getAuthenticatedUser(request)
+      
+      if (user) {
+        await executeAutomationRules(
+          {
+            type: 'note_added',
+            familyId: params.id,
+            data: {
+              note: note.trim(),
+              noteId: familyNote._id.toString(),
+            },
+          },
+          user.userId
+        )
+      }
+    } catch (automationError) {
+      console.error('Error executing automation rules for note:', automationError)
+      // Don't fail the note creation if automation fails
+    }
+    
     return NextResponse.json(familyNote, { status: 201 })
   } catch (error: any) {
     console.error('Error creating family note:', error)

@@ -131,6 +131,29 @@ export async function POST(request: NextRequest) {
       tags: tags ? tags.split(',').map((t: string) => t.trim()) : []
     })
 
+    // Trigger automation rules for document uploaded
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'document_uploaded',
+          familyId: relatedFamilyId,
+          memberId: relatedMemberId,
+          data: {
+            documentId: document._id.toString(),
+            fileName: originalName,
+            fileType: file.type,
+            fileSize: file.size,
+            category: category || 'other',
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for document upload:', automationError)
+      // Don't fail the document upload if automation fails
+    }
+
     return NextResponse.json({ document })
   } catch (error: any) {
     console.error('Error uploading document:', error)

@@ -172,6 +172,27 @@ export async function POST(
 
     const payment = await Payment.create(paymentData)
     
+    // Trigger automation rules for payment received
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'payment_received',
+          familyId: params.id,
+          paymentId: payment._id.toString(),
+          data: {
+            amount: payment.amount,
+            type: payment.type,
+            paymentMethod: payment.paymentMethod,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for payment:', automationError)
+      // Don't fail the payment creation if automation fails
+    }
+    
     // Convert to plain object to ensure all fields are included
     const paymentObj = payment.toObject ? payment.toObject() : payment
     

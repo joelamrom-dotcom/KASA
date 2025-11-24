@@ -232,6 +232,28 @@ export async function POST(
       }
     }
 
+    // Trigger automation rules for member added
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'member_added',
+          familyId: params.id,
+          memberId: member._id.toString(),
+          data: {
+            firstName: member.firstName,
+            lastName: member.lastName,
+            birthDate: member.birthDate,
+            gender: member.gender,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for member:', automationError)
+      // Don't fail the member creation if automation fails
+    }
+
     return NextResponse.json(member, { status: 201 })
   } catch (error: any) {
     console.error('Error creating member:', error)

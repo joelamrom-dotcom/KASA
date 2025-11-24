@@ -1,6 +1,7 @@
-// Service Worker for Kasa Family Management PWA
-const CACHE_NAME = 'kasa-pwa-v1'
-const RUNTIME_CACHE = 'kasa-runtime-v1'
+// Service Worker for Kasa Family Management PWA - Enhanced for Offline-First
+const CACHE_NAME = 'kasa-pwa-v2'
+const RUNTIME_CACHE = 'kasa-runtime-v2'
+const API_CACHE = 'kasa-api-v2'
 
 // Assets to cache on install
 const PRECACHE_ASSETS = [
@@ -8,8 +9,8 @@ const PRECACHE_ASSETS = [
   '/families',
   '/payments',
   '/dashboard',
-  '/kasa-logo.png',
-  '/manifest.json'
+  '/manifest.json',
+  '/offline.html' // Offline fallback page
 ]
 
 // Install event - cache assets
@@ -42,15 +43,53 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - serve from cache, fallback to network (offline-first strategy)
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
+  const { request } = event
+  const url = new URL(request.url)
+
+  // Handle API requests with network-first, cache fallback
+  if (url.pathname.startsWith('/api/')) {
+    // Only cache GET requests
+    if (request.method === 'GET') {
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            // Clone the response
+            const responseToCache = response.clone()
+            
+            // Cache successful responses
+            if (response.status === 200) {
+              caches.open(API_CACHE).then((cache) => {
+                cache.put(request, responseToCache)
+              })
+            }
+            
+            return response
+          })
+          .catch(() => {
+            // Network failed, try cache
+            return caches.match(request).then((cachedResponse) => {
+              if (cachedResponse) {
+                return cachedResponse
+              }
+              // Return offline response
+              return new Response(
+                JSON.stringify({ error: 'Offline', cached: true }),
+                {
+                  status: 503,
+                  headers: { 'Content-Type': 'application/json' },
+                }
+              )
+            })
+          })
+      )
+    }
     return
   }
 
-  // Skip API requests (always use network)
-  if (event.request.url.includes('/api/')) {
+  // Skip non-GET requests for static assets
+  if (request.method !== 'GET') {
     return
   }
 

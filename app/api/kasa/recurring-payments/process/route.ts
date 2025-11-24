@@ -195,6 +195,25 @@ export async function POST(request: NextRequest) {
             nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1)
             recurringPayment.nextPaymentDate = nextPaymentDate
             await recurringPayment.save()
+            
+            // Trigger automation rules for recurring payment processed
+            try {
+              const { executeAutomationRules } = await import('@/lib/automation-engine')
+              await executeAutomationRules(
+                {
+                  type: 'recurring_payment_processed',
+                  familyId: recurringPayment.familyId.toString(),
+                  paymentId: payment._id.toString(),
+                  data: {
+                    amount: payment.amount,
+                    nextPaymentDate: nextPaymentDate.toISOString(),
+                  },
+                },
+                family?.userId?.toString()
+              )
+            } catch (automationError) {
+              console.error('Error executing automation rules for recurring payment:', automationError)
+            }
 
             // Get automation settings for this admin (used by both email and SMS)
             let automationSettings = null

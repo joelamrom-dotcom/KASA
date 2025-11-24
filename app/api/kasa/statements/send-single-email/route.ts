@@ -124,6 +124,36 @@ Kasa Family Management`,
       ]
     })
 
+    // Trigger automation rules for statement sent
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      const { getAuthenticatedUser } = await import('@/lib/middleware')
+      const { Family } = await import('@/lib/models')
+      
+      const family = await Family.findOne({ email: familyEmail })
+      if (family) {
+        const user = getAuthenticatedUser(request)
+        if (user) {
+          await executeAutomationRules(
+            {
+              type: 'statement_sent',
+              familyId: family._id.toString(),
+              data: {
+                statementNumber: statement.statementNumber,
+                fromDate: statement.fromDate,
+                toDate: statement.toDate,
+                closingBalance: statement.closingBalance,
+              },
+            },
+            user.userId
+          )
+        }
+      }
+    } catch (automationError) {
+      console.error('Error executing automation rules for statement sent:', automationError)
+      // Don't fail the email send if automation fails
+    }
+
     return NextResponse.json({
       message: 'Statement sent successfully',
       sent: true

@@ -156,6 +156,29 @@ export async function POST(request: NextRequest) {
 
     const taskObj = task.toObject ? task.toObject() : task
     
+    // Trigger automation rules for task created
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'task_created',
+          taskId: taskObj._id.toString(),
+          familyId: relatedFamilyId,
+          memberId: relatedMemberId,
+          data: {
+            title,
+            status: status || 'pending',
+            priority: priority || 'medium',
+            dueDate: dueDate,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for task:', automationError)
+      // Don't fail the task creation if automation fails
+    }
+    
     // Create audit log entry
     const family = relatedFamilyId ? await Family.findById(relatedFamilyId) : null
     await auditLogFromRequest(request, user, 'task_create', 'task', {

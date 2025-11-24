@@ -129,6 +129,26 @@ export async function POST(request: NextRequest) {
                   )
                 }
 
+                // Trigger automation rules for reminder sent
+                try {
+                  const { executeAutomationRules } = await import('@/lib/automation-engine')
+                  await executeAutomationRules(
+                    {
+                      type: 'reminder_sent',
+                      familyId: family._id?.toString(),
+                      data: {
+                        reminderType: 'payment',
+                        amount: recurringPayment.amount,
+                        dueDate: nextPaymentDate.toISOString(),
+                        daysBefore,
+                      },
+                    },
+                    admin.userId
+                  )
+                } catch (automationError) {
+                  console.error('Error executing automation rules for reminder:', automationError)
+                }
+
                 allResults.push({
                   adminId: admin.userId,
                   familyId: family._id?.toString(),

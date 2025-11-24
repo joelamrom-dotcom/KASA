@@ -6,6 +6,8 @@ import LayoutContent from './components/LayoutContent'
 import ToastContainer from './components/Toast'
 import ServiceWorkerRegistration from './components/ServiceWorkerRegistration'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
+import MobileQuickActions from './components/MobileQuickActions'
+import OfflineSyncStatus from './components/OfflineSyncStatus'
 
 export const metadata: Metadata = {
   title: 'Kasa Family Management',
@@ -62,6 +64,8 @@ export default function RootLayout({
           <LayoutContent>{children}</LayoutContent>
           <ToastContainer />
           <PWAInstallPrompt />
+          <MobileQuickActions />
+          <OfflineSyncStatus />
         </AuthProvider>
       </body>
     </html>

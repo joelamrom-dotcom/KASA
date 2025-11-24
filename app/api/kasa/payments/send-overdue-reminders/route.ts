@@ -166,6 +166,26 @@ export async function POST(request: NextRequest) {
               lastReminderSent: today
             })
 
+            // Trigger automation rules for reminder sent
+            try {
+              const { executeAutomationRules } = await import('@/lib/automation-engine')
+              await executeAutomationRules(
+                {
+                  type: 'reminder_sent',
+                  familyId: family._id?.toString(),
+                  data: {
+                    reminderType: 'overdue',
+                    amount: recurringPayment.amount,
+                    daysOverdue,
+                    reminderLevel: reminderLevelToSend,
+                  },
+                },
+                admin.userId
+              )
+            } catch (automationError) {
+              console.error('Error executing automation rules for overdue reminder:', automationError)
+            }
+
             adminSent++
             totalSent++
           } catch (error: any) {

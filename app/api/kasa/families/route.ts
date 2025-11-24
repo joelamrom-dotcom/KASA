@@ -259,6 +259,25 @@ export async function POST(request: NextRequest) {
     try {
       const { createStripeCustomerForFamily } = await import('@/lib/stripe-customer-helpers')
       await createStripeCustomerForFamily(family._id.toString())
+    }
+    
+    // Trigger automation rules for family created
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'family_created',
+          familyId: family._id.toString(),
+          data: {
+            name: family.name,
+            email: family.email,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for family:', automationError)
+      // Don't fail the family creation if automation fails
     } catch (stripeError: any) {
       // Log error but don't fail family creation if Stripe customer creation fails
       console.error(`⚠️ Failed to create Stripe Customer for family ${family.name}:`, stripeError.message)

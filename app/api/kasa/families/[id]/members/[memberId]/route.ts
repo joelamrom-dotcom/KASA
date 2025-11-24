@@ -219,6 +219,66 @@ export async function PUT(
       }
     }
 
+    // Check if age changed
+    let ageChanged = false
+    let oldAge = null
+    let newAge = null
+    if (oldMember && (updateData.birthDate || updateData.firstName || updateData.lastName)) {
+      // Calculate ages
+      const { calculateAge } = await import('@/lib/calculations')
+      const today = new Date()
+      const referenceDate = new Date(today.getFullYear(), 11, 31) // December 31
+      
+      if (oldMember.birthDate) {
+        oldAge = calculateAge(oldMember.birthDate, referenceDate)
+      }
+      if (member.birthDate) {
+        newAge = calculateAge(member.birthDate, referenceDate)
+      }
+      ageChanged = oldAge !== null && newAge !== null && oldAge !== newAge
+    }
+    
+    // Trigger automation rules for member updated
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'member_updated',
+          familyId: params.id,
+          memberId: params.memberId,
+          data: {
+            firstName: member.firstName,
+            lastName: member.lastName,
+            birthDate: member.birthDate,
+            gender: member.gender,
+            changedFields: oldMember ? Object.keys(updateData) : [],
+          },
+        },
+        user.userId
+      )
+      
+      // Trigger age changed if applicable
+      if (ageChanged && oldAge !== null && newAge !== null) {
+        await executeAutomationRules(
+          {
+            type: 'member_age_changed',
+            familyId: params.id,
+            memberId: params.memberId,
+            data: {
+              oldAge,
+              newAge,
+              firstName: member.firstName,
+              lastName: member.lastName,
+            },
+          },
+          user.userId
+        )
+      }
+    } catch (automationError) {
+      console.error('Error executing automation rules for member update:', automationError)
+      // Don't fail the update if automation fails
+    }
+    
     // Create audit log entry for member update
     if (oldMember) {
       const changedFields: any = {}
@@ -378,6 +438,28 @@ export async function DELETE(
     await moveToRecycleBin('member', params.memberId, member.toObject())
     
     // Delete from database
+    // Trigger automation rules for member deleted
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'member_deleted',
+          familyId: params.id,
+          memberId: params.memberId,
+          data: {
+            firstName: member.firstName,
+            lastName: member.lastName,
+            birthDate: member.birthDate,
+            gender: member.gender,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for member deletion:', automationError)
+      // Don't fail the deletion if automation fails
+    }
+
     await FamilyMember.findOneAndDelete({
       _id: params.memberId,
       familyId: params.id

@@ -201,6 +201,97 @@ export async function PUT(
     }
 
     const familyObj = updatedFamily.toObject()
+    
+    // Check if payment plan changed
+    const paymentPlanChanged = 'paymentPlanId' in body && 
+      family.paymentPlanId?.toString() !== body.paymentPlanId
+    
+    // Check if balance changed (calculate new balance)
+    const oldBalance = family.currentPayment || 0
+    const { calculateFamilyBalance } = await import('@/lib/calculations')
+    const newBalanceData = await calculateFamilyBalance(params.id)
+    const newBalance = newBalanceData.balance
+    const balanceChanged = Math.abs(oldBalance - newBalance) > 0.01
+    
+    // Trigger automation rules for family updated
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'family_updated',
+          familyId: params.id,
+          data: {
+            changedFields: Object.keys(changedFields),
+            paymentPlanChanged,
+            balanceChanged,
+            oldBalance,
+            newBalance,
+          },
+        },
+        user.userId
+      )
+      
+      // Trigger payment plan changed if applicable
+      if (paymentPlanChanged) {
+        await executeAutomationRules(
+          {
+            type: 'payment_plan_changed',
+            familyId: params.id,
+            data: {
+              oldPaymentPlanId: family.paymentPlanId?.toString(),
+              newPaymentPlanId: body.paymentPlanId,
+            },
+          },
+          user.userId
+        )
+      }
+      
+      // Trigger balance changed if applicable
+      if (balanceChanged) {
+        await executeAutomationRules(
+          {
+            type: 'family_balance_changed',
+            familyId: params.id,
+            data: {
+              oldBalance,
+              newBalance,
+              difference: newBalance - oldBalance,
+            },
+          },
+          user.userId
+        )
+        
+        // Check for balance threshold triggers
+        // Common thresholds: 1000, 2500, 5000, 10000
+        const thresholds = [1000, 2500, 5000, 10000]
+        for (const threshold of thresholds) {
+          // Check if balance crossed threshold (either direction)
+          const crossedThreshold = 
+            (oldBalance < threshold && newBalance >= threshold) ||
+            (oldBalance >= threshold && newBalance < threshold)
+          
+          if (crossedThreshold) {
+            await executeAutomationRules(
+              {
+                type: 'balance_threshold',
+                familyId: params.id,
+                data: {
+                  threshold,
+                  oldBalance,
+                  newBalance,
+                  crossedAbove: newBalance >= threshold,
+                },
+              },
+              user.userId
+            )
+          }
+        }
+      }
+    } catch (automationError) {
+      console.error('Error executing automation rules for family update:', automationError)
+      // Don't fail the update if automation fails
+    }
+    
     console.log('PUT /api/kasa/families/[id] - Updated family:', JSON.stringify({
       _id: familyObj._id,
       name: familyObj.name,
@@ -314,6 +405,25 @@ export async function DELETE(
     })
 
     // Now delete from database
+    // Trigger automation rules for family deleted
+    try {
+      const { executeAutomationRules } = await import('@/lib/automation-engine')
+      await executeAutomationRules(
+        {
+          type: 'family_deleted',
+          familyId: params.id,
+          data: {
+            name: family.name,
+            email: family.email,
+          },
+        },
+        user.userId
+      )
+    } catch (automationError) {
+      console.error('Error executing automation rules for family deletion:', automationError)
+      // Don't fail the deletion if automation fails
+    }
+
     await FamilyMember.deleteMany({ familyId: params.id })
     await Payment.deleteMany({ familyId: params.id })
     await Withdrawal.deleteMany({ familyId: params.id })
