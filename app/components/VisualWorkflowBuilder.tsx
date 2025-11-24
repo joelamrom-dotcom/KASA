@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { motion, AnimatePresence } from 'framer-motion'
+// Using native HTML drag and drop instead of framer-motion for better compatibility
 
 interface Node {
   id: string
@@ -183,46 +183,42 @@ export default function VisualWorkflowBuilder({ onSave, onClose, initialNodes = 
             </svg>
 
             <div className="relative w-full h-full">
-              <AnimatePresence>
-                {nodes.map((node) => (
-                  <motion.div
-                    key={node.id}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    className={`absolute cursor-move ${
-                      node.type === 'trigger' ? 'bg-green-500' :
-                      node.type === 'condition' ? 'bg-yellow-500' :
-                      'bg-blue-500'
-                    } text-white rounded-lg shadow-lg p-4 min-w-[150px] ${
-                      selectedNode === node.id ? 'ring-2 ring-blue-400' : ''
-                    }`}
-                    style={{
-                      left: node.position.x,
-                      top: node.position.y,
-                    }}
-                    draggable
-                    onDragStart={(e) => {
-                      setDraggedNode(node)
-                    }}
-                    onDragEnd={(e: React.DragEvent<HTMLDivElement>) => {
-                      if (draggedNode) {
-                        const target = e.currentTarget as HTMLElement
-                        const parentElement = target?.parentElement as HTMLElement | null
-                        if (parentElement) {
-                          const rect = parentElement.getBoundingClientRect()
-                          const clientX = e.clientX || 0
-                          const clientY = e.clientY || 0
-                          updateNodePosition(draggedNode.id, {
-                            x: clientX - rect.left - 75,
-                            y: clientY - rect.top - 40,
-                          })
-                        }
+              {nodes.map((node) => (
+                <div
+                  key={node.id}
+                  className={`absolute cursor-move transition-all ${
+                    node.type === 'trigger' ? 'bg-green-500' :
+                    node.type === 'condition' ? 'bg-yellow-500' :
+                    'bg-blue-500'
+                  } text-white rounded-lg shadow-lg p-4 min-w-[150px] ${
+                    selectedNode === node.id ? 'ring-2 ring-blue-400' : ''
+                  }`}
+                  style={{
+                    left: node.position.x,
+                    top: node.position.y,
+                  }}
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggedNode(node)
+                  }}
+                  onDragEnd={(e: React.DragEvent<HTMLDivElement>) => {
+                    if (draggedNode) {
+                      const target = e.currentTarget as HTMLElement
+                      const parentElement = target?.parentElement as HTMLElement | null
+                      if (parentElement) {
+                        const rect = parentElement.getBoundingClientRect()
+                        const clientX = e.clientX || 0
+                        const clientY = e.clientY || 0
+                        updateNodePosition(draggedNode.id, {
+                          x: clientX - rect.left - 75,
+                          y: clientY - rect.top - 40,
+                        })
                       }
-                      setDraggedNode(null)
-                    }}
-                    onClick={() => setSelectedNode(node.id)}
-                  >
+                    }
+                    setDraggedNode(null)
+                  }}
+                  onClick={() => setSelectedNode(node.id)}
+                >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold text-sm">{node.label}</span>
                       <button
@@ -236,9 +232,8 @@ export default function VisualWorkflowBuilder({ onSave, onClose, initialNodes = 
                       </button>
                     </div>
                     <div className="text-xs opacity-90">{node.data.nodeType}</div>
-                  </motion.div>
+                  </div>
                 ))}
-              </AnimatePresence>
             </div>
           </div>
 
