@@ -1261,16 +1261,26 @@ export default function FamiliesPage() {
                         onMouseDown={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
+                          e.nativeEvent.stopImmediatePropagation()
                         }}
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
+                          e.nativeEvent.stopImmediatePropagation()
                           console.log('Delete button onClick fired')
-                          handleDeleteClick(family)
+                          // Use requestAnimationFrame to ensure state update happens after all event handlers
+                          requestAnimationFrame(() => {
+                            handleDeleteClick(family)
+                          })
                         }}
                         onMouseUp={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
+                          e.nativeEvent.stopImmediatePropagation()
+                        }}
+                        onPointerDown={(e) => {
+                          e.stopPropagation()
+                          e.nativeEvent.stopImmediatePropagation()
                         }}
                         className="text-red-600 hover:text-red-800 transition-colors"
                         title="Delete Family"
