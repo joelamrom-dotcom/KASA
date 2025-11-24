@@ -470,7 +470,7 @@ export default function PaymentsPage() {
           headers.join(','),
           ...data.map((p: any) => [
             p.paymentDate ? new Date(p.paymentDate).toLocaleDateString() : '',
-            typeof p.familyId === 'object' ? p.familyId.name : 'Unknown',
+            p.familyId && typeof p.familyId === 'object' && p.familyId !== null ? p.familyId.name : 'Unknown',
             p.amount || 0,
             p.type || '',
             p.paymentMethod || '',
@@ -558,7 +558,7 @@ export default function PaymentsPage() {
               <TableImportExport
               data={payments.map(p => ({
                 ...p,
-                familyName: typeof p.familyId === 'object' ? p.familyId.name : 'Unknown',
+                familyName: p.familyId && typeof p.familyId === 'object' && p.familyId !== null ? p.familyId.name : 'Unknown',
                 paymentMethodLabel: paymentMethodLabels[p.paymentMethod],
                 typeLabel: p.type.charAt(0).toUpperCase() + p.type.slice(1)
               }))}
@@ -731,14 +731,20 @@ export default function PaymentsPage() {
                         {new Date(payment.paymentDate).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
-                        <Link
-                          href={`/families/${payment.familyId._id}`}
-                          className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
-                        >
-                          {payment.familyId.name}
-                        </Link>
-                        {payment.familyId.email && (
-                          <div className="text-xs text-gray-500 mt-1">{payment.familyId.email}</div>
+                        {payment.familyId && payment.familyId._id ? (
+                          <>
+                            <Link
+                              href={`/families/${payment.familyId._id}`}
+                              className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                            >
+                              {payment.familyId.name || 'Unknown'}
+                            </Link>
+                            {payment.familyId.email && (
+                              <div className="text-xs text-gray-500 mt-1">{payment.familyId.email}</div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-500">Unknown Family</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-semibold text-green-600">
@@ -802,8 +808,8 @@ export default function PaymentsPage() {
                       <div className="font-semibold text-lg text-green-600">
                         ${payment.amount.toLocaleString()}
                       </div>
-                      <Link href={`/families/${typeof payment.familyId === 'object' ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline text-sm mt-1 block">
-                        {typeof payment.familyId === 'object' ? payment.familyId.name : 'Unknown'}
+                      <Link href={`/families/${payment.familyId && typeof payment.familyId === 'object' && payment.familyId !== null ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline text-sm mt-1 block">
+                        {payment.familyId && typeof payment.familyId === 'object' && payment.familyId !== null ? payment.familyId.name : 'Unknown'}
                       </Link>
                       <div className="mt-2 space-y-1 text-xs text-gray-600">
                         <div className="flex items-center gap-1">
@@ -841,8 +847,8 @@ export default function PaymentsPage() {
                           onClick={(e) => e.stopPropagation()}
                         />
                       </div>
-                      <Link href={`/families/${typeof payment.familyId === 'object' ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline font-medium block mb-2">
-                        {typeof payment.familyId === 'object' ? payment.familyId.name : 'Unknown'}
+                      <Link href={`/families/${payment.familyId && typeof payment.familyId === 'object' && payment.familyId !== null ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline font-medium block mb-2">
+                        {payment.familyId && typeof payment.familyId === 'object' && payment.familyId !== null ? payment.familyId.name : 'Unknown'}
                       </Link>
                       <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                         <div className="flex items-center gap-2">
@@ -893,8 +899,8 @@ export default function PaymentsPage() {
                         <div className="text-lg font-bold text-green-600 w-24">
                           ${payment.amount.toLocaleString()}
                         </div>
-                        <Link href={`/families/${typeof payment.familyId === 'object' ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline flex-1">
-                          {typeof payment.familyId === 'object' ? payment.familyId.name : 'Unknown'}
+                        <Link href={`/families/${payment.familyId && typeof payment.familyId === 'object' && payment.familyId !== null ? payment.familyId._id : ''}`} className="text-blue-600 hover:underline flex-1">
+                          {payment.familyId && typeof payment.familyId === 'object' && payment.familyId !== null ? payment.familyId.name : 'Unknown'}
                         </Link>
                         <span className="text-sm text-gray-600 w-32">{new Date(payment.paymentDate).toLocaleDateString()}</span>
                         <span className="text-sm text-gray-600 w-24 flex items-center gap-1">
@@ -1036,14 +1042,20 @@ export default function PaymentsPage() {
                       ).map((payment: any) => (
                         <tr key={payment._id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                           <td className="py-3 px-4">
-                            <Link
-                              href={`/families/${payment.familyId._id}`}
-                              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium hover:underline"
-                            >
-                              {payment.familyId.name}
-                            </Link>
-                            {payment.familyId.email && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{payment.familyId.email}</div>
+                            {payment.familyId && payment.familyId._id ? (
+                              <>
+                                <Link
+                                  href={`/families/${payment.familyId._id}`}
+                                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium hover:underline"
+                                >
+                                  {payment.familyId.name || 'Unknown'}
+                                </Link>
+                                {payment.familyId.email && (
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{payment.familyId.email}</div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">Unknown Family</span>
                             )}
                           </td>
                           <td className="py-3 px-4 font-semibold text-red-600 dark:text-red-400">
