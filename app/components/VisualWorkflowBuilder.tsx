@@ -206,13 +206,17 @@ export default function VisualWorkflowBuilder({ onSave, onClose, initialNodes = 
                       setDraggedNode(node)
                     }}
                     onDragEnd={(e) => {
-                      if (draggedNode) {
-                        const rect = (e.currentTarget.parentElement as HTMLElement)?.getBoundingClientRect()
-                        if (rect) {
-                          updateNodePosition(draggedNode.id, {
-                            x: e.clientX - rect.left - 75,
-                            y: e.clientY - rect.top - 40,
-                          })
+                      if (draggedNode && e.currentTarget) {
+                        const parentElement = e.currentTarget.parentElement as HTMLElement | null
+                        if (parentElement) {
+                          const rect = parentElement.getBoundingClientRect()
+                          const mouseEvent = e as MouseEvent
+                          if (mouseEvent.clientX !== undefined && mouseEvent.clientY !== undefined) {
+                            updateNodePosition(draggedNode.id, {
+                              x: mouseEvent.clientX - rect.left - 75,
+                              y: mouseEvent.clientY - rect.top - 40,
+                            })
+                          }
                         }
                       }
                       setDraggedNode(null)
