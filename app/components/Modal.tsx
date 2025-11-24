@@ -11,6 +11,7 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
   showCloseButton?: boolean
   className?: string
+  disableBackdropClick?: boolean // New prop to disable backdrop clicks
 }
 
 const sizeClasses = {
@@ -29,6 +30,7 @@ export default function Modal({
   size = 'md',
   showCloseButton = true,
   className = '',
+  disableBackdropClick = false,
 }: ModalProps) {
   const justOpenedRef = useRef(false)
   const openTimeRef = useRef<number | null>(null)
@@ -80,6 +82,14 @@ export default function Modal({
   if (!isOpen) return null
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // If backdrop clicks are disabled, never close
+    if (disableBackdropClick) {
+      console.log('Modal backdrop click disabled by prop')
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    
     // Prevent closing if modal was just opened or if backdrop clicks are prevented
     const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
     if (justOpenedRef.current || preventBackdropClickRef.current || timeSinceOpen < 2000) {

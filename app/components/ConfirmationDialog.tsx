@@ -96,7 +96,13 @@ export default function ConfirmationDialog({
   const Icon = icons[type]
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="" showCloseButton={!isLoading}>
+    <Modal 
+      isOpen={isOpen} 
+      onClose={handleClose} 
+      title="" 
+      showCloseButton={!isLoading}
+      disableBackdropClick={true}
+    >
       <div className="p-6">
         <div className="flex items-start gap-4">
           <div className={`flex-shrink-0 p-3 rounded-full ${colors[type]}`}>
