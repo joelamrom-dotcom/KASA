@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Payment, Family } from '@/lib/models'
-import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser, isAdmin, isImpersonating } from '@/lib/middleware'
 import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 import { auditLogFromRequest } from '@/lib/audit-log'
 
@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
+    
+    // Check if impersonating - if so, use impersonated user's permissions (not super_admin)
+    const impersonating = isImpersonating(request)
     
     const { searchParams } = new URL(request.url)
     const familyId = searchParams.get('familyId')
@@ -46,8 +49,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    // Filter payments by user's families - only super_admin sees all
-    if (user.role !== 'super_admin') {
+    // Filter payments by user's families
+    // If impersonating, treat as the impersonated user (not super_admin)
+    // Only non-impersonating super_admin sees all payments
+    if (impersonating || user.role !== 'super_admin') {
       let userFamilyIds: string[] = []
       
       if (user.role === 'family' && user.familyId) {
@@ -59,7 +64,7 @@ export async function GET(request: NextRequest) {
         userFamilyIds = userFamilies.map((f: any) => f._id.toString())
       }
       
-      // If user has no families, they should see no payments (unless super_admin)
+      // If user has no families, they should see no payments
       if (userFamilyIds.length === 0) {
         payments = []
       } else {

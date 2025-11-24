@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { Family, FamilyMember, PaymentPlan, User } from '@/lib/models'
-import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser, isAdmin, isImpersonating } from '@/lib/middleware'
 import { getCachedData, setCachedData, CacheKeys, invalidateCache } from '@/lib/cache'
 import { performanceMonitor } from '@/lib/performance'
 import { getFamiliesWithPaymentsPipeline } from '@/lib/db-optimization'
@@ -66,20 +66,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    // Build query - only super_admin sees all families, others see only their own
+    // Check if impersonating - if so, use impersonated user's permissions (not super_admin)
+    const impersonating = isImpersonating(request)
+    
+    // Build query - only non-impersonating super_admin sees all families, others see only their own
     let query: any = {}
-    if (isSuperAdminUser) {
-      // Super admin sees all families
+    if (impersonating || !isSuperAdminUser) {
+      // When impersonating or not super_admin, filter by user's families
+      if (user.role === 'family' && user.familyId) {
+        // Family users see only their own family
+        query = { _id: user.familyId }
+        console.log('GET /api/kasa/families - Family user: showing family', user.familyId)
+      } else {
+        // Regular admins see only their own families (where userId matches)
+        query = { userId: user.userId }
+        console.log('GET /api/kasa/families - Admin user: showing families for userId', user.userId)
+      }
+    } else {
+      // Non-impersonating super admin sees all families
       query = {}
       console.log('GET /api/kasa/families - Super admin: showing all families')
-    } else if (user.role === 'family' && user.familyId) {
-      // Family users see only their own family
-      query = { _id: user.familyId }
-      console.log('GET /api/kasa/families - Family user: showing family', user.familyId)
-    } else {
-      // Regular admins see only their own families (where userId matches)
-      query = { userId: user.userId }
-      console.log('GET /api/kasa/families - Admin user: showing families for userId', user.userId)
     }
     
     // Check cache first

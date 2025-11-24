@@ -107,3 +107,26 @@ export function isSuperAdmin(user: AuthenticatedRequest | null): boolean {
   return user?.role === 'super_admin'
 }
 
+/**
+ * Check if the current request is impersonating another user
+ * When impersonating, the token contains impersonatedBy field
+ */
+export function isImpersonating(request: NextRequest): boolean {
+  try {
+    let token: string | undefined
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7)
+    }
+    if (!token) {
+      token = request.cookies.get('token')?.value
+    }
+    if (!token) return false
+    
+    const decoded = jwt.decode(token) as any
+    return !!decoded?.impersonatedBy
+  } catch {
+    return false
+  }
+}
+
