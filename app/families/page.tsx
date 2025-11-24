@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -149,6 +149,8 @@ export default function FamiliesPage() {
     familyName: ''
   })
   const [isDeleting, setIsDeleting] = useState(false)
+  const deleteConfirmOpeningRef = useRef(false)
+  const deleteConfirmOpenTimeRef = useRef<number | null>(null)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
   const [showBulkEmailModal, setShowBulkEmailModal] = useState(false)
@@ -398,14 +400,35 @@ export default function FamiliesPage() {
 
   const handleDeleteClick = (family: Family) => {
     console.log('Delete button clicked for family:', family.name, family._id)
-    // Immediately set the state - don't use setTimeout as it can cause timing issues
+    // Set opening flag to prevent immediate closure
+    deleteConfirmOpeningRef.current = true
+    deleteConfirmOpenTimeRef.current = Date.now()
+    
+    // Immediately set the state
     setDeleteConfirm({
       isOpen: true,
       familyId: family._id,
       familyName: family.name
     })
     console.log('Delete confirm state set to open')
+    
+    // Reset opening flag after delay
+    setTimeout(() => {
+      deleteConfirmOpeningRef.current = false
+      console.log('Delete confirm opening guard disabled')
+    }, 1000)
   }
+  
+  // Monitor deleteConfirm state changes
+  useEffect(() => {
+    console.log('deleteConfirm state changed:', {
+      isOpen: deleteConfirm.isOpen,
+      familyId: deleteConfirm.familyId,
+      familyName: deleteConfirm.familyName,
+      openingGuard: deleteConfirmOpeningRef.current,
+      timeSinceOpen: deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : null
+    })
+  }, [deleteConfirm])
 
   const handleDeleteConfirm = async () => {
     if (!deleteConfirm.familyId) {
@@ -437,8 +460,21 @@ export default function FamiliesPage() {
   }
 
   const handleDeleteCancel = () => {
+    // Prevent closing if dialog was just opened
+    const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
+    if (deleteConfirmOpeningRef.current || timeSinceOpen < 1000) {
+      console.log('handleDeleteCancel prevented - dialog just opened', {
+        openingGuard: deleteConfirmOpeningRef.current,
+        timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+      })
+      console.trace('Stack trace for prevented cancel')
+      return
+    }
+    
     console.log('handleDeleteCancel called - closing delete confirmation')
     console.trace('Stack trace for handleDeleteCancel')
+    deleteConfirmOpeningRef.current = false
+    deleteConfirmOpenTimeRef.current = null
     setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
   }
 
@@ -1550,7 +1586,18 @@ export default function FamiliesPage() {
             confirmText={isDeleting ? 'Deleting...' : 'Delete'}
             cancelText="Cancel"
             onConfirm={handleDeleteConfirm}
-            onClose={handleDeleteCancel}
+            onClose={() => {
+              // Double-check the guard before closing
+              const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
+              if (deleteConfirmOpeningRef.current || timeSinceOpen < 1000) {
+                console.log('onClose prevented by parent guard', {
+                  openingGuard: deleteConfirmOpeningRef.current,
+                  timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+                })
+                return
+              }
+              handleDeleteCancel()
+            }}
             type="danger"
             isLoading={isDeleting}
           />
