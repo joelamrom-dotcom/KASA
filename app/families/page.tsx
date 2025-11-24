@@ -398,11 +398,14 @@ export default function FamiliesPage() {
 
   const handleDeleteClick = (family: Family) => {
     console.log('Delete button clicked for family:', family.name, family._id)
-    setDeleteConfirm({
-      isOpen: true,
-      familyId: family._id,
-      familyName: family.name
-    })
+    // Use setTimeout to ensure state update happens after click event completes
+    setTimeout(() => {
+      setDeleteConfirm({
+        isOpen: true,
+        familyId: family._id,
+        familyName: family.name
+      })
+    }, 0)
   }
 
   const handleDeleteConfirm = async () => {
@@ -1144,7 +1147,21 @@ export default function FamiliesPage() {
                 </tr>
               ) : (
                 sortedFamilies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((family) => (
-                <tr key={family._id} className={`hover:bg-white/20 transition-colors ${bulkSelection.isSelected(family._id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                <tr 
+                  key={family._id} 
+                  className={`hover:bg-white/20 transition-colors ${bulkSelection.isSelected(family._id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                  onClick={(e) => {
+                    // Prevent row click from interfering with button clicks
+                    const target = e.target as HTMLElement
+                    if (target.closest('button') || target.closest('a') || target.closest('input')) {
+                      return
+                    }
+                    // Allow clicking on the name link to navigate
+                    if (target.closest('[href]')) {
+                      return
+                    }
+                  }}
+                >
                   <td className="px-6 py-4">
                     <input
                       type="checkbox"

@@ -56,7 +56,12 @@ export default function Modal({
   return (
     <div
       className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
-      onClick={onClose}
+      onClick={(e) => {
+        // Only close if clicking directly on the backdrop, not on the modal content
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
     >
       <div
         className={`
