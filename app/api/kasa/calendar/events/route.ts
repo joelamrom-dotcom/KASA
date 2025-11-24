@@ -8,7 +8,7 @@ import {
   Family,
   FamilyMember
 } from '@/lib/models'
-import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser, isAdmin, isImpersonating } from '@/lib/middleware'
 import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
@@ -57,15 +57,27 @@ export async function GET(request: NextRequest) {
     const start = new Date(startDate)
     const end = new Date(endDate)
 
-    // Check permission - users with calendar.view see all, others see only their families
-    const canViewAll = await hasPermission(user, PERMISSIONS.CALENDAR_VIEW)
+    // Check if impersonating - if so, use impersonated user's permissions
+    const impersonating = isImpersonating(request)
     
-    // Build query for user's families
+    // Always filter by user's families (unless impersonating, in which case filter by impersonated user's families)
+    // Include legacy families (without userId) for backward compatibility
+    const userFamilies = await Family.find({
+      $or: [
+        { userId: user.userId },
+        { userId: { $exists: false } }, // Legacy families without userId
+        { userId: null } // Families with null userId
+      ]
+    }).select('_id').lean()
+    const userFamilyIds = userFamilies.map((f: any) => f._id.toString())
+    
+    // Build query for user's families - always filter
     let familyQuery: any = {}
-    if (!canViewAll) {
-      const userFamilies = await Family.find({ userId: user.userId }).select('_id')
-      const userFamilyIds = userFamilies.map(f => f._id)
+    if (userFamilyIds.length > 0) {
       familyQuery = { familyId: { $in: userFamilyIds } }
+    } else {
+      // If user has no families, return empty events array
+      return NextResponse.json({ events: [] })
     }
 
     const events: CalendarEvent[] = []
@@ -194,10 +206,8 @@ export async function GET(request: NextRequest) {
 
     // 5. Upcoming Weddings (from members)
     const weddingQuery: any = {
-      weddingDate: { $gte: start, $lte: end, $ne: null }
-    }
-    if (!isAdmin(user) && familyQuery.familyId) {
-      weddingQuery.familyId = familyQuery.familyId
+      weddingDate: { $gte: start, $lte: end, $ne: null },
+      familyId: { $in: userFamilyIds }
     }
     const upcomingWeddings = await FamilyMember.find(weddingQuery)
       .populate('familyId', 'name')
@@ -227,10 +237,8 @@ export async function GET(request: NextRequest) {
       $or: [
         { barMitzvahDate: { $gte: start, $lte: end, $ne: null } },
         { batMitzvahDate: { $gte: start, $lte: end, $ne: null } }
-      ]
-    }
-    if (!isAdmin(user) && familyQuery.familyId) {
-      barMitzvahQuery.familyId = familyQuery.familyId
+      ],
+      familyId: { $in: userFamilyIds }
     }
     const barMitzvahs = await FamilyMember.find(barMitzvahQuery)
       .populate('familyId', 'name')

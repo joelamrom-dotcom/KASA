@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { LifecycleEventPayment, Family } from '@/lib/models'
-import { getAuthenticatedUser, isAdmin } from '@/lib/middleware'
+import { getAuthenticatedUser, isAdmin, isImpersonating } from '@/lib/middleware'
 import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
@@ -20,16 +20,27 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Check permission - users with lifecycle_events.view see all, others see only their families' events
-    const canViewAll = await hasPermission(user, PERMISSIONS.LIFECYCLE_EVENTS_VIEW)
+    // Check if impersonating - if so, use impersonated user's permissions
+    const impersonating = isImpersonating(request)
     
-    // Build query based on permissions
+    // Always filter by user's families (unless impersonating, in which case filter by impersonated user's families)
+    // Include legacy families (without userId) for backward compatibility
+    const userFamilies = await Family.find({
+      $or: [
+        { userId: user.userId },
+        { userId: { $exists: false } }, // Legacy families without userId
+        { userId: null } // Families with null userId
+      ]
+    }).select('_id').lean()
+    const userFamilyIds = userFamilies.map((f: any) => f._id.toString())
+    
+    // Build query - always filter by user's families
     let query: any = {}
-    if (!canViewAll) {
-      // Get user's family IDs
-      const userFamilies = await Family.find({ userId: user.userId }).select('_id')
-      const userFamilyIds = userFamilies.map(f => f._id)
+    if (userFamilyIds.length > 0) {
       query.familyId = { $in: userFamilyIds }
+    } else {
+      // If user has no families, return empty array
+      return NextResponse.json([])
     }
     
     // Find lifecycle events
