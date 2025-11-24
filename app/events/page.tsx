@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import TableImportExport from '@/app/components/TableImportExport'
 import {
   ChevronLeftIcon,
@@ -45,7 +46,7 @@ interface CalendarEvent {
 
 type ViewMode = 'table' | 'calendar'
 
-export default function EventsPage() {
+function EventsPageContent() {
   const searchParams = useSearchParams()
   const [events, setEvents] = useState<LifecycleEvent[]>([])
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
@@ -578,5 +579,19 @@ export default function EventsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-12">Loading events...</div>
+        </div>
+      </div>
+    }>
+      <EventsPageContent />
+    </Suspense>
   )
 }
