@@ -46,11 +46,14 @@ interface CalendarEvent {
 type ViewMode = 'table' | 'calendar'
 
 export default function EventsPage() {
+  const searchParams = useSearchParams()
   const [events, setEvents] = useState<LifecycleEvent[]>([])
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState<string>('all')
-  const [viewMode, setViewMode] = useState<ViewMode>('table')
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    (searchParams?.get('view') === 'calendar' ? 'calendar' : 'table') as ViewMode
+  )
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
