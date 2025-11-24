@@ -36,7 +36,8 @@ import {
   Squares2X2Icon,
   CalendarDaysIcon,
   ShieldCheckIcon,
-  ComputerDesktopIcon
+  ComputerDesktopIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -111,6 +112,7 @@ export default function Sidebar() {
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/communication', label: 'Communication', icon: ChatBubbleLeftRightIcon, iconSolid: ChatBubbleLeftRightIconSolid },
+      { href: '/automation-rules', label: 'Automation Rules', icon: SparklesIcon, iconSolid: SparklesIconSolid },
       { href: '/settings', label: 'Settings', icon: CogIcon, iconSolid: CogIconSolid },
       ...(user?.role === 'super_admin' ? [
         { href: '/users', label: 'Users', icon: UsersIcon, iconSolid: UsersIconSolid }
