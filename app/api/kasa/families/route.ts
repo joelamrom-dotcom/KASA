@@ -239,23 +239,46 @@ export async function POST(request: NextRequest) {
         )
       }
       
-      // Also check if a User account exists with this email (to prevent conflicts)
+      // Check if a User account exists with this email (to prevent login conflicts)
       const existingUser = await User.findOne({ email: emailLower })
-      if (existingUser && existingUser.role === 'family') {
-        // If user exists and is a family user, check if they're already linked to a family
-        if (existingUser.familyId && existingUser.familyId.toString() !== existingFamilyWithEmail?._id?.toString()) {
-          const linkedFamily = await Family.findById(existingUser.familyId)
-          if (linkedFamily) {
+      if (existingUser) {
+        // If user exists with role 'family', they're already linked to a family account
+        if (existingUser.role === 'family') {
+          if (existingUser.familyId) {
+            const linkedFamily = await Family.findById(existingUser.familyId)
+            if (linkedFamily) {
+              return NextResponse.json(
+                { 
+                  error: 'This email address is already associated with a family account',
+                  details: `Email "${email}" is already linked to family "${linkedFamily.name}" and can be used for family login`,
+                  existingFamilyId: linkedFamily._id.toString(),
+                  existingFamilyName: linkedFamily.name,
+                  loginType: 'family'
+                },
+                { status: 409 } // 409 Conflict
+              )
+            }
+          } else {
+            // User exists with family role but no familyId - this is a conflict
             return NextResponse.json(
               { 
-                error: 'This email address is already associated with a family account',
-                details: `Email "${email}" is already linked to family "${linkedFamily.name}"`,
-                existingFamilyId: linkedFamily._id.toString(),
-                existingFamilyName: linkedFamily.name
+                error: 'This email address is already registered as a family user',
+                details: `Email "${email}" is already registered for family login. Please use a different email or contact support.`,
+                loginType: 'family'
               },
               { status: 409 } // 409 Conflict
             )
           }
+        } else if (existingUser.role === 'admin' || existingUser.role === 'super_admin') {
+          // If user exists with admin role, they can't use this email for a family
+          return NextResponse.json(
+            { 
+              error: 'This email address is already registered as an admin account',
+              details: `Email "${email}" is already registered for admin login. Family accounts cannot use admin email addresses.`,
+              loginType: 'admin'
+            },
+            { status: 409 } // 409 Conflict
+          )
         }
       }
     }
