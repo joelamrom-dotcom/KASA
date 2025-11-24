@@ -3806,7 +3806,7 @@ export default function FamilyDetailPage() {
                             </div>
                             {event.changes && (
                               <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded">
-                                <pre className="whitespace-pre-wrap">{JSON.stringify(event.changes, null, 2)}</pre>
+                                {formatChanges(event.changes)}
                               </div>
                             )}
                           </div>
