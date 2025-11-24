@@ -437,6 +437,8 @@ export default function FamiliesPage() {
   }
 
   const handleDeleteCancel = () => {
+    console.log('handleDeleteCancel called - closing delete confirmation')
+    console.trace('Stack trace for handleDeleteCancel')
     setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
   }
 
@@ -1153,11 +1155,19 @@ export default function FamiliesPage() {
                     // Prevent row click from interfering with button clicks
                     const target = e.target as HTMLElement
                     if (target.closest('button') || target.closest('a') || target.closest('input')) {
+                      e.stopPropagation()
                       return
                     }
                     // Allow clicking on the name link to navigate
                     if (target.closest('[href]')) {
                       return
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    // Prevent mousedown from propagating if clicking on interactive elements
+                    const target = e.target as HTMLElement
+                    if (target.closest('button') || target.closest('a') || target.closest('input')) {
+                      e.stopPropagation()
                     }
                   }}
                 >
@@ -1212,10 +1222,19 @@ export default function FamiliesPage() {
                       </button>
                       <button
                         type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                        }}
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
+                          console.log('Delete button onClick fired')
                           handleDeleteClick(family)
+                        }}
+                        onMouseUp={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
                         }}
                         className="text-red-600 hover:text-red-800 transition-colors"
                         title="Delete Family"
@@ -1522,17 +1541,20 @@ export default function FamiliesPage() {
         />
 
         {/* Confirmation Dialog */}
-        <ConfirmationDialog
-          isOpen={deleteConfirm.isOpen}
-          title="Delete Family"
-          message={`Are you sure you want to delete "${deleteConfirm.familyName}"? This will move the family to the recycle bin.`}
-          confirmText={isDeleting ? 'Deleting...' : 'Delete'}
-          cancelText="Cancel"
-          onConfirm={handleDeleteConfirm}
-          onClose={handleDeleteCancel}
-          type="danger"
-          isLoading={isDeleting}
-        />
+        {deleteConfirm.familyId && (
+          <ConfirmationDialog
+            key={`delete-${deleteConfirm.familyId}`}
+            isOpen={deleteConfirm.isOpen}
+            title="Delete Family"
+            message={`Are you sure you want to delete "${deleteConfirm.familyName}"? This will move the family to the recycle bin.`}
+            confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+            cancelText="Cancel"
+            onConfirm={handleDeleteConfirm}
+            onClose={handleDeleteCancel}
+            type="danger"
+            isLoading={isDeleting}
+          />
+        )}
 
         {showModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">

@@ -27,21 +27,48 @@ export default function ConfirmationDialog({
   cancelText = 'Cancel',
   isLoading = false,
 }: ConfirmationDialogProps) {
-  // Prevent closing during loading
+  const openingTimeRef = React.useRef<number | null>(null)
+  const isOpeningRef = React.useRef(false)
+
+  // Prevent closing during loading or immediately after opening
   const handleClose = () => {
-    if (!isLoading) {
-      console.log('ConfirmationDialog: handleClose called')
-      onClose()
-    } else {
+    if (isLoading) {
       console.log('ConfirmationDialog: handleClose prevented - isLoading is true')
+      return
     }
+    
+    // Prevent closing if dialog was just opened (within 500ms)
+    const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
+    if (timeSinceOpen < 500) {
+      console.log('ConfirmationDialog: handleClose prevented - dialog just opened', {
+        timeSinceOpen: `${timeSinceOpen}ms`,
+        openingTime: openingTimeRef.current
+      })
+      console.trace('Stack trace for prevented close')
+      return
+    }
+    
+    console.log('ConfirmationDialog: handleClose called - allowing close', {
+      timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+    })
+    console.trace('Stack trace for handleClose')
+    onClose()
   }
 
   // Log when dialog opens/closes for debugging
   React.useEffect(() => {
     if (isOpen) {
+      openingTimeRef.current = Date.now()
+      isOpeningRef.current = true
       console.log('ConfirmationDialog: Dialog opened', { title, message })
+      // Reset opening flag after a delay
+      setTimeout(() => {
+        isOpeningRef.current = false
+        console.log('ConfirmationDialog: Opening guard disabled')
+      }, 500)
     } else {
+      openingTimeRef.current = null
+      isOpeningRef.current = false
       console.log('ConfirmationDialog: Dialog closed')
     }
   }, [isOpen, title, message])

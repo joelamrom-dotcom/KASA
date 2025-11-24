@@ -38,10 +38,11 @@ export default function Modal({
       justOpenedRef.current = true
       openTimeRef.current = Date.now()
       document.body.style.overflow = 'hidden'
-      // Reset the flag after a short delay to allow normal closing
+      // Reset the flag after a delay to allow normal closing
       setTimeout(() => {
         justOpenedRef.current = false
-      }, 100)
+        console.log('Modal opening guard disabled')
+      }, 300)
     } else {
       document.body.style.overflow = 'unset'
       justOpenedRef.current = false
@@ -55,6 +56,11 @@ export default function Modal({
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
+        // Prevent closing if modal was just opened
+        if (justOpenedRef.current || (openTimeRef.current && Date.now() - openTimeRef.current < 200)) {
+          console.log('Escape key prevented - modal just opened')
+          return
+        }
         onClose()
       }
     }
@@ -65,9 +71,15 @@ export default function Modal({
   if (!isOpen) return null
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Prevent closing if modal was just opened (within last 100ms)
-    if (justOpenedRef.current || (openTimeRef.current && Date.now() - openTimeRef.current < 100)) {
-      console.log('Modal just opened - preventing backdrop close')
+    // Prevent closing if modal was just opened (within last 300ms)
+    const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+    if (justOpenedRef.current || timeSinceOpen < 300) {
+      console.log('Modal just opened - preventing backdrop close', {
+        justOpened: justOpenedRef.current,
+        timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+      })
+      e.preventDefault()
+      e.stopPropagation()
       return
     }
 
@@ -81,7 +93,10 @@ export default function Modal({
       console.log('Backdrop clicked - closing modal')
       onClose()
     } else {
-      console.log('Click was on modal content, not backdrop - preventing close')
+      console.log('Click was on modal content, not backdrop - preventing close', {
+        targetTag: target.tagName,
+        currentTargetTag: currentTarget.tagName
+      })
     }
   }
 
