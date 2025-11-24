@@ -79,8 +79,16 @@ export async function GET(request: NextRequest) {
         console.log('GET /api/kasa/families - Family user: showing family', user.familyId)
       } else {
         // Regular admins see only their own families (where userId matches)
-        query = { userId: user.userId }
-        console.log('GET /api/kasa/families - Admin user: showing families for userId', user.userId)
+        // Note: If userId is not set on families, they won't show up
+        // For backward compatibility, also check if userId is null/undefined (legacy families)
+        query = { 
+          $or: [
+            { userId: user.userId },
+            { userId: { $exists: false } }, // Legacy families without userId
+            { userId: null } // Families with null userId
+          ]
+        }
+        console.log('GET /api/kasa/families - Admin user: showing families for userId', user.userId, 'or legacy families')
       }
     } else {
       // Non-impersonating super admin sees all families
