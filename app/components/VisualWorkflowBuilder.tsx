@@ -12,8 +12,17 @@ interface Node {
   position: { x: number; y: number }
 }
 
+interface AutomationRule {
+  trigger: {
+    type: string
+    config?: any
+  }
+  conditions: any[]
+  actions: any[]
+}
+
 interface VisualWorkflowBuilderProps {
-  onSave: (nodes: Node[]) => void
+  onSave: (rule: AutomationRule) => void
   onClose: () => void
   initialNodes?: Node[]
 }
