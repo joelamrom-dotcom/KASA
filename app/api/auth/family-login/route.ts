@@ -106,12 +106,19 @@ export async function POST(request: NextRequest) {
     const tokenEmail = user.email.toLowerCase().trim()
     
     // Create JWT token
+    // For family login, use 'family' role in token even if user is admin/super_admin
+    // This ensures they see the family view, not admin view
+    const tokenRole = user.familyId && (user.role === 'admin' || user.role === 'super_admin') 
+      ? 'family' 
+      : user.role
+    
     const token = jwt.sign(
       {
         userId: user._id.toString(),
         email: tokenEmail, // Use normalized email
-        role: user.role,
+        role: tokenRole, // Use 'family' role for family login view
         familyId: user.familyId?.toString(),
+        originalRole: user.role, // Store original role for reference
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -132,7 +139,8 @@ export async function POST(request: NextRequest) {
         email: userObj.email,
         firstName: userObj.firstName,
         lastName: userObj.lastName,
-        role: userObj.role,
+        role: tokenRole, // Return 'family' role for family login view
+        originalRole: userObj.role, // Include original role
         isActive: userObj.isActive,
         emailVerified: userObj.emailVerified,
         familyId: userObj.familyId?.toString(),
