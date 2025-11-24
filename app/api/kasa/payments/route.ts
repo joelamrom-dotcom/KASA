@@ -52,18 +52,26 @@ export async function GET(request: NextRequest) {
       
       if (user.role === 'family' && user.familyId) {
         // Family users see only their own family's payments
-        userFamilyIds = [user.familyId]
+        userFamilyIds = [user.familyId.toString()]
       } else {
         // Regular admins see only their own families' payments
         const userFamilies = await Family.find({ userId: user.userId }).select('_id').lean()
         userFamilyIds = userFamilies.map((f: any) => f._id.toString())
       }
       
-      // Filter payments to only those belonging to user's families
-      payments = payments.filter((payment: any) => {
-        const paymentFamilyId = payment.familyId?._id?.toString() || payment.familyId?.toString()
-        return userFamilyIds.includes(paymentFamilyId)
-      })
+      // If user has no families, they should see no payments (unless super_admin)
+      if (userFamilyIds.length === 0) {
+        payments = []
+      } else {
+        // Filter payments to only those belonging to user's families
+        payments = payments.filter((payment: any) => {
+          if (!payment.familyId) {
+            return false // Exclude payments with no family
+          }
+          const paymentFamilyId = payment.familyId?._id?.toString() || payment.familyId?.toString()
+          return paymentFamilyId && userFamilyIds.includes(paymentFamilyId)
+        })
+      }
     }
 
     return NextResponse.json(payments)
