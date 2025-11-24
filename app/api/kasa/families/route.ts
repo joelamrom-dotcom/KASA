@@ -384,8 +384,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Auto-create user account for family if email exists
+    // BUT: Skip if email belongs to an admin/super_admin (they manage families, not login as family)
     let familyUser = null
     let phoneNumber = ''
+    let shouldCreateFamilyUser = true
+    
     if (email) {
       try {
         // Check if user already exists with this email
@@ -394,8 +397,14 @@ export async function POST(request: NextRequest) {
         // Get phone number (prefer husbandCellPhone, then wifeCellPhone, then phone)
         phoneNumber = husbandCellPhone || wifeCellPhone || phone || ''
         
-        if (!existingUser) {
-          // Create user account for family
+        // If user exists and is admin/super_admin, don't create family user account
+        // Admins manage families, they don't login as family users
+        if (existingUser && (existingUser.role === 'admin' || existingUser.role === 'super_admin')) {
+          console.log(`ℹ️ Skipping family user creation - email ${email} belongs to admin/super_admin ${existingUser.role}`)
+          shouldCreateFamilyUser = false
+          familyUser = null
+        } else if (!existingUser) {
+          // Create user account for family (only if email doesn't belong to admin)
           familyUser = await User.create({
             email: email.toLowerCase(),
             firstName: husbandFirstName || wifeFirstName || name.split(' ')[0] || 'Family',
@@ -432,11 +441,13 @@ export async function POST(request: NextRequest) {
       } catch (error: any) {
         // Log error but don't fail family creation if user creation fails
         console.error(`⚠️ Failed to create user account for family ${family.name}:`, error.message)
+        shouldCreateFamilyUser = false
       }
     }
 
     // Send welcome email with login details (if enabled in settings)
-    if (email) {
+    // BUT: Don't send if email belongs to an admin/super_admin (they don't need family login info)
+    if (email && shouldCreateFamilyUser && familyUser) {
       try {
         // Check if welcome emails are enabled for this admin
         const { AutomationSettings } = await import('@/lib/models')
@@ -476,6 +487,8 @@ export async function POST(request: NextRequest) {
         // Log error but don't fail family creation if email sending fails
         console.error(`⚠️ Failed to send welcome email to ${email}:`, emailError.message)
       }
+    } else if (email && !shouldCreateFamilyUser) {
+      console.log(`ℹ️ Welcome email skipped - email ${email} belongs to admin/super_admin, no family login needed`)
     }
 
     // Send welcome SMS (if enabled in settings and phone number available)
