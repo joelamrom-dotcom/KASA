@@ -16,7 +16,6 @@ import {
 import AutomationRuleBuilder from '@/app/components/AutomationRuleBuilder'
 import VisualWorkflowBuilder from '@/app/components/VisualWorkflowBuilder'
 import RuleTemplatesModal from '@/app/components/RuleTemplatesModal'
-import VisualWorkflowBuilder from '@/app/components/VisualWorkflowBuilder'
 
 interface AutomationRule {
   _id: string
