@@ -85,8 +85,6 @@ export async function PUT(
     if ('hebrewFirstName' in body) {
       updateData.hebrewFirstName = hebrewFirstName || null
     }
-    // Always set Hebrew last name from family's Hebrew name (must match family)
-    updateData.hebrewLastName = family.hebrewName || null
 
     // Only add optional fields if they have values
     if (finalHebrewBirthDate && finalHebrewBirthDate.trim()) {
@@ -175,6 +173,9 @@ export async function PUT(
         { status: 403 }
       )
     }
+
+    // Always set Hebrew last name from family's Hebrew name (must match family)
+    updateData.hebrewLastName = family.hebrewName || null
 
     // Get old member data for audit log
     const oldMember = await FamilyMember.findById(params.memberId)
