@@ -397,6 +397,7 @@ export default function FamiliesPage() {
   }
 
   const handleDeleteClick = (family: Family) => {
+    console.log('Delete button clicked for family:', family.name, family._id)
     setDeleteConfirm({
       isOpen: true,
       familyId: family._id,
@@ -405,17 +406,24 @@ export default function FamiliesPage() {
   }
 
   const handleDeleteConfirm = async () => {
-    if (!deleteConfirm.familyId) return
+    if (!deleteConfirm.familyId) {
+      console.error('No family ID provided for deletion')
+      return
+    }
     
+    console.log('Confirming deletion of family:', deleteConfirm.familyId, deleteConfirm.familyName)
     setIsDeleting(true)
     try {
       const res = await fetch(`/api/kasa/families/${deleteConfirm.familyId}`, { method: 'DELETE' })
+      const responseData = await res.json()
+      
       if (res.ok) {
+        console.log('Family deleted successfully:', responseData)
         showToast(`Family "${deleteConfirm.familyName}" moved to recycle bin`, 'success')
         fetchFamilies()
       } else {
-        const error = await res.json()
-        showToast(`Error deleting family: ${error.error || 'Unknown error'}`, 'error')
+        console.error('Delete failed:', responseData)
+        showToast(`Error deleting family: ${responseData.error || 'Unknown error'}`, 'error')
       }
     } catch (error) {
       console.error('Error deleting family:', error)
@@ -1175,14 +1183,24 @@ export default function FamiliesPage() {
                         <PlusIcon className="h-5 w-5" />
                       </Link>
                       <button
-                        onClick={() => handleEdit(family)}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleEdit(family)
+                        }}
                         className="text-green-600 hover:text-green-800 transition-colors"
                         title="Edit Family"
                       >
                         <PencilIcon className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => handleDeleteClick(family)}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleDeleteClick(family)
+                        }}
                         className="text-red-600 hover:text-red-800 transition-colors"
                         title="Delete Family"
                       >
@@ -1321,7 +1339,12 @@ export default function FamiliesPage() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteClick(family)}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleDeleteClick(family)
+                        }}
                         className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
                       >
                         Delete
@@ -1393,7 +1416,12 @@ export default function FamiliesPage() {
                             <PencilIcon className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteClick(family)}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleDeleteClick(family)
+                            }}
                             className="p-2 text-red-600 hover:bg-red-50 rounded"
                             title="Delete"
                           >
