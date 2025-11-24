@@ -73,9 +73,9 @@ export default function EventsPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              All Lifecycle Events
+              Lifecycle Events
             </h1>
-            <p className="text-gray-600">View and manage all lifecycle events</p>
+            <p className="text-gray-600">View and manage lifecycle events (weddings, bar mitzvahs, births) in a table format</p>
           </div>
           <div className="flex items-center gap-3">
             <TableImportExport

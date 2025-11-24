@@ -224,9 +224,12 @@ export default function CalendarPage() {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Calendar View</h1>
               <p className="text-gray-600 mt-1">
-                {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                View all events, tasks, and payments on a calendar
+                <span className="ml-2 text-sm">
+                  ({currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
+                </span>
               </p>
             </div>
             
