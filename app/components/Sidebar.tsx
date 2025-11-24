@@ -65,7 +65,8 @@ import {
   ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid,
   CalendarDaysIcon as CalendarDaysIconSolid,
   ShieldCheckIcon as ShieldCheckIconSolid,
-  ComputerDesktopIcon as ComputerDesktopIconSolid
+  ComputerDesktopIcon as ComputerDesktopIconSolid,
+  SparklesIcon as SparklesIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
