@@ -132,12 +132,15 @@ export async function POST(
       barMitzvahDate = calculateBarMitzvahDate(finalHebrewBirthDate)
     }
 
+    // Set Hebrew last name from family's Hebrew name (always match family)
+    const familyHebrewLastName = family.hebrewName || null
+
     const member = await FamilyMember.create({
       familyId: params.id,
       firstName,
       hebrewFirstName: hebrewFirstName || undefined,
       lastName,
-      hebrewLastName: hebrewLastName || undefined,
+      hebrewLastName: familyHebrewLastName || undefined,
       birthDate: new Date(birthDate),
       hebrewBirthDate: finalHebrewBirthDate || undefined,
       gender: gender || undefined,

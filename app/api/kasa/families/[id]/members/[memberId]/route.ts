@@ -85,9 +85,8 @@ export async function PUT(
     if ('hebrewFirstName' in body) {
       updateData.hebrewFirstName = hebrewFirstName || null
     }
-    if ('hebrewLastName' in body) {
-      updateData.hebrewLastName = hebrewLastName || null
-    }
+    // Always set Hebrew last name from family's Hebrew name (must match family)
+    updateData.hebrewLastName = family.hebrewName || null
 
     // Only add optional fields if they have values
     if (finalHebrewBirthDate && finalHebrewBirthDate.trim()) {
