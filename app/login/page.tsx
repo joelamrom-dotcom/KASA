@@ -99,7 +99,7 @@ function LoginForm() {
         
         // Set cookie for server-side access
         // For Vercel, don't set domain - let browser handle it
-        const isProduction = window.location.hostname !== 'localhost'
+        const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1')
         const isHttps = window.location.protocol === 'https:'
         
         // Set cookie with appropriate attributes
@@ -114,18 +114,21 @@ function LoginForm() {
         // Verify token was stored
         const storedToken = localStorage.getItem('token')
         const storedUser = localStorage.getItem('user')
+        const cookieSet = document.cookie.includes('token=')
         console.log('✅ Token stored in localStorage:', storedToken ? 'Yes' : 'No')
         console.log('✅ User stored in localStorage:', storedUser ? 'Yes' : 'No')
+        console.log('✅ Cookie set:', cookieSet ? 'Yes' : 'No')
         
         // Get redirect URL or default to dashboard
         const redirectUrl = searchParams?.get('redirect') || '/'
         
-        // Use replace instead of href to prevent back button issues
-        // Small delay to ensure localStorage/cookies are persisted
+        // Use window.location.href instead of replace to ensure full page reload
+        // Longer delay to ensure cookie is set and middleware can read it
         setTimeout(() => {
           console.log('🔄 Redirecting to:', redirectUrl)
-          window.location.replace(redirectUrl)
-        }, 500)
+          // Force full page reload to ensure middleware sees the cookie
+          window.location.href = redirectUrl
+        }, 1000)
       } else {
         setError(data.error || 'Login failed')
       }
