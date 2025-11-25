@@ -31,12 +31,10 @@ export default function ConfirmationDialog({
   const userInitiatedCloseRef = React.useRef(false)
   const guardActiveRef = React.useRef(false)
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-  const prevIsOpenRef = React.useRef(isOpen)
   
-  // Simple effect - only set guard when opening, don't try to block closes here
+  // Track when dialog opens
   React.useEffect(() => {
-    // Only when transitioning from closed to open
-    if (isOpen && !prevIsOpenRef.current) {
+    if (isOpen) {
       const openTime = Date.now()
       openTimeRef.current = openTime
       userInitiatedCloseRef.current = false
@@ -52,9 +50,16 @@ export default function ConfirmationDialog({
         guardActiveRef.current = false
         console.log('ConfirmationDialog: Guard disabled after 10 seconds')
       }, 10000)
+    } else {
+      // Reset when closed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+      openTimeRef.current = null
+      guardActiveRef.current = false
+      userInitiatedCloseRef.current = false
     }
-    
-    prevIsOpenRef.current = isOpen
     
     return () => {
       if (timeoutRef.current) {
@@ -64,18 +69,17 @@ export default function ConfirmationDialog({
     }
   }, [isOpen, title])
   
-  // Simple calculation - if guard active, force open
-  const effectiveIsOpen = guardActiveRef.current && openTimeRef.current ? true : isOpen
+  // Use isOpen directly - no override logic to avoid render loops
+  const effectiveIsOpen = isOpen
   
-  // Prevent closing during loading or if not user-initiated
+  // Prevent closing during loading or if guard is active and not user-initiated
   const handleClose = React.useCallback(() => {
     console.log('ConfirmationDialog: handleClose called', {
       isLoading,
       isOpen,
       guardActive: guardActiveRef.current,
       userInitiated: userInitiatedCloseRef.current,
-      timeSinceOpen: openTimeRef.current ? Date.now() - openTimeRef.current : null,
-      stackTrace: new Error().stack
+      timeSinceOpen: openTimeRef.current ? Date.now() - openTimeRef.current : null
     })
     
     if (isLoading) {
@@ -83,18 +87,16 @@ export default function ConfirmationDialog({
       return
     }
     
-    // Always allow close if user explicitly clicked Cancel button
-    // The Cancel button should set userInitiatedCloseRef.current = true before calling this
-    if (!userInitiatedCloseRef.current) {
+    // Block if guard is active and not user-initiated
+    if (guardActiveRef.current && !userInitiatedCloseRef.current) {
       const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-      console.warn('ConfirmationDialog: handleClose BLOCKED - not user-initiated', {
-        timeSinceOpen: `${timeSinceOpen}ms`,
-        guardActive: guardActiveRef.current
+      console.warn('ConfirmationDialog: handleClose BLOCKED - guard active, not user-initiated', {
+        timeSinceOpen: `${timeSinceOpen}ms`
       })
       return
     }
     
-    console.log('ConfirmationDialog: handleClose allowed - user-initiated close')
+    console.log('ConfirmationDialog: handleClose allowed')
     onClose()
   }, [isLoading, isOpen, onClose])
   
