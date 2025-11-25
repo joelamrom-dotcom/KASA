@@ -131,9 +131,6 @@ export default function ConfirmationDialog({
     }
   }, [isOpen, title, message, internalIsOpen])
   
-  // Use internal state if we're in the "should stay open" period, otherwise use prop
-  // Always prefer internalIsOpen when shouldStayOpenRef is true
-  const effectiveIsOpen = shouldStayOpenRef.current ? internalIsOpen : (internalIsOpen || isOpen)
   const icons = {
     danger: ExclamationTriangleIcon,
     warning: ExclamationTriangleIcon,
