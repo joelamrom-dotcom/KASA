@@ -141,7 +141,7 @@ export default function ConfirmationDialog({
 
   return (
     <Modal 
-      isOpen={isOpen} 
+      isOpen={effectiveIsOpen} 
       onClose={handleClose} 
       title="" 
       showCloseButton={false}
