@@ -27,109 +27,14 @@ export default function ConfirmationDialog({
   cancelText = 'Cancel',
   isLoading = false,
 }: ConfirmationDialogProps) {
-  const openingTimeRef = React.useRef<number | null>(null)
-  const isOpeningRef = React.useRef(false)
-  // Internal state to override isOpen prop when dialog was just opened
-  const [internalIsOpen, setInternalIsOpen] = React.useState(false)
-  const shouldStayOpenRef = React.useRef(false)
-
-  // Prevent closing during loading or immediately after opening
+  // Prevent closing during loading
   const handleClose = React.useCallback(() => {
     if (isLoading) {
       console.log('ConfirmationDialog: handleClose prevented - isLoading is true')
       return
     }
-    
-    // Prevent closing if dialog was just opened (within 3000ms = 3 seconds)
-    // This prevents accidental closes from event propagation
-    const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
-    if (timeSinceOpen < 3000) {
-      console.log('ConfirmationDialog: handleClose prevented - dialog just opened', {
-        timeSinceOpen: `${timeSinceOpen}ms`,
-        openingTime: openingTimeRef.current,
-        isOpening: isOpeningRef.current,
-        isOpen: isOpen
-      })
-      console.trace('Stack trace for prevented close')
-      return
-    }
-    
-    // Also prevent if the opening flag is still set
-    if (isOpeningRef.current) {
-      console.log('ConfirmationDialog: handleClose prevented - isOpening flag is true')
-      return
-    }
-    
-    // Double check that dialog is actually open
-    if (!isOpen && !internalIsOpen) {
-      console.log('ConfirmationDialog: handleClose prevented - dialog is not open')
-      return
-    }
-    
-    // If we're in the "should stay open" period, prevent close
-    if (shouldStayOpenRef.current) {
-      const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
-      if (timeSinceOpen < 10000) {
-        console.log('ConfirmationDialog: handleClose prevented - should stay open period active', {
-          timeSinceOpen: `${timeSinceOpen}ms`
-        })
-        return
-      }
-    }
-    
-    // Clear the should stay open flag
-    shouldStayOpenRef.current = false
-    setInternalIsOpen(false)
-    
-    console.log('ConfirmationDialog: handleClose called - allowing close', {
-      timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
-    })
-    console.trace('Stack trace for handleClose')
     onClose()
-  }, [isLoading, isOpen, internalIsOpen, onClose])
-
-  // Log when dialog opens/closes for debugging and manage internal state
-  React.useEffect(() => {
-    if (isOpen) {
-      // Set the opening time immediately when dialog opens
-      const openTime = Date.now()
-      openingTimeRef.current = openTime
-      isOpeningRef.current = true
-      shouldStayOpenRef.current = true
-      setInternalIsOpen(true)
-      console.log('ConfirmationDialog: Dialog opened', { title, message, openTime })
-      // Reset opening flag after a delay to allow normal closing
-      setTimeout(() => {
-        isOpeningRef.current = false
-        shouldStayOpenRef.current = false
-        console.log('ConfirmationDialog: Opening guard disabled', {
-          timeSinceOpen: Date.now() - openTime
-        })
-      }, 10000) // Extended to 10 seconds to match parent guard
-    } else {
-      // Only close if we're not in the "should stay open" period
-      const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
-      if (shouldStayOpenRef.current && timeSinceOpen < 10000) {
-        console.warn('ConfirmationDialog: Prevented premature close - forcing dialog to stay open', {
-          timeSinceOpen: `${timeSinceOpen}ms`,
-          isOpening: isOpeningRef.current,
-          shouldStayOpen: shouldStayOpenRef.current
-        })
-        // Force it to stay open - don't update internalIsOpen to false
-        // The internalIsOpen should already be true from when it opened
-        if (!internalIsOpen) {
-          setInternalIsOpen(true)
-        }
-        return
-      }
-      // Allow normal close only if guard period has passed
-      openingTimeRef.current = null
-      isOpeningRef.current = false
-      shouldStayOpenRef.current = false
-      setInternalIsOpen(false)
-      console.log('ConfirmationDialog: Dialog closed')
-    }
-  }, [isOpen, title, message, internalIsOpen])
+  }, [isLoading, onClose])
   
   const icons = {
     danger: ExclamationTriangleIcon,
@@ -153,50 +58,17 @@ export default function ConfirmationDialog({
   }
 
   const Icon = icons[type]
-
-  // Memoize the modal to prevent unnecessary re-renders
-  // Use a stable key that doesn't change when effectiveIsOpen changes during guard period
-  const modalKey = React.useMemo(() => `confirmation-${title}-${openingTimeRef.current || 'new'}`, [title])
-  
-  // Calculate effectiveIsOpen - prefer internal state when guard is active
-  const effectiveIsOpen = React.useMemo(() => {
-    if (shouldStayOpenRef.current) {
-      // During guard period, always return true if we were ever open
-      return internalIsOpen || isOpen
-    }
-    // After guard period, use the prop
-    return isOpen
-  }, [isOpen, internalIsOpen])
-  
-  console.log('ConfirmationDialog: Rendering with effectiveIsOpen', {
-    effectiveIsOpen,
-    isOpen,
-    internalIsOpen,
-    shouldStayOpen: shouldStayOpenRef.current,
-    timeSinceOpen: openingTimeRef.current ? Date.now() - openingTimeRef.current : null
-  })
   
   return (
     <Modal 
-      key={modalKey}
-      isOpen={effectiveIsOpen} 
+      isOpen={isOpen} 
       onClose={handleClose} 
       title="" 
       showCloseButton={false}
-      disableBackdropClick={true}
-      disableEscapeKey={true}
+      disableBackdropClick={false}
+      disableEscapeKey={false}
     >
-      <div 
-        className="p-6"
-        onClick={(e) => {
-          // Prevent any clicks inside the dialog from propagating
-          e.stopPropagation()
-        }}
-        onMouseDown={(e) => {
-          // Prevent mousedown events from propagating
-          e.stopPropagation()
-        }}
-      >
+      <div className="p-6">
         <div className="flex items-start gap-4">
           <div className={`flex-shrink-0 p-3 rounded-full ${colors[type]}`}>
             <Icon className="h-6 w-6" />

@@ -149,25 +149,6 @@ export default function FamiliesPage() {
     familyName: ''
   })
   const [isDeleting, setIsDeleting] = useState(false)
-  const deleteConfirmOpeningRef = useRef(false)
-  const deleteConfirmOpenTimeRef = useRef<number | null>(null)
-  
-  // Wrapper for setDeleteConfirm that prevents closing while guard is active
-  const setDeleteConfirmSafe = useCallback((newState: { isOpen: boolean; familyId: string | null; familyName: string }) => {
-    // If trying to close while guard is active, prevent it
-    if (!newState.isOpen && deleteConfirmOpeningRef.current) {
-      const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
-      if (timeSinceOpen < 10000) {
-        console.warn('setDeleteConfirm blocked - trying to close while guard is active', {
-          timeSinceOpen: `${timeSinceOpen}ms`,
-          openingGuard: deleteConfirmOpeningRef.current
-        })
-        // Keep it open
-        return
-      }
-    }
-    setDeleteConfirm(newState)
-  }, [])
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
   const [showBulkEmailModal, setShowBulkEmailModal] = useState(false)
@@ -417,41 +398,12 @@ export default function FamiliesPage() {
 
   const handleDeleteClick = (family: Family) => {
     console.log('Delete button clicked for family:', family.name, family._id)
-    // Set opening flag to prevent immediate closure
-    deleteConfirmOpeningRef.current = true
-    deleteConfirmOpenTimeRef.current = Date.now()
-    
-      // Use requestAnimationFrame to ensure this happens after all event handlers
-      // and the DOM has updated
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // Set the state to open the dialog
-          setDeleteConfirmSafe({
-            isOpen: true,
-            familyId: family._id,
-            familyName: family.name
-          })
-          console.log('Delete confirm state set to open')
-        })
-      })
-    
-    // Reset opening flag after delay (extended to 10 seconds for extra safety)
-    setTimeout(() => {
-      deleteConfirmOpeningRef.current = false
-      console.log('Delete confirm opening guard disabled')
-    }, 10000)
-  }
-  
-  // Monitor deleteConfirm state changes
-  useEffect(() => {
-    console.log('deleteConfirm state changed:', {
-      isOpen: deleteConfirm.isOpen,
-      familyId: deleteConfirm.familyId,
-      familyName: deleteConfirm.familyName,
-      openingGuard: deleteConfirmOpeningRef.current,
-      timeSinceOpen: deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : null
+    setDeleteConfirm({
+      isOpen: true,
+      familyId: family._id,
+      familyName: family.name
     })
-  }, [deleteConfirm])
+  }
 
   const handleDeleteConfirm = async () => {
     if (!deleteConfirm.familyId) {
@@ -1630,23 +1582,7 @@ export default function FamiliesPage() {
             confirmText={isDeleting ? 'Deleting...' : 'Delete'}
             cancelText="Cancel"
             onConfirm={handleDeleteConfirm}
-            onClose={() => {
-      // Double-check the guard before closing (extended to 10 seconds)
-      const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
-      if (deleteConfirmOpeningRef.current || timeSinceOpen < 10000) {
-                console.log('onClose prevented by parent guard', {
-                  openingGuard: deleteConfirmOpeningRef.current,
-                  timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened',
-                  isOpen: deleteConfirm.isOpen,
-                  familyId: deleteConfirm.familyId
-                })
-                console.trace('Stack trace for prevented onClose')
-                // Don't call handleDeleteCancel - just return
-                return
-              }
-              console.log('onClose allowed - calling handleDeleteCancel')
-              handleDeleteCancel()
-            }}
+            onClose={handleDeleteCancel}
             type="danger"
             isLoading={isDeleting}
           />
