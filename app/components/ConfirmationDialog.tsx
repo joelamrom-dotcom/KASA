@@ -44,17 +44,26 @@ export default function ConfirmationDialog({
         timestamp: Date.now()
       })
     } else {
-      // Only reset guards if user explicitly closed it
-      if (!userInitiatedCloseRef.current) {
+      // Only reset guards if user explicitly closed it OR if dialog was never opened
+      const wasNeverOpened = openTimeRef.current === null
+      if (!userInitiatedCloseRef.current && !wasNeverOpened) {
         console.warn('ConfirmationDialog: Dialog closed without user action - this should not happen!', {
           title,
           timeSinceOpen: openTimeRef.current ? Date.now() - openTimeRef.current : null
         })
+        // If dialog was closed without user action, try to keep it open by not resetting guards
+        // But we can't prevent the isOpen prop from changing, so we'll just log it
       }
-      openTimeRef.current = null
-      shouldPreventCloseRef.current = false
-      userInitiatedCloseRef.current = false
-      console.log('ConfirmationDialog: Dialog closed, resetting guards', { title })
+      // Only reset guards if user explicitly closed it
+      if (userInitiatedCloseRef.current || wasNeverOpened) {
+        openTimeRef.current = null
+        shouldPreventCloseRef.current = false
+        userInitiatedCloseRef.current = false
+        console.log('ConfirmationDialog: Dialog closed, resetting guards', { title, userInitiated: userInitiatedCloseRef.current })
+      } else {
+        // Keep guards active if closed without user action
+        console.warn('ConfirmationDialog: Keeping guards active - dialog closed without user action', { title })
+      }
     }
   }, [isOpen, title])
   
