@@ -30,6 +30,7 @@ export default function ConfirmationDialog({
   const openTimeRef = React.useRef<number | null>(null)
   const shouldPreventCloseRef = React.useRef(false)
   const userInitiatedCloseRef = React.useRef(false)
+  const [internalIsOpen, setInternalIsOpen] = React.useState(isOpen)
   
   // Track when dialog opens - keep guard active until user explicitly closes
   React.useEffect(() => {
@@ -38,34 +39,51 @@ export default function ConfirmationDialog({
       openTimeRef.current = openTime
       shouldPreventCloseRef.current = true
       userInitiatedCloseRef.current = false
+      setInternalIsOpen(true) // Force internal state to true
       console.log('ConfirmationDialog: Dialog opened, setting prevent close guard', { 
         title,
         openTime,
         timestamp: Date.now()
       })
     } else {
-      // Only reset guards if user explicitly closed it OR if dialog was never opened
-      const wasNeverOpened = openTimeRef.current === null
-      if (!userInitiatedCloseRef.current && !wasNeverOpened) {
-        console.warn('ConfirmationDialog: Dialog closed without user action - this should not happen!', {
+      // Check if this is a premature close
+      const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+      const isPrematureClose = timeSinceOpen < 10000 && !userInitiatedCloseRef.current
+      
+      if (isPrematureClose) {
+        console.warn('ConfirmationDialog: BLOCKED premature close - forcing dialog to stay open', {
           title,
-          timeSinceOpen: openTimeRef.current ? Date.now() - openTimeRef.current : null
+          timeSinceOpen: `${timeSinceOpen}ms`,
+          userInitiated: userInitiatedCloseRef.current
         })
-        // If dialog was closed without user action, try to keep it open by not resetting guards
-        // But we can't prevent the isOpen prop from changing, so we'll just log it
+        // Keep internal state open
+        setInternalIsOpen(true)
+        return // Don't reset guards
       }
-      // Only reset guards if user explicitly closed it
+      
+      // Only reset if user explicitly closed it OR if dialog was never opened
+      const wasNeverOpened = openTimeRef.current === null
       if (userInitiatedCloseRef.current || wasNeverOpened) {
         openTimeRef.current = null
         shouldPreventCloseRef.current = false
         userInitiatedCloseRef.current = false
+        setInternalIsOpen(false)
         console.log('ConfirmationDialog: Dialog closed, resetting guards', { title, userInitiated: userInitiatedCloseRef.current })
-      } else {
-        // Keep guards active if closed without user action
-        console.warn('ConfirmationDialog: Keeping guards active - dialog closed without user action', { title })
       }
     }
   }, [isOpen, title])
+  
+  // Calculate effective isOpen - prefer internal state if guard is active
+  const effectiveIsOpen = React.useMemo(() => {
+    if (!isOpen) {
+      const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+      const isPrematureClose = timeSinceOpen < 10000 && !userInitiatedCloseRef.current
+      if (isPrematureClose) {
+        return true // Force open during guard period
+      }
+    }
+    return isOpen && internalIsOpen
+  }, [isOpen, internalIsOpen])
   
   // Prevent closing during loading or if not user-initiated
   const handleClose = React.useCallback(() => {
