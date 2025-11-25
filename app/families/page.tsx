@@ -535,12 +535,30 @@ export default function FamiliesPage() {
     }
   }
 
-  const handleDeleteCancel = () => {
+  const handleDeleteCancel = useCallback(() => {
+    const currentState = deleteConfirmRef.current
+    const timeSinceOpen = currentState.isOpen && (currentState as any).openTime 
+      ? Date.now() - (currentState as any).openTime 
+      : Infinity
+    
     console.log('handleDeleteCancel called - closing delete confirmation', {
+      currentDeleteConfirm: currentState,
+      timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened',
+      timestamp: Date.now(),
       stackTrace: new Error().stack
     })
+    
+    // Block if dialog was just opened (within 5 seconds)
+    if (currentState.isOpen && timeSinceOpen < 5000) {
+      console.warn('handleDeleteCancel: BLOCKED - dialog just opened', {
+        timeSinceOpen: `${timeSinceOpen}ms`,
+        familyId: currentState.familyId
+      })
+      return
+    }
+    
     setDeleteConfirmWithLog({ isOpen: false, familyId: null, familyName: '' })
-  }
+  }, [])
 
   const resetForm = () => {
     // No default selection - user must explicitly choose
