@@ -30,64 +30,73 @@ export default function ConfirmationDialog({
   const openTimeRef = React.useRef<number | null>(null)
   const shouldPreventCloseRef = React.useRef(false)
   const userInitiatedCloseRef = React.useRef(false)
-  const forceOpenRef = React.useRef(false)
+  const ignoreIsOpenPropRef = React.useRef(false)
+  const [localIsOpen, setLocalIsOpen] = React.useState(isOpen)
   
-  // Track when dialog opens - keep guard active until user explicitly closes
+  // Track when dialog opens - completely ignore isOpen prop for 10 seconds
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !localIsOpen) {
+      // Dialog is opening
       const openTime = Date.now()
       openTimeRef.current = openTime
       shouldPreventCloseRef.current = true
       userInitiatedCloseRef.current = false
-      forceOpenRef.current = true
-      console.log('ConfirmationDialog: Dialog opened, setting prevent close guard', { 
+      ignoreIsOpenPropRef.current = true
+      setLocalIsOpen(true)
+      console.log('ConfirmationDialog: Dialog opened, ignoring isOpen prop for 10 seconds', { 
         title,
         openTime,
         timestamp: Date.now()
       })
       
-      // Disable force open after 10 seconds
-      setTimeout(() => {
-        forceOpenRef.current = false
-        console.log('ConfirmationDialog: Force open guard disabled after 10 seconds')
+      // Stop ignoring isOpen prop after 10 seconds
+      const timeoutId = setTimeout(() => {
+        ignoreIsOpenPropRef.current = false
+        console.log('ConfirmationDialog: Stopped ignoring isOpen prop after 10 seconds')
+        // Sync with parent's isOpen prop
+        if (!isOpen) {
+          setLocalIsOpen(false)
+        }
       }, 10000)
-    } else {
-      // Check if this is a premature close
-      const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-      const isPrematureClose = timeSinceOpen < 10000 && !userInitiatedCloseRef.current && forceOpenRef.current
       
-      if (isPrematureClose) {
-        console.warn('ConfirmationDialog: BLOCKED premature close - forcing dialog to stay open', {
-          title,
-          timeSinceOpen: `${timeSinceOpen}ms`,
-          userInitiated: userInitiatedCloseRef.current
-        })
-        // Don't reset guards - keep dialog open
-        return
-      }
-      
-      // Only reset if user explicitly closed it OR if dialog was never opened
-      const wasNeverOpened = openTimeRef.current === null
-      if (userInitiatedCloseRef.current || wasNeverOpened) {
+      return () => clearTimeout(timeoutId)
+    } else if (!isOpen && localIsOpen && !ignoreIsOpenPropRef.current) {
+      // Dialog is closing and we're not ignoring the prop
+      if (userInitiatedCloseRef.current) {
+        setLocalIsOpen(false)
         openTimeRef.current = null
         shouldPreventCloseRef.current = false
         userInitiatedCloseRef.current = false
-        forceOpenRef.current = false
-        console.log('ConfirmationDialog: Dialog closed, resetting guards', { title, userInitiated: userInitiatedCloseRef.current })
+        console.log('ConfirmationDialog: Dialog closed by user', { title })
+      } else {
+        // Non-user-initiated close - check if it's premature
+        const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+        if (timeSinceOpen < 10000) {
+          console.warn('ConfirmationDialog: BLOCKED non-user close - keeping dialog open', {
+            title,
+            timeSinceOpen: `${timeSinceOpen}ms`
+          })
+          // Keep it open
+          return
+        }
+        setLocalIsOpen(false)
+        openTimeRef.current = null
+        shouldPreventCloseRef.current = false
+        console.log('ConfirmationDialog: Dialog closed after guard period', { title })
       }
+    } else if (!isOpen && localIsOpen && ignoreIsOpenPropRef.current) {
+      // Parent wants to close but we're ignoring it
+      const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+      console.warn('ConfirmationDialog: IGNORING isOpen=false - keeping dialog open (guard active)', {
+        title,
+        timeSinceOpen: `${timeSinceOpen}ms`,
+        userInitiated: userInitiatedCloseRef.current
+      })
     }
-  }, [isOpen, title])
+  }, [isOpen, localIsOpen, title])
   
-  // Calculate effective isOpen - use ref to avoid re-render loops
-  const effectiveIsOpen = React.useMemo(() => {
-    if (forceOpenRef.current && openTimeRef.current) {
-      const timeSinceOpen = Date.now() - openTimeRef.current
-      if (timeSinceOpen < 10000 && !userInitiatedCloseRef.current) {
-        return true // Force open during guard period
-      }
-    }
-    return isOpen
-  }, [isOpen])
+  // Use localIsOpen instead of isOpen prop
+  const effectiveIsOpen = localIsOpen
   
   // Prevent closing during loading or if not user-initiated
   const handleClose = React.useCallback(() => {
