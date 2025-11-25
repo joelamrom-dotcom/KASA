@@ -150,15 +150,39 @@ export default function FamiliesPage() {
   })
   const [isDeleting, setIsDeleting] = useState(false)
   
+  // Wrapper to track all setDeleteConfirm calls
+  const setDeleteConfirmWithLog = useCallback((newState: { isOpen: boolean; familyId: string | null; familyName: string }) => {
+    const stack = new Error().stack
+    const caller = stack?.split('\n')[2]?.trim() || 'unknown'
+    console.log('setDeleteConfirm called:', {
+      newState,
+      caller,
+      timestamp: Date.now(),
+      fullStack: stack?.split('\n').slice(0, 10).join('\n')
+    })
+    setDeleteConfirm(newState)
+  }, [])
+  
   // Debug: Monitor deleteConfirm state changes
   useEffect(() => {
-    console.log('deleteConfirm state changed:', {
-      isOpen: deleteConfirm.isOpen,
-      familyId: deleteConfirm.familyId,
-      familyName: deleteConfirm.familyName,
-      timestamp: Date.now(),
-      stackTrace: new Error().stack?.split('\n').slice(0, 5).join('\n')
-    })
+    if (deleteConfirm.isOpen === false && deleteConfirm.familyId === null) {
+      // Only log when closing, not on initial mount
+      const stack = new Error().stack
+      console.log('deleteConfirm state changed to CLOSED:', {
+        isOpen: deleteConfirm.isOpen,
+        familyId: deleteConfirm.familyId,
+        familyName: deleteConfirm.familyName,
+        timestamp: Date.now(),
+        stackTrace: stack?.split('\n').slice(0, 8).join('\n')
+      })
+    } else if (deleteConfirm.isOpen === true) {
+      console.log('deleteConfirm state changed to OPEN:', {
+        isOpen: deleteConfirm.isOpen,
+        familyId: deleteConfirm.familyId,
+        familyName: deleteConfirm.familyName,
+        timestamp: Date.now()
+      })
+    }
   }, [deleteConfirm])
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
@@ -413,7 +437,7 @@ export default function FamiliesPage() {
       familyId: family._id,
       timestamp: Date.now()
     })
-    setDeleteConfirm({
+    setDeleteConfirmWithLog({
       isOpen: true,
       familyId: family._id,
       familyName: family.name
@@ -446,7 +470,7 @@ export default function FamiliesPage() {
       showToast('Error deleting family. Please try again.', 'error')
     } finally {
       setIsDeleting(false)
-      setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
+      setDeleteConfirmWithLog({ isOpen: false, familyId: null, familyName: '' })
     }
   }
 
@@ -454,7 +478,7 @@ export default function FamiliesPage() {
     console.log('handleDeleteCancel called - closing delete confirmation', {
       stackTrace: new Error().stack
     })
-    setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
+    setDeleteConfirmWithLog({ isOpen: false, familyId: null, familyName: '' })
   }
 
   const resetForm = () => {
