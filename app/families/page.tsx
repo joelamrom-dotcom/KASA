@@ -404,17 +404,19 @@ export default function FamiliesPage() {
     deleteConfirmOpeningRef.current = true
     deleteConfirmOpenTimeRef.current = Date.now()
     
-    // Use a small delay to ensure the click event has fully completed
-    // This prevents any event propagation issues
-    setTimeout(() => {
-      // Immediately set the state
-      setDeleteConfirm({
-        isOpen: true,
-        familyId: family._id,
-        familyName: family.name
+    // Use requestAnimationFrame to ensure this happens after all event handlers
+    // and the DOM has updated
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Set the state to open the dialog
+        setDeleteConfirm({
+          isOpen: true,
+          familyId: family._id,
+          familyName: family.name
+        })
+        console.log('Delete confirm state set to open')
       })
-      console.log('Delete confirm state set to open')
-    }, 10)
+    })
     
     // Reset opening flag after delay (extended to 5 seconds)
     setTimeout(() => {
@@ -1266,23 +1268,34 @@ export default function FamiliesPage() {
                           e.preventDefault()
                           e.stopPropagation()
                           e.nativeEvent.stopImmediatePropagation()
+                          return false
                         }}
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
                           e.nativeEvent.stopImmediatePropagation()
                           console.log('Delete button onClick fired')
-                          // Call handleDeleteClick directly - the delay is now inside the function
-                          handleDeleteClick(family)
+                          // Use setTimeout to ensure this happens after all other event handlers
+                          setTimeout(() => {
+                            handleDeleteClick(family)
+                          }, 0)
+                          return false
                         }}
                         onMouseUp={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
                           e.nativeEvent.stopImmediatePropagation()
+                          return false
                         }}
                         onPointerDown={(e) => {
                           e.stopPropagation()
                           e.nativeEvent.stopImmediatePropagation()
+                          return false
+                        }}
+                        onPointerUp={(e) => {
+                          e.stopPropagation()
+                          e.nativeEvent.stopImmediatePropagation()
+                          return false
                         }}
                         className="text-red-600 hover:text-red-800 transition-colors"
                         title="Delete Family"
@@ -1604,11 +1617,15 @@ export default function FamiliesPage() {
               if (deleteConfirmOpeningRef.current || timeSinceOpen < 5000) {
                 console.log('onClose prevented by parent guard', {
                   openingGuard: deleteConfirmOpeningRef.current,
-                  timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+                  timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened',
+                  isOpen: deleteConfirm.isOpen,
+                  familyId: deleteConfirm.familyId
                 })
                 console.trace('Stack trace for prevented onClose')
+                // Don't call handleDeleteCancel - just return
                 return
               }
+              console.log('onClose allowed - calling handleDeleteCancel')
               handleDeleteCancel()
             }}
             type="danger"

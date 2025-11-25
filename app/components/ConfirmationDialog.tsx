@@ -31,20 +31,21 @@ export default function ConfirmationDialog({
   const isOpeningRef = React.useRef(false)
 
   // Prevent closing during loading or immediately after opening
-  const handleClose = () => {
+  const handleClose = React.useCallback(() => {
     if (isLoading) {
       console.log('ConfirmationDialog: handleClose prevented - isLoading is true')
       return
     }
     
-    // Prevent closing if dialog was just opened (within 1000ms = 1 second)
+    // Prevent closing if dialog was just opened (within 2000ms = 2 seconds)
     // This prevents accidental closes from event propagation
     const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
-    if (timeSinceOpen < 1000) {
+    if (timeSinceOpen < 2000) {
       console.log('ConfirmationDialog: handleClose prevented - dialog just opened', {
         timeSinceOpen: `${timeSinceOpen}ms`,
         openingTime: openingTimeRef.current,
-        isOpening: isOpeningRef.current
+        isOpening: isOpeningRef.current,
+        isOpen: isOpen
       })
       console.trace('Stack trace for prevented close')
       return
@@ -56,12 +57,18 @@ export default function ConfirmationDialog({
       return
     }
     
+    // Double check that dialog is actually open
+    if (!isOpen) {
+      console.log('ConfirmationDialog: handleClose prevented - dialog is not open')
+      return
+    }
+    
     console.log('ConfirmationDialog: handleClose called - allowing close', {
       timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
     })
     console.trace('Stack trace for handleClose')
     onClose()
-  }
+  }, [isLoading, isOpen, onClose])
 
   // Log when dialog opens/closes for debugging
   React.useEffect(() => {
@@ -107,8 +114,12 @@ export default function ConfirmationDialog({
 
   const Icon = icons[type]
 
+  // Memoize the modal to prevent unnecessary re-renders
+  const modalKey = React.useMemo(() => `confirmation-${isOpen}-${title}`, [isOpen, title])
+  
   return (
     <Modal 
+      key={modalKey}
       isOpen={isOpen} 
       onClose={handleClose} 
       title="" 
