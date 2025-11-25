@@ -37,10 +37,10 @@ export default function ConfirmationDialog({
       return
     }
     
-    // Prevent closing if dialog was just opened (within 2000ms = 2 seconds)
+    // Prevent closing if dialog was just opened (within 3000ms = 3 seconds)
     // This prevents accidental closes from event propagation
     const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
-    if (timeSinceOpen < 2000) {
+    if (timeSinceOpen < 3000) {
       console.log('ConfirmationDialog: handleClose prevented - dialog just opened', {
         timeSinceOpen: `${timeSinceOpen}ms`,
         openingTime: openingTimeRef.current,
@@ -84,7 +84,7 @@ export default function ConfirmationDialog({
         console.log('ConfirmationDialog: Opening guard disabled', {
           timeSinceOpen: Date.now() - openTime
         })
-      }, 1000)
+      }, 3000)
     } else {
       openingTimeRef.current = null
       isOpeningRef.current = false

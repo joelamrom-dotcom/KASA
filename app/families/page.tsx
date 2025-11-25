@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -151,6 +151,23 @@ export default function FamiliesPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const deleteConfirmOpeningRef = useRef(false)
   const deleteConfirmOpenTimeRef = useRef<number | null>(null)
+  
+  // Wrapper for setDeleteConfirm that prevents closing while guard is active
+  const setDeleteConfirmSafe = useCallback((newState: { isOpen: boolean; familyId: string | null; familyName: string }) => {
+    // If trying to close while guard is active, prevent it
+    if (!newState.isOpen && deleteConfirmOpeningRef.current) {
+      const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
+      if (timeSinceOpen < 10000) {
+        console.warn('setDeleteConfirm blocked - trying to close while guard is active', {
+          timeSinceOpen: `${timeSinceOpen}ms`,
+          openingGuard: deleteConfirmOpeningRef.current
+        })
+        // Keep it open
+        return
+      }
+    }
+    setDeleteConfirm(newState)
+  }, [])
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
   const [showBulkEmailModal, setShowBulkEmailModal] = useState(false)
@@ -404,25 +421,25 @@ export default function FamiliesPage() {
     deleteConfirmOpeningRef.current = true
     deleteConfirmOpenTimeRef.current = Date.now()
     
-    // Use requestAnimationFrame to ensure this happens after all event handlers
-    // and the DOM has updated
-    requestAnimationFrame(() => {
+      // Use requestAnimationFrame to ensure this happens after all event handlers
+      // and the DOM has updated
       requestAnimationFrame(() => {
-        // Set the state to open the dialog
-        setDeleteConfirm({
-          isOpen: true,
-          familyId: family._id,
-          familyName: family.name
+        requestAnimationFrame(() => {
+          // Set the state to open the dialog
+          setDeleteConfirmSafe({
+            isOpen: true,
+            familyId: family._id,
+            familyName: family.name
+          })
+          console.log('Delete confirm state set to open')
         })
-        console.log('Delete confirm state set to open')
       })
-    })
     
-    // Reset opening flag after delay (extended to 5 seconds)
+    // Reset opening flag after delay (extended to 10 seconds for extra safety)
     setTimeout(() => {
       deleteConfirmOpeningRef.current = false
       console.log('Delete confirm opening guard disabled')
-    }, 5000)
+    }, 10000)
   }
   
   // Monitor deleteConfirm state changes
@@ -461,7 +478,9 @@ export default function FamiliesPage() {
       showToast('Error deleting family. Please try again.', 'error')
     } finally {
       setIsDeleting(false)
-      setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
+      deleteConfirmOpeningRef.current = false
+      deleteConfirmOpenTimeRef.current = null
+      setDeleteConfirmSafe({ isOpen: false, familyId: null, familyName: '' })
     }
   }
 
@@ -481,7 +500,7 @@ export default function FamiliesPage() {
     console.trace('Stack trace for handleDeleteCancel')
     deleteConfirmOpeningRef.current = false
     deleteConfirmOpenTimeRef.current = null
-    setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
+    setDeleteConfirmSafe({ isOpen: false, familyId: null, familyName: '' })
   }
 
   const resetForm = () => {
@@ -1612,9 +1631,9 @@ export default function FamiliesPage() {
             cancelText="Cancel"
             onConfirm={handleDeleteConfirm}
             onClose={() => {
-              // Double-check the guard before closing (extended to 5 seconds)
-              const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
-              if (deleteConfirmOpeningRef.current || timeSinceOpen < 5000) {
+      // Double-check the guard before closing (extended to 10 seconds)
+      const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
+      if (deleteConfirmOpeningRef.current || timeSinceOpen < 10000) {
                 console.log('onClose prevented by parent guard', {
                   openingGuard: deleteConfirmOpeningRef.current,
                   timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened',
