@@ -45,26 +45,36 @@ export default function Modal({
       preventBackdropClickRef.current = true
       document.body.style.overflow = 'hidden'
       
+      // If backdrop clicks are disabled, keep the guard active longer
+      const guardDuration = disableBackdropClick ? 10000 : 3000
+      
       // Prevent backdrop clicks for a longer period to catch any delayed click events
       setTimeout(() => {
         justOpenedRef.current = false
-        console.log('Modal opening guard disabled')
-      }, 1000)
+        console.log('Modal opening guard disabled', { disableBackdropClick, guardDuration })
+      }, guardDuration)
       
       // Keep preventing backdrop clicks for even longer to catch any event propagation issues
-      setTimeout(() => {
-        preventBackdropClickRef.current = false
-        console.log('Modal backdrop click prevention disabled')
-      }, 2000)
+      // If disableBackdropClick is true, never disable this guard
+      if (!disableBackdropClick) {
+        setTimeout(() => {
+          preventBackdropClickRef.current = false
+          console.log('Modal backdrop click prevention disabled')
+        }, guardDuration + 1000)
+      } else {
+        // Keep it enabled permanently when disableBackdropClick is true
+        console.log('Modal backdrop click prevention enabled permanently (disableBackdropClick=true)')
+      }
     } else {
       document.body.style.overflow = 'unset'
       justOpenedRef.current = false
       openTimeRef.current = null
+      preventBackdropClickRef.current = false
     }
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen])
+  }, [isOpen, disableBackdropClick])
 
   useEffect(() => {
     if (disableEscapeKey) {
@@ -72,9 +82,16 @@ export default function Modal({
     }
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        // Prevent closing if modal was just opened
-        if (justOpenedRef.current || (openTimeRef.current && Date.now() - openTimeRef.current < 200)) {
-          console.log('Escape key prevented - modal just opened')
+        // Prevent closing if modal was just opened or if backdrop clicks are disabled
+        const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+        const guardDuration = disableBackdropClick ? 10000 : 3000
+        if (justOpenedRef.current || preventBackdropClickRef.current || timeSinceOpen < guardDuration) {
+          console.log('Escape key prevented - modal just opened or guard active', {
+            justOpened: justOpenedRef.current,
+            preventBackdropClick: preventBackdropClickRef.current,
+            timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened',
+            guardDuration
+          })
           return
         }
         onClose()
@@ -82,7 +99,7 @@ export default function Modal({
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [isOpen, onClose, disableEscapeKey])
+  }, [isOpen, onClose, disableEscapeKey, disableBackdropClick])
 
   if (!isOpen) return null
 
@@ -97,11 +114,14 @@ export default function Modal({
     
     // Prevent closing if modal was just opened or if backdrop clicks are prevented
     const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-    if (justOpenedRef.current || preventBackdropClickRef.current || timeSinceOpen < 2000) {
+    const guardDuration = disableBackdropClick ? 10000 : 3000
+    if (justOpenedRef.current || preventBackdropClickRef.current || timeSinceOpen < guardDuration) {
       console.log('Modal backdrop click prevented', {
         justOpened: justOpenedRef.current,
         preventBackdropClick: preventBackdropClickRef.current,
-        timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+        timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened',
+        guardDuration,
+        disableBackdropClick
       })
       e.preventDefault()
       e.stopPropagation()
