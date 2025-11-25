@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface ModalProps {
@@ -37,6 +37,20 @@ export default function Modal({
   const justOpenedRef = useRef(false)
   const openTimeRef = useRef<number | null>(null)
   const preventBackdropClickRef = useRef(false)
+  
+  // Wrapper for onClose that respects disableBackdropClick
+  const safeOnClose = useCallback(() => {
+    if (disableBackdropClick) {
+      const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+      if (timeSinceOpen < 10000) {
+        console.log('Modal onClose prevented - disableBackdropClick is true and guard is active', {
+          timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+        })
+        return
+      }
+    }
+    onClose()
+  }, [onClose, disableBackdropClick])
 
   useEffect(() => {
     if (isOpen) {
@@ -94,12 +108,12 @@ export default function Modal({
           })
           return
         }
-        onClose()
+        safeOnClose()
       }
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [isOpen, onClose, disableEscapeKey, disableBackdropClick])
+  }, [isOpen, safeOnClose, disableEscapeKey, disableBackdropClick])
 
   if (!isOpen) return null
 
@@ -157,7 +171,7 @@ export default function Modal({
         currentTargetTag: currentTarget.tagName,
         timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
       })
-      onClose()
+      safeOnClose()
     } else {
       console.log('Click was on modal content, not backdrop - preventing close', {
         targetTag: target.tagName,
@@ -212,7 +226,7 @@ export default function Modal({
             )}
             {showCloseButton && (
               <button
-                onClick={onClose}
+                onClick={safeOnClose}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 aria-label="Close modal"
               >
