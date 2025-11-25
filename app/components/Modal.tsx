@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface ModalProps {
@@ -220,11 +221,17 @@ export default function Modal({
     }
   }
 
-  return (
+  // Use React Portal to ensure modal renders at document body level
+  const modalContent = (
     <div
-      className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-fade-in"
+      style={{ position: 'fixed', zIndex: 9999 }}
       onClick={disableBackdropClick ? (e) => {
         // Completely prevent any backdrop clicks when disabled
+        console.log('Modal backdrop click prevented - disableBackdropClick is true', {
+          target: (e.target as HTMLElement)?.tagName,
+          currentTarget: (e.currentTarget as HTMLElement)?.tagName
+        })
         e.preventDefault()
         e.stopPropagation()
       } : handleBackdropClick}
@@ -279,5 +286,19 @@ export default function Modal({
       </div>
     </div>
   )
+  
+  // Use portal to render at document body level to avoid z-index and stacking context issues
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+  
+  if (!mounted || typeof window === 'undefined') {
+    return null
+  }
+  
+  return createPortal(modalContent, document.body)
 }
 
