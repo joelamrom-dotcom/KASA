@@ -29,6 +29,9 @@ export default function ConfirmationDialog({
 }: ConfirmationDialogProps) {
   const openingTimeRef = React.useRef<number | null>(null)
   const isOpeningRef = React.useRef(false)
+  // Internal state to override isOpen prop when dialog was just opened
+  const [internalIsOpen, setInternalIsOpen] = React.useState(false)
+  const shouldStayOpenRef = React.useRef(false)
 
   // Prevent closing during loading or immediately after opening
   const handleClose = React.useCallback(() => {
@@ -58,25 +61,42 @@ export default function ConfirmationDialog({
     }
     
     // Double check that dialog is actually open
-    if (!isOpen) {
+    if (!isOpen && !internalIsOpen) {
       console.log('ConfirmationDialog: handleClose prevented - dialog is not open')
       return
     }
+    
+    // If we're in the "should stay open" period, prevent close
+    if (shouldStayOpenRef.current) {
+      const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
+      if (timeSinceOpen < 10000) {
+        console.log('ConfirmationDialog: handleClose prevented - should stay open period active', {
+          timeSinceOpen: `${timeSinceOpen}ms`
+        })
+        return
+      }
+    }
+    
+    // Clear the should stay open flag
+    shouldStayOpenRef.current = false
+    setInternalIsOpen(false)
     
     console.log('ConfirmationDialog: handleClose called - allowing close', {
       timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
     })
     console.trace('Stack trace for handleClose')
     onClose()
-  }, [isLoading, isOpen, onClose])
+  }, [isLoading, isOpen, internalIsOpen, onClose])
 
-  // Log when dialog opens/closes for debugging
+  // Log when dialog opens/closes for debugging and manage internal state
   React.useEffect(() => {
     if (isOpen) {
       // Set the opening time immediately when dialog opens
       const openTime = Date.now()
       openingTimeRef.current = openTime
       isOpeningRef.current = true
+      shouldStayOpenRef.current = true
+      setInternalIsOpen(true)
       console.log('ConfirmationDialog: Dialog opened', { title, message, openTime })
       // Reset opening flag after a delay to allow normal closing
       setTimeout(() => {
@@ -84,13 +104,30 @@ export default function ConfirmationDialog({
         console.log('ConfirmationDialog: Opening guard disabled', {
           timeSinceOpen: Date.now() - openTime
         })
-      }, 3000)
+      }, 10000) // Extended to 10 seconds to match parent guard
     } else {
+      // Only close if we're not in the "should stay open" period
+      const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
+      if (shouldStayOpenRef.current && timeSinceOpen < 10000) {
+        console.warn('ConfirmationDialog: Prevented premature close - forcing dialog to stay open', {
+          timeSinceOpen: `${timeSinceOpen}ms`,
+          isOpening: isOpeningRef.current
+        })
+        // Force it to stay open
+        setInternalIsOpen(true)
+        return
+      }
+      // Allow normal close
       openingTimeRef.current = null
       isOpeningRef.current = false
+      shouldStayOpenRef.current = false
+      setInternalIsOpen(false)
       console.log('ConfirmationDialog: Dialog closed')
     }
   }, [isOpen, title, message])
+  
+  // Use internal state if we're in the "should stay open" period, otherwise use prop
+  const effectiveIsOpen = shouldStayOpenRef.current ? internalIsOpen : isOpen
   const icons = {
     danger: ExclamationTriangleIcon,
     warning: ExclamationTriangleIcon,
@@ -115,12 +152,12 @@ export default function ConfirmationDialog({
   const Icon = icons[type]
 
   // Memoize the modal to prevent unnecessary re-renders
-  const modalKey = React.useMemo(() => `confirmation-${isOpen}-${title}`, [isOpen, title])
+  const modalKey = React.useMemo(() => `confirmation-${effectiveIsOpen}-${title}`, [effectiveIsOpen, title])
   
   return (
     <Modal 
       key={modalKey}
-      isOpen={isOpen} 
+      isOpen={effectiveIsOpen} 
       onClose={handleClose} 
       title="" 
       showCloseButton={false}
