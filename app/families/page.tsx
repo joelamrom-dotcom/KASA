@@ -1679,7 +1679,7 @@ export default function FamiliesPage() {
 
         {/* Confirmation Dialog - Always render, control visibility with isOpen */}
         <ConfirmationDialog
-          key={deleteConfirm.familyId ? `delete-${deleteConfirm.familyId}` : 'delete-dialog'}
+          key="delete-family-dialog"
           isOpen={deleteConfirm.isOpen && !!deleteConfirm.familyId}
           title="Delete Family"
           message={deleteConfirm.familyId ? `Are you sure you want to delete "${deleteConfirm.familyName}"? This will move the family to the recycle bin.` : ''}
