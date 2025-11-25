@@ -70,9 +70,18 @@ export default function ConfirmationDialog({
     console.log('ConfirmationDialog: isOpen changed', {
       isOpen,
       title,
-      message: message.substring(0, 50) + '...'
+      message: message.substring(0, 50) + '...',
+      timestamp: Date.now()
     })
   }, [isOpen, title, message])
+  
+  // Log when component mounts/unmounts
+  React.useEffect(() => {
+    console.log('ConfirmationDialog: Component mounted', { isOpen, title })
+    return () => {
+      console.log('ConfirmationDialog: Component unmounting', { isOpen, title })
+    }
+  }, [])
 
   return (
     <Modal 

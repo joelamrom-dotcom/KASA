@@ -130,7 +130,25 @@ export default function Modal({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [isOpen, safeOnClose, disableEscapeKey, disableBackdropClick])
 
-  if (!isOpen) return null
+  // Debug logging for render
+  useEffect(() => {
+    console.log('Modal: isOpen prop changed', {
+      isOpen,
+      disableBackdropClick,
+      timestamp: Date.now()
+    })
+  }, [isOpen, disableBackdropClick])
+  
+  if (!isOpen) {
+    console.log('Modal: Returning null because isOpen is false')
+    return null
+  }
+  
+  console.log('Modal: Rendering modal', {
+    isOpen,
+    disableBackdropClick,
+    timestamp: Date.now()
+  })
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // If backdrop clicks are disabled, never close
