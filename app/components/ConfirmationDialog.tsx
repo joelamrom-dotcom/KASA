@@ -101,6 +101,7 @@ export default function ConfirmationDialog({
       // Reset opening flag after a delay to allow normal closing
       setTimeout(() => {
         isOpeningRef.current = false
+        shouldStayOpenRef.current = false
         console.log('ConfirmationDialog: Opening guard disabled', {
           timeSinceOpen: Date.now() - openTime
         })
@@ -111,23 +112,28 @@ export default function ConfirmationDialog({
       if (shouldStayOpenRef.current && timeSinceOpen < 10000) {
         console.warn('ConfirmationDialog: Prevented premature close - forcing dialog to stay open', {
           timeSinceOpen: `${timeSinceOpen}ms`,
-          isOpening: isOpeningRef.current
+          isOpening: isOpeningRef.current,
+          shouldStayOpen: shouldStayOpenRef.current
         })
-        // Force it to stay open
-        setInternalIsOpen(true)
+        // Force it to stay open - don't update internalIsOpen to false
+        // The internalIsOpen should already be true from when it opened
+        if (!internalIsOpen) {
+          setInternalIsOpen(true)
+        }
         return
       }
-      // Allow normal close
+      // Allow normal close only if guard period has passed
       openingTimeRef.current = null
       isOpeningRef.current = false
       shouldStayOpenRef.current = false
       setInternalIsOpen(false)
       console.log('ConfirmationDialog: Dialog closed')
     }
-  }, [isOpen, title, message])
+  }, [isOpen, title, message, internalIsOpen])
   
   // Use internal state if we're in the "should stay open" period, otherwise use prop
-  const effectiveIsOpen = shouldStayOpenRef.current ? internalIsOpen : isOpen
+  // Always prefer internalIsOpen when shouldStayOpenRef is true
+  const effectiveIsOpen = shouldStayOpenRef.current ? internalIsOpen : (internalIsOpen || isOpen)
   const icons = {
     danger: ExclamationTriangleIcon,
     warning: ExclamationTriangleIcon,
@@ -152,7 +158,26 @@ export default function ConfirmationDialog({
   const Icon = icons[type]
 
   // Memoize the modal to prevent unnecessary re-renders
-  const modalKey = React.useMemo(() => `confirmation-${effectiveIsOpen}-${title}`, [effectiveIsOpen, title])
+  // Use a stable key that doesn't change when effectiveIsOpen changes during guard period
+  const modalKey = React.useMemo(() => `confirmation-${title}-${openingTimeRef.current || 'new'}`, [title])
+  
+  // Calculate effectiveIsOpen - prefer internal state when guard is active
+  const effectiveIsOpen = React.useMemo(() => {
+    if (shouldStayOpenRef.current) {
+      // During guard period, always return true if we were ever open
+      return internalIsOpen || isOpen
+    }
+    // After guard period, use the prop
+    return isOpen
+  }, [isOpen, internalIsOpen])
+  
+  console.log('ConfirmationDialog: Rendering with effectiveIsOpen', {
+    effectiveIsOpen,
+    isOpen,
+    internalIsOpen,
+    shouldStayOpen: shouldStayOpenRef.current,
+    timeSinceOpen: openingTimeRef.current ? Date.now() - openingTimeRef.current : null
+  })
   
   return (
     <Modal 
