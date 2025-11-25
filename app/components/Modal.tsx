@@ -135,7 +135,12 @@ export default function Modal({
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // If backdrop clicks are disabled, never close
     if (disableBackdropClick) {
-      console.log('Modal backdrop click disabled by prop')
+      console.log('Modal backdrop click disabled by prop - preventing close', {
+        disableBackdropClick,
+        isOpen,
+        target: (e.target as HTMLElement)?.tagName,
+        currentTarget: (e.currentTarget as HTMLElement)?.tagName
+      })
       e.preventDefault()
       e.stopPropagation()
       return

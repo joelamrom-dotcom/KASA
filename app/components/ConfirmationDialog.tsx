@@ -29,12 +29,18 @@ export default function ConfirmationDialog({
 }: ConfirmationDialogProps) {
   // Prevent closing during loading
   const handleClose = React.useCallback(() => {
+    console.log('ConfirmationDialog: handleClose called', {
+      isLoading,
+      isOpen,
+      stackTrace: new Error().stack
+    })
     if (isLoading) {
       console.log('ConfirmationDialog: handleClose prevented - isLoading is true')
       return
     }
+    console.log('ConfirmationDialog: handleClose allowed - calling onClose')
     onClose()
-  }, [isLoading, onClose])
+  }, [isLoading, isOpen, onClose])
   
   const icons = {
     danger: ExclamationTriangleIcon,
@@ -59,14 +65,23 @@ export default function ConfirmationDialog({
 
   const Icon = icons[type]
   
+  // Debug logging
+  React.useEffect(() => {
+    console.log('ConfirmationDialog: isOpen changed', {
+      isOpen,
+      title,
+      message: message.substring(0, 50) + '...'
+    })
+  }, [isOpen, title, message])
+
   return (
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
       title="" 
       showCloseButton={false}
-      disableBackdropClick={false}
-      disableEscapeKey={false}
+      disableBackdropClick={true}
+      disableEscapeKey={true}
     >
       <div className="p-6">
         <div className="flex items-start gap-4">

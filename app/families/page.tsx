@@ -149,6 +149,17 @@ export default function FamiliesPage() {
     familyName: ''
   })
   const [isDeleting, setIsDeleting] = useState(false)
+  
+  // Debug: Monitor deleteConfirm state changes
+  useEffect(() => {
+    console.log('deleteConfirm state changed:', {
+      isOpen: deleteConfirm.isOpen,
+      familyId: deleteConfirm.familyId,
+      familyName: deleteConfirm.familyName,
+      timestamp: Date.now(),
+      stackTrace: new Error().stack?.split('\n').slice(0, 5).join('\n')
+    })
+  }, [deleteConfirm])
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
   const [showBulkEmailModal, setShowBulkEmailModal] = useState(false)
@@ -397,12 +408,17 @@ export default function FamiliesPage() {
   }
 
   const handleDeleteClick = (family: Family) => {
-    console.log('Delete button clicked for family:', family.name, family._id)
+    console.log('handleDeleteClick called', {
+      familyName: family.name,
+      familyId: family._id,
+      timestamp: Date.now()
+    })
     setDeleteConfirm({
       isOpen: true,
       familyId: family._id,
       familyName: family.name
     })
+    console.log('handleDeleteClick: setDeleteConfirm called with isOpen: true')
   }
 
   const handleDeleteConfirm = async () => {
@@ -435,7 +451,9 @@ export default function FamiliesPage() {
   }
 
   const handleDeleteCancel = () => {
-    console.log('handleDeleteCancel called - closing delete confirmation')
+    console.log('handleDeleteCancel called - closing delete confirmation', {
+      stackTrace: new Error().stack
+    })
     setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
   }
 
