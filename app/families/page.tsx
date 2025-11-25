@@ -155,6 +155,23 @@ export default function FamiliesPage() {
     const stack = new Error().stack
     const caller = stack?.split('\n')[2]?.trim() || 'unknown'
     const currentState = deleteConfirm
+    
+    // Prevent closing if we're trying to close while opening
+    if (currentState.isOpen && !newState.isOpen && newState.familyId === currentState.familyId) {
+      const timeSinceOpen = Date.now() - (currentState as any).openTime || 0
+      if (timeSinceOpen < 1000) {
+        console.warn('setDeleteConfirm: BLOCKED - trying to close dialog immediately after opening', {
+          currentState,
+          newState,
+          caller,
+          timeSinceOpen,
+          fullStack: stack?.split('\n').slice(0, 15).join('\n')
+        })
+        // Don't allow the close - keep it open
+        return
+      }
+    }
+    
     console.log('setDeleteConfirm called:', {
       currentState,
       newState,
@@ -164,6 +181,12 @@ export default function FamiliesPage() {
       isChangingFromClosedToOpen: !currentState.isOpen && newState.isOpen,
       fullStack: stack?.split('\n').slice(0, 15).join('\n')
     })
+    
+    // Add openTime to track when dialog was opened
+    if (newState.isOpen && !currentState.isOpen) {
+      (newState as any).openTime = Date.now()
+    }
+    
     setDeleteConfirm(newState)
   }, [deleteConfirm])
   
@@ -441,12 +464,34 @@ export default function FamiliesPage() {
       familyId: family._id,
       timestamp: Date.now()
     })
+    
+    // Use a ref to prevent immediate state resets
+    const openTime = Date.now()
+    
+    // Set state immediately
     setDeleteConfirmWithLog({
       isOpen: true,
       familyId: family._id,
       familyName: family.name
     })
     console.log('handleDeleteClick: setDeleteConfirm called with isOpen: true')
+    
+    // Double-check after a microtask to ensure state didn't get reset
+    Promise.resolve().then(() => {
+      const currentState = deleteConfirm
+      if (!currentState.isOpen && currentState.familyId === family._id) {
+        console.warn('handleDeleteClick: State was reset immediately after setting! Re-opening...', {
+          currentState,
+          timeSinceOpen: Date.now() - openTime
+        })
+        // Force it open again
+        setDeleteConfirmWithLog({
+          isOpen: true,
+          familyId: family._id,
+          familyName: family.name
+        })
+      }
+    })
   }
 
   const handleDeleteConfirm = async () => {
