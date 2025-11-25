@@ -31,60 +31,32 @@ export default function ConfirmationDialog({
   const userInitiatedCloseRef = React.useRef(false)
   const guardActiveRef = React.useRef(false)
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  const lastIsOpenRef = React.useRef(isOpen)
   
-  // Sync with isOpen prop, but ignore it during guard period
+  // Track when dialog opens - set guard
   React.useEffect(() => {
-    if (isOpen) {
-      // Opening
-      if (!openTimeRef.current) {
-        const openTime = Date.now()
-        openTimeRef.current = openTime
-        userInitiatedCloseRef.current = false
-        guardActiveRef.current = true
-        console.log('ConfirmationDialog: Dialog opened, guard active for 10 seconds', { 
-          title,
-          openTime
-        })
-        
-        // Disable guard after 10 seconds
-        if (timeoutRef.current) clearTimeout(timeoutRef.current)
-        timeoutRef.current = setTimeout(() => {
-          guardActiveRef.current = false
-          console.log('ConfirmationDialog: Guard disabled after 10 seconds')
-        }, 10000)
-      }
-    } else {
-      // Parent wants to close
-      if (userInitiatedCloseRef.current) {
-        // User clicked button - allow close
-        openTimeRef.current = null
+    // Only react to isOpen changing from false to true
+    if (isOpen && !lastIsOpenRef.current) {
+      const openTime = Date.now()
+      openTimeRef.current = openTime
+      userInitiatedCloseRef.current = false
+      guardActiveRef.current = true
+      lastIsOpenRef.current = true
+      console.log('ConfirmationDialog: Dialog opened, guard active for 10 seconds', { 
+        title,
+        openTime
+      })
+      
+      // Disable guard after 10 seconds
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = setTimeout(() => {
         guardActiveRef.current = false
-        userInitiatedCloseRef.current = false
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current)
-          timeoutRef.current = null
-        }
-        console.log('ConfirmationDialog: Dialog closed by user', { title })
-      } else if (guardActiveRef.current && openTimeRef.current) {
-        // Guard is active - block close
-        const timeSinceOpen = Date.now() - openTimeRef.current
-        console.warn('ConfirmationDialog: BLOCKED close - guard active', {
-          title,
-          timeSinceOpen: `${timeSinceOpen}ms`
-        })
-        // Don't close - ignore parent's isOpen=false
-        return
-      } else {
-        // Guard expired or never opened - allow close
-        openTimeRef.current = null
-        guardActiveRef.current = false
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current)
-          timeoutRef.current = null
-        }
-        console.log('ConfirmationDialog: Dialog closed', { title })
-      }
+        console.log('ConfirmationDialog: Guard disabled after 10 seconds')
+      }, 10000)
     }
+    
+    // Update lastIsOpenRef
+    lastIsOpenRef.current = isOpen
     
     return () => {
       if (timeoutRef.current) {
@@ -92,16 +64,19 @@ export default function ConfirmationDialog({
         timeoutRef.current = null
       }
     }
-  }, [isOpen, title]) // Only depend on isOpen prop
+  }, [isOpen, title])
   
   // Calculate effective isOpen - ignore parent's isOpen if guard is active
-  const effectiveIsOpen = React.useMemo(() => {
-    if (guardActiveRef.current && openTimeRef.current) {
+  // Use a simple function instead of useMemo to avoid dependency issues
+  const getEffectiveIsOpen = () => {
+    if (guardActiveRef.current && openTimeRef.current && !userInitiatedCloseRef.current) {
       // Guard is active - force open
       return true
     }
     return isOpen
-  }, [isOpen])
+  }
+  
+  const effectiveIsOpen = getEffectiveIsOpen()
   
   // Prevent closing during loading or if not user-initiated
   const handleClose = React.useCallback(() => {
