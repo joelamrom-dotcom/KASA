@@ -158,6 +158,8 @@ export default function ConfirmationDialog({
                   e.preventDefault()
                   e.stopPropagation()
                   e.nativeEvent.stopImmediatePropagation()
+                  console.log('ConfirmationDialog: Cancel button clicked - marking as user-initiated')
+                  userInitiatedCloseRef.current = true
                   handleClose()
                 }}
                 disabled={isLoading}
@@ -171,6 +173,8 @@ export default function ConfirmationDialog({
                   e.preventDefault()
                   e.stopPropagation()
                   e.nativeEvent.stopImmediatePropagation()
+                  console.log('ConfirmationDialog: Confirm button clicked')
+                  userInitiatedCloseRef.current = true
                   onConfirm()
                 }}
                 disabled={isLoading}
