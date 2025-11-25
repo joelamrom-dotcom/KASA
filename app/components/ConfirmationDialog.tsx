@@ -30,64 +30,78 @@ export default function ConfirmationDialog({
   const openTimeRef = React.useRef<number | null>(null)
   const userInitiatedCloseRef = React.useRef(false)
   const guardActiveRef = React.useRef(false)
-  const [localIsOpen, setLocalIsOpen] = React.useState(false)
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
   
-  // When isOpen prop becomes true, open dialog and activate guard
+  // Sync with isOpen prop, but ignore it during guard period
   React.useEffect(() => {
-    if (isOpen && !localIsOpen) {
-      const openTime = Date.now()
-      openTimeRef.current = openTime
-      userInitiatedCloseRef.current = false
-      guardActiveRef.current = true
-      setLocalIsOpen(true)
-      console.log('ConfirmationDialog: Dialog opened, guard active for 10 seconds', { 
-        title,
-        openTime
-      })
-      
-      // Disable guard after 10 seconds
-      const timeoutId = setTimeout(() => {
-        guardActiveRef.current = false
-        console.log('ConfirmationDialog: Guard disabled after 10 seconds')
-        // If parent wants it closed, close it now
-        if (!isOpen) {
-          setLocalIsOpen(false)
-        }
-      }, 10000)
-      
-      return () => clearTimeout(timeoutId)
-    }
-  }, [isOpen, title]) // Only depend on isOpen, not localIsOpen
-  
-  // Handle parent trying to close - only allow if guard is not active or user initiated
-  React.useEffect(() => {
-    if (!isOpen && localIsOpen) {
+    if (isOpen) {
+      // Opening
+      if (!openTimeRef.current) {
+        const openTime = Date.now()
+        openTimeRef.current = openTime
+        userInitiatedCloseRef.current = false
+        guardActiveRef.current = true
+        console.log('ConfirmationDialog: Dialog opened, guard active for 10 seconds', { 
+          title,
+          openTime
+        })
+        
+        // Disable guard after 10 seconds
+        if (timeoutRef.current) clearTimeout(timeoutRef.current)
+        timeoutRef.current = setTimeout(() => {
+          guardActiveRef.current = false
+          console.log('ConfirmationDialog: Guard disabled after 10 seconds')
+        }, 10000)
+      }
+    } else {
+      // Parent wants to close
       if (userInitiatedCloseRef.current) {
         // User clicked button - allow close
-        setLocalIsOpen(false)
         openTimeRef.current = null
         guardActiveRef.current = false
         userInitiatedCloseRef.current = false
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+          timeoutRef.current = null
+        }
         console.log('ConfirmationDialog: Dialog closed by user', { title })
-      } else if (guardActiveRef.current) {
+      } else if (guardActiveRef.current && openTimeRef.current) {
         // Guard is active - block close
-        const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+        const timeSinceOpen = Date.now() - openTimeRef.current
         console.warn('ConfirmationDialog: BLOCKED close - guard active', {
           title,
           timeSinceOpen: `${timeSinceOpen}ms`
         })
-        // Keep localIsOpen true - ignore parent's isOpen=false
+        // Don't close - ignore parent's isOpen=false
+        return
       } else {
-        // Guard expired - allow close
-        setLocalIsOpen(false)
+        // Guard expired or never opened - allow close
         openTimeRef.current = null
-        console.log('ConfirmationDialog: Dialog closed after guard period', { title })
+        guardActiveRef.current = false
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+          timeoutRef.current = null
+        }
+        console.log('ConfirmationDialog: Dialog closed', { title })
       }
     }
-  }, [isOpen, localIsOpen, title])
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
+  }, [isOpen, title]) // Only depend on isOpen prop
   
-  // Use localIsOpen - it controls visibility independently
-  const effectiveIsOpen = localIsOpen
+  // Calculate effective isOpen - ignore parent's isOpen if guard is active
+  const effectiveIsOpen = React.useMemo(() => {
+    if (guardActiveRef.current && openTimeRef.current) {
+      // Guard is active - force open
+      return true
+    }
+    return isOpen
+  }, [isOpen])
   
   // Prevent closing during loading or if not user-initiated
   const handleClose = React.useCallback(() => {
