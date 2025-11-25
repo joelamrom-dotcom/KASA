@@ -94,7 +94,7 @@ export default function ConfirmationDialog({
     console.log('ConfirmationDialog: handleClose called', {
       isLoading,
       isOpen,
-      shouldPreventClose: shouldPreventCloseRef.current,
+      guardActive: guardActiveRef.current,
       userInitiated: userInitiatedCloseRef.current,
       timeSinceOpen: openTimeRef.current ? Date.now() - openTimeRef.current : null,
       stackTrace: new Error().stack
@@ -111,7 +111,7 @@ export default function ConfirmationDialog({
       const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
       console.warn('ConfirmationDialog: handleClose BLOCKED - not user-initiated', {
         timeSinceOpen: `${timeSinceOpen}ms`,
-        shouldPreventClose: shouldPreventCloseRef.current
+        guardActive: guardActiveRef.current
       })
       return
     }
