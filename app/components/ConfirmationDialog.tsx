@@ -37,14 +37,22 @@ export default function ConfirmationDialog({
       return
     }
     
-    // Prevent closing if dialog was just opened (within 5000ms = 5 seconds)
+    // Prevent closing if dialog was just opened (within 1000ms = 1 second)
+    // This prevents accidental closes from event propagation
     const timeSinceOpen = openingTimeRef.current ? Date.now() - openingTimeRef.current : Infinity
-    if (timeSinceOpen < 5000) {
+    if (timeSinceOpen < 1000) {
       console.log('ConfirmationDialog: handleClose prevented - dialog just opened', {
         timeSinceOpen: `${timeSinceOpen}ms`,
-        openingTime: openingTimeRef.current
+        openingTime: openingTimeRef.current,
+        isOpening: isOpeningRef.current
       })
       console.trace('Stack trace for prevented close')
+      return
+    }
+    
+    // Also prevent if the opening flag is still set
+    if (isOpeningRef.current) {
+      console.log('ConfirmationDialog: handleClose prevented - isOpening flag is true')
       return
     }
     
@@ -58,14 +66,18 @@ export default function ConfirmationDialog({
   // Log when dialog opens/closes for debugging
   React.useEffect(() => {
     if (isOpen) {
-      openingTimeRef.current = Date.now()
+      // Set the opening time immediately when dialog opens
+      const openTime = Date.now()
+      openingTimeRef.current = openTime
       isOpeningRef.current = true
-      console.log('ConfirmationDialog: Dialog opened', { title, message })
-      // Reset opening flag after a delay (but keep preventing closes for longer)
+      console.log('ConfirmationDialog: Dialog opened', { title, message, openTime })
+      // Reset opening flag after a delay to allow normal closing
       setTimeout(() => {
         isOpeningRef.current = false
-        console.log('ConfirmationDialog: Opening guard disabled')
-      }, 5000)
+        console.log('ConfirmationDialog: Opening guard disabled', {
+          timeSinceOpen: Date.now() - openTime
+        })
+      }, 1000)
     } else {
       openingTimeRef.current = null
       isOpeningRef.current = false
@@ -100,10 +112,21 @@ export default function ConfirmationDialog({
       isOpen={isOpen} 
       onClose={handleClose} 
       title="" 
-      showCloseButton={!isLoading}
+      showCloseButton={false}
       disableBackdropClick={true}
+      disableEscapeKey={true}
     >
-      <div className="p-6">
+      <div 
+        className="p-6"
+        onClick={(e) => {
+          // Prevent any clicks inside the dialog from propagating
+          e.stopPropagation()
+        }}
+        onMouseDown={(e) => {
+          // Prevent mousedown events from propagating
+          e.stopPropagation()
+        }}
+      >
         <div className="flex items-start gap-4">
           <div className={`flex-shrink-0 p-3 rounded-full ${colors[type]}`}>
             <Icon className="h-6 w-6" />
@@ -121,6 +144,7 @@ export default function ConfirmationDialog({
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
+                  e.nativeEvent.stopImmediatePropagation()
                   handleClose()
                 }}
                 disabled={isLoading}
@@ -133,6 +157,7 @@ export default function ConfirmationDialog({
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
+                  e.nativeEvent.stopImmediatePropagation()
                   onConfirm()
                 }}
                 disabled={isLoading}

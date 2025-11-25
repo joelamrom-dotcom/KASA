@@ -11,7 +11,8 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
   showCloseButton?: boolean
   className?: string
-  disableBackdropClick?: boolean // New prop to disable backdrop clicks
+  disableBackdropClick?: boolean // Disable closing when clicking outside
+  disableEscapeKey?: boolean // Disable closing with Escape key
 }
 
 const sizeClasses = {
@@ -31,6 +32,7 @@ export default function Modal({
   showCloseButton = true,
   className = '',
   disableBackdropClick = false,
+  disableEscapeKey = false,
 }: ModalProps) {
   const justOpenedRef = useRef(false)
   const openTimeRef = useRef<number | null>(null)
@@ -65,6 +67,9 @@ export default function Modal({
   }, [isOpen])
 
   useEffect(() => {
+    if (disableEscapeKey) {
+      return
+    }
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         // Prevent closing if modal was just opened
@@ -77,7 +82,7 @@ export default function Modal({
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, disableEscapeKey])
 
   if (!isOpen) return null
 
@@ -144,12 +149,21 @@ export default function Modal({
   return (
     <div
       className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
-      onClick={disableBackdropClick ? undefined : handleBackdropClick}
+      onClick={disableBackdropClick ? (e) => {
+        // Completely prevent any backdrop clicks when disabled
+        e.preventDefault()
+        e.stopPropagation()
+      } : handleBackdropClick}
       onMouseDown={(e) => {
         // Prevent any mousedown events from propagating
         const target = e.target as HTMLElement
         const currentTarget = e.currentTarget as HTMLElement
         if (target !== currentTarget) {
+          e.stopPropagation()
+        }
+        // If backdrop clicks are disabled, prevent all mousedown events
+        if (disableBackdropClick) {
+          e.preventDefault()
           e.stopPropagation()
         }
       }}

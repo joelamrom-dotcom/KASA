@@ -404,13 +404,17 @@ export default function FamiliesPage() {
     deleteConfirmOpeningRef.current = true
     deleteConfirmOpenTimeRef.current = Date.now()
     
-    // Immediately set the state
-    setDeleteConfirm({
-      isOpen: true,
-      familyId: family._id,
-      familyName: family.name
-    })
-    console.log('Delete confirm state set to open')
+    // Use a small delay to ensure the click event has fully completed
+    // This prevents any event propagation issues
+    setTimeout(() => {
+      // Immediately set the state
+      setDeleteConfirm({
+        isOpen: true,
+        familyId: family._id,
+        familyName: family.name
+      })
+      console.log('Delete confirm state set to open')
+    }, 10)
     
     // Reset opening flag after delay (extended to 5 seconds)
     setTimeout(() => {
@@ -1268,10 +1272,8 @@ export default function FamiliesPage() {
                           e.stopPropagation()
                           e.nativeEvent.stopImmediatePropagation()
                           console.log('Delete button onClick fired')
-                          // Use requestAnimationFrame to ensure state update happens after all event handlers
-                          requestAnimationFrame(() => {
-                            handleDeleteClick(family)
-                          })
+                          // Call handleDeleteClick directly - the delay is now inside the function
+                          handleDeleteClick(family)
                         }}
                         onMouseUp={(e) => {
                           e.preventDefault()
