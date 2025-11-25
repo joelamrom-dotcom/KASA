@@ -41,13 +41,20 @@ export default function Modal({
   // Wrapper for onClose that respects disableBackdropClick
   const safeOnClose = useCallback(() => {
     if (disableBackdropClick) {
-      const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-      if (timeSinceOpen < 10000) {
-        console.log('Modal onClose prevented - disableBackdropClick is true and guard is active', {
-          timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
-        })
-        return
-      }
+      // When disableBackdropClick is true, NEVER allow programmatic closes
+      // Only allow closes from explicit user actions (Cancel/Confirm buttons)
+      console.log('Modal onClose prevented - disableBackdropClick is true, only explicit button clicks can close', {
+        timeSinceOpen: openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+      })
+      return
+    }
+    // For normal modals, check guard duration
+    const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
+    if (timeSinceOpen < 3000) {
+      console.log('Modal onClose prevented - guard is active', {
+        timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
+      })
+      return
     }
     onClose()
   }, [onClose, disableBackdropClick])
@@ -59,14 +66,21 @@ export default function Modal({
       preventBackdropClickRef.current = true
       document.body.style.overflow = 'hidden'
       
-      // If backdrop clicks are disabled, keep the guard active longer
-      const guardDuration = disableBackdropClick ? 10000 : 3000
+      // If backdrop clicks are disabled, keep the guard active permanently
+      // Otherwise, use a shorter guard duration
+      const guardDuration = disableBackdropClick ? Infinity : 3000
       
       // Prevent backdrop clicks for a longer period to catch any delayed click events
-      setTimeout(() => {
-        justOpenedRef.current = false
-        console.log('Modal opening guard disabled', { disableBackdropClick, guardDuration })
-      }, guardDuration)
+      // If disableBackdropClick is true, NEVER disable the guard
+      if (!disableBackdropClick) {
+        setTimeout(() => {
+          justOpenedRef.current = false
+          console.log('Modal opening guard disabled', { disableBackdropClick, guardDuration })
+        }, guardDuration)
+      } else {
+        // Keep it enabled permanently when disableBackdropClick is true
+        console.log('Modal opening guard enabled permanently (disableBackdropClick=true)')
+      }
       
       // Keep preventing backdrop clicks for even longer to catch any event propagation issues
       // If disableBackdropClick is true, never disable this guard
@@ -98,8 +112,9 @@ export default function Modal({
       if (e.key === 'Escape' && isOpen) {
         // Prevent closing if modal was just opened or if backdrop clicks are disabled
         const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-        const guardDuration = disableBackdropClick ? 10000 : 3000
-        if (justOpenedRef.current || preventBackdropClickRef.current || timeSinceOpen < guardDuration) {
+        // If disableBackdropClick is true, the guard duration is effectively infinite
+        const guardDuration = disableBackdropClick ? Infinity : 3000
+        if (justOpenedRef.current || preventBackdropClickRef.current || (timeSinceOpen < guardDuration && guardDuration !== Infinity)) {
           console.log('Escape key prevented - modal just opened or guard active', {
             justOpened: justOpenedRef.current,
             preventBackdropClick: preventBackdropClickRef.current,
@@ -128,8 +143,10 @@ export default function Modal({
     
     // Prevent closing if modal was just opened or if backdrop clicks are prevented
     const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-    const guardDuration = disableBackdropClick ? 10000 : 3000
-    if (justOpenedRef.current || preventBackdropClickRef.current || timeSinceOpen < guardDuration) {
+    // If disableBackdropClick is true, the guard duration is effectively infinite
+    const guardDuration = disableBackdropClick ? Infinity : 3000
+    const isGuardActive = justOpenedRef.current || preventBackdropClickRef.current || (timeSinceOpen < guardDuration && guardDuration !== Infinity)
+    if (isGuardActive || disableBackdropClick) {
       console.log('Modal backdrop click prevented', {
         justOpened: justOpenedRef.current,
         preventBackdropClick: preventBackdropClickRef.current,
