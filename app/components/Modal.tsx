@@ -230,7 +230,18 @@ export default function Modal({
   const modalContent = (
     <div
       className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-fade-in"
-      style={{ position: 'fixed', zIndex: 9999 }}
+      style={{ 
+        position: 'fixed', 
+        zIndex: 9999,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%'
+      }}
+      data-modal-open={isOpen}
+      data-testid="modal-backdrop"
       onClick={disableBackdropClick ? (e) => {
         // Completely prevent any backdrop clicks when disabled
         console.log('Modal backdrop click prevented - disableBackdropClick is true', {
@@ -297,13 +308,19 @@ export default function Modal({
   
   useEffect(() => {
     setMounted(true)
-    return () => setMounted(false)
-  }, [])
+    console.log('Modal: Mounted state set to true', { isOpen })
+    return () => {
+      console.log('Modal: Unmounting', { isOpen })
+      setMounted(false)
+    }
+  }, [isOpen])
   
   if (!mounted || typeof window === 'undefined') {
+    console.log('Modal: Not rendering - not mounted or SSR', { mounted, isOpen })
     return null
   }
   
+  console.log('Modal: Creating portal', { isOpen, mounted })
   return createPortal(modalContent, document.body)
 }
 
