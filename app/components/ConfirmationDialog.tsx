@@ -28,74 +28,65 @@ export default function ConfirmationDialog({
   isLoading = false,
 }: ConfirmationDialogProps) {
   const openTimeRef = React.useRef<number | null>(null)
-  const shouldPreventCloseRef = React.useRef(false)
   const userInitiatedCloseRef = React.useRef(false)
-  const ignoreIsOpenPropRef = React.useRef(false)
-  const [localIsOpen, setLocalIsOpen] = React.useState(isOpen)
+  const guardActiveRef = React.useRef(false)
+  const [localIsOpen, setLocalIsOpen] = React.useState(false)
   
-  // Track when dialog opens - completely ignore isOpen prop for 10 seconds
+  // When isOpen prop becomes true, open dialog and activate guard
   React.useEffect(() => {
     if (isOpen && !localIsOpen) {
-      // Dialog is opening
       const openTime = Date.now()
       openTimeRef.current = openTime
-      shouldPreventCloseRef.current = true
       userInitiatedCloseRef.current = false
-      ignoreIsOpenPropRef.current = true
+      guardActiveRef.current = true
       setLocalIsOpen(true)
-      console.log('ConfirmationDialog: Dialog opened, ignoring isOpen prop for 10 seconds', { 
+      console.log('ConfirmationDialog: Dialog opened, guard active for 10 seconds', { 
         title,
-        openTime,
-        timestamp: Date.now()
+        openTime
       })
       
-      // Stop ignoring isOpen prop after 10 seconds
+      // Disable guard after 10 seconds
       const timeoutId = setTimeout(() => {
-        ignoreIsOpenPropRef.current = false
-        console.log('ConfirmationDialog: Stopped ignoring isOpen prop after 10 seconds')
-        // Sync with parent's isOpen prop
+        guardActiveRef.current = false
+        console.log('ConfirmationDialog: Guard disabled after 10 seconds')
+        // If parent wants it closed, close it now
         if (!isOpen) {
           setLocalIsOpen(false)
         }
       }, 10000)
       
       return () => clearTimeout(timeoutId)
-    } else if (!isOpen && localIsOpen && !ignoreIsOpenPropRef.current) {
-      // Dialog is closing and we're not ignoring the prop
+    }
+  }, [isOpen, title]) // Only depend on isOpen, not localIsOpen
+  
+  // Handle parent trying to close - only allow if guard is not active or user initiated
+  React.useEffect(() => {
+    if (!isOpen && localIsOpen) {
       if (userInitiatedCloseRef.current) {
+        // User clicked button - allow close
         setLocalIsOpen(false)
         openTimeRef.current = null
-        shouldPreventCloseRef.current = false
+        guardActiveRef.current = false
         userInitiatedCloseRef.current = false
         console.log('ConfirmationDialog: Dialog closed by user', { title })
-      } else {
-        // Non-user-initiated close - check if it's premature
+      } else if (guardActiveRef.current) {
+        // Guard is active - block close
         const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-        if (timeSinceOpen < 10000) {
-          console.warn('ConfirmationDialog: BLOCKED non-user close - keeping dialog open', {
-            title,
-            timeSinceOpen: `${timeSinceOpen}ms`
-          })
-          // Keep it open
-          return
-        }
+        console.warn('ConfirmationDialog: BLOCKED close - guard active', {
+          title,
+          timeSinceOpen: `${timeSinceOpen}ms`
+        })
+        // Keep localIsOpen true - ignore parent's isOpen=false
+      } else {
+        // Guard expired - allow close
         setLocalIsOpen(false)
         openTimeRef.current = null
-        shouldPreventCloseRef.current = false
         console.log('ConfirmationDialog: Dialog closed after guard period', { title })
       }
-    } else if (!isOpen && localIsOpen && ignoreIsOpenPropRef.current) {
-      // Parent wants to close but we're ignoring it
-      const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-      console.warn('ConfirmationDialog: IGNORING isOpen=false - keeping dialog open (guard active)', {
-        title,
-        timeSinceOpen: `${timeSinceOpen}ms`,
-        userInitiated: userInitiatedCloseRef.current
-      })
     }
   }, [isOpen, localIsOpen, title])
   
-  // Use localIsOpen instead of isOpen prop
+  // Use localIsOpen - it controls visibility independently
   const effectiveIsOpen = localIsOpen
   
   // Prevent closing during loading or if not user-initiated
