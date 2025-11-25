@@ -1677,21 +1677,19 @@ export default function FamiliesPage() {
           onSend={handleBulkSMS}
         />
 
-        {/* Confirmation Dialog */}
-        {deleteConfirm.familyId && (
-          <ConfirmationDialog
-            key={`delete-${deleteConfirm.familyId}`}
-            isOpen={deleteConfirm.isOpen}
-            title="Delete Family"
-            message={`Are you sure you want to delete "${deleteConfirm.familyName}"? This will move the family to the recycle bin.`}
-            confirmText={isDeleting ? 'Deleting...' : 'Delete'}
-            cancelText="Cancel"
-            onConfirm={handleDeleteConfirm}
-            onClose={handleDeleteCancel}
-            type="danger"
-            isLoading={isDeleting}
-          />
-        )}
+        {/* Confirmation Dialog - Always render, control visibility with isOpen */}
+        <ConfirmationDialog
+          key={deleteConfirm.familyId ? `delete-${deleteConfirm.familyId}` : 'delete-dialog'}
+          isOpen={deleteConfirm.isOpen && !!deleteConfirm.familyId}
+          title="Delete Family"
+          message={deleteConfirm.familyId ? `Are you sure you want to delete "${deleteConfirm.familyName}"? This will move the family to the recycle bin.` : ''}
+          confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+          cancelText="Cancel"
+          onConfirm={handleDeleteConfirm}
+          onClose={handleDeleteCancel}
+          type="danger"
+          isLoading={isDeleting}
+        />
 
         {showModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
