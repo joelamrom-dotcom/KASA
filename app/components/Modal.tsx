@@ -304,19 +304,28 @@ export default function Modal({
   )
   
   // Use portal to render at document body level to avoid z-index and stacking context issues
-  const [mounted, setMounted] = useState(false)
+  // Initialize mounted to true on client side to avoid first render returning null
+  const [mounted, setMounted] = useState(typeof window !== 'undefined')
   
   useEffect(() => {
-    setMounted(true)
-    console.log('Modal: Mounted state set to true', { isOpen })
+    if (typeof window !== 'undefined') {
+      setMounted(true)
+      console.log('Modal: Mounted state set to true', { isOpen })
+    }
     return () => {
       console.log('Modal: Unmounting', { isOpen })
-      setMounted(false)
+      // Don't reset mounted on unmount - keep it true for client-side
+      // setMounted(false)
     }
   }, [isOpen])
   
-  if (!mounted || typeof window === 'undefined') {
-    console.log('Modal: Not rendering - not mounted or SSR', { mounted, isOpen })
+  if (typeof window === 'undefined') {
+    console.log('Modal: Not rendering - SSR', { isOpen })
+    return null
+  }
+  
+  if (!mounted) {
+    console.log('Modal: Not rendering - not mounted', { mounted, isOpen })
     return null
   }
   
