@@ -228,12 +228,12 @@ export default function Modal({
           ${className}
         `}
         onClick={(e) => {
+          // Only stop propagation to prevent backdrop click, don't prevent default
           e.stopPropagation()
-          e.preventDefault()
         }}
         onMouseDown={(e) => {
+          // Only stop propagation to prevent backdrop click, don't prevent default
           e.stopPropagation()
-          e.preventDefault()
         }}
       >
         {(title || showCloseButton) && (
