@@ -33,17 +33,31 @@ export default function ConfirmationDialog({
   // Track when dialog opens
   React.useEffect(() => {
     if (isOpen) {
-      openTimeRef.current = Date.now()
+      const openTime = Date.now()
+      openTimeRef.current = openTime
       shouldPreventCloseRef.current = true
-      console.log('ConfirmationDialog: Dialog opened, setting prevent close guard', { title })
-      // Disable prevent close after 3 seconds
-      setTimeout(() => {
+      console.log('ConfirmationDialog: Dialog opened, setting prevent close guard', { 
+        title,
+        openTime,
+        timestamp: Date.now()
+      })
+      // Disable prevent close after 5 seconds (extended for safety)
+      const timeoutId = setTimeout(() => {
         shouldPreventCloseRef.current = false
-        console.log('ConfirmationDialog: Prevent close guard disabled')
-      }, 3000)
+        const timeSinceOpen = Date.now() - openTime
+        console.log('ConfirmationDialog: Prevent close guard disabled', {
+          timeSinceOpen: `${timeSinceOpen}ms`
+        })
+      }, 5000)
+      
+      return () => {
+        clearTimeout(timeoutId)
+        console.log('ConfirmationDialog: Cleanup - clearing timeout', { title })
+      }
     } else {
       openTimeRef.current = null
       shouldPreventCloseRef.current = false
+      console.log('ConfirmationDialog: Dialog closed, resetting guards', { title })
     }
   }, [isOpen, title])
   
