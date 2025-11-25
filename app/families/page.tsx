@@ -154,14 +154,18 @@ export default function FamiliesPage() {
   const setDeleteConfirmWithLog = useCallback((newState: { isOpen: boolean; familyId: string | null; familyName: string }) => {
     const stack = new Error().stack
     const caller = stack?.split('\n')[2]?.trim() || 'unknown'
+    const currentState = deleteConfirm
     console.log('setDeleteConfirm called:', {
+      currentState,
       newState,
       caller,
       timestamp: Date.now(),
-      fullStack: stack?.split('\n').slice(0, 10).join('\n')
+      isChangingFromOpenToClosed: currentState.isOpen && !newState.isOpen,
+      isChangingFromClosedToOpen: !currentState.isOpen && newState.isOpen,
+      fullStack: stack?.split('\n').slice(0, 15).join('\n')
     })
     setDeleteConfirm(newState)
-  }, [])
+  }, [deleteConfirm])
   
   // Debug: Monitor deleteConfirm state changes
   useEffect(() => {

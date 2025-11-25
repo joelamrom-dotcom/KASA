@@ -136,12 +136,17 @@ export default function Modal({
     console.log('Modal: isOpen prop changed', {
       isOpen,
       disableBackdropClick,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      stackTrace: new Error().stack?.split('\n').slice(0, 5).join('\n')
     })
   }, [isOpen, disableBackdropClick])
   
   if (!isOpen) {
-    console.log('Modal: Returning null because isOpen is false')
+    console.log('Modal: Returning null because isOpen is false', {
+      disableBackdropClick,
+      timestamp: Date.now(),
+      stackTrace: new Error().stack?.split('\n').slice(0, 5).join('\n')
+    })
     return null
   }
   
