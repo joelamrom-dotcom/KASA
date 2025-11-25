@@ -166,11 +166,11 @@ export default function FamiliesPage() {
     const caller = stack?.split('\n')[2]?.trim() || 'unknown'
     const currentState = deleteConfirmRef.current // Use ref to get latest state
     
-    // Prevent closing if we're trying to close while opening (within 2 seconds)
-    if (currentState.isOpen && !newState.isOpen && newState.familyId === currentState.familyId) {
+    // Prevent closing if we're trying to close while opening (within 10 seconds - extended guard)
+    if (currentState.isOpen && !newState.isOpen) {
       const timeSinceOpen = Date.now() - (currentState as any).openTime || 0
-      if (timeSinceOpen < 2000) {
-        console.warn('setDeleteConfirm: BLOCKED - trying to close dialog immediately after opening', {
+      if (timeSinceOpen < 10000) {
+        console.warn('setDeleteConfirm: BLOCKED - trying to close dialog too soon after opening', {
           currentState,
           newState,
           caller,
