@@ -430,29 +430,13 @@ export default function FamiliesPage() {
       showToast('Error deleting family. Please try again.', 'error')
     } finally {
       setIsDeleting(false)
-      deleteConfirmOpeningRef.current = false
-      deleteConfirmOpenTimeRef.current = null
-      setDeleteConfirmSafe({ isOpen: false, familyId: null, familyName: '' })
+      setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
     }
   }
 
   const handleDeleteCancel = () => {
-    // Prevent closing if dialog was just opened
-    const timeSinceOpen = deleteConfirmOpenTimeRef.current ? Date.now() - deleteConfirmOpenTimeRef.current : Infinity
-    if (deleteConfirmOpeningRef.current || timeSinceOpen < 1000) {
-      console.log('handleDeleteCancel prevented - dialog just opened', {
-        openingGuard: deleteConfirmOpeningRef.current,
-        timeSinceOpen: timeSinceOpen < Infinity ? `${timeSinceOpen}ms` : 'never opened'
-      })
-      console.trace('Stack trace for prevented cancel')
-      return
-    }
-    
     console.log('handleDeleteCancel called - closing delete confirmation')
-    console.trace('Stack trace for handleDeleteCancel')
-    deleteConfirmOpeningRef.current = false
-    deleteConfirmOpenTimeRef.current = null
-    setDeleteConfirmSafe({ isOpen: false, familyId: null, familyName: '' })
+    setDeleteConfirm({ isOpen: false, familyId: null, familyName: '' })
   }
 
   const resetForm = () => {
