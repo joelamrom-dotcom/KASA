@@ -31,17 +31,16 @@ export default function ConfirmationDialog({
   const userInitiatedCloseRef = React.useRef(false)
   const guardActiveRef = React.useRef(false)
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-  const lastIsOpenRef = React.useRef(isOpen)
+  const prevIsOpenRef = React.useRef(isOpen)
   
-  // Track when dialog opens - set guard
+  // Simple effect - only set guard when opening, don't try to block closes here
   React.useEffect(() => {
-    // Only react to isOpen changing from false to true
-    if (isOpen && !lastIsOpenRef.current) {
+    // Only when transitioning from closed to open
+    if (isOpen && !prevIsOpenRef.current) {
       const openTime = Date.now()
       openTimeRef.current = openTime
       userInitiatedCloseRef.current = false
       guardActiveRef.current = true
-      lastIsOpenRef.current = true
       console.log('ConfirmationDialog: Dialog opened, guard active for 10 seconds', { 
         title,
         openTime
@@ -55,8 +54,7 @@ export default function ConfirmationDialog({
       }, 10000)
     }
     
-    // Update lastIsOpenRef
-    lastIsOpenRef.current = isOpen
+    prevIsOpenRef.current = isOpen
     
     return () => {
       if (timeoutRef.current) {
@@ -66,17 +64,8 @@ export default function ConfirmationDialog({
     }
   }, [isOpen, title])
   
-  // Calculate effective isOpen - ignore parent's isOpen if guard is active
-  // Use a simple function instead of useMemo to avoid dependency issues
-  const getEffectiveIsOpen = () => {
-    if (guardActiveRef.current && openTimeRef.current && !userInitiatedCloseRef.current) {
-      // Guard is active - force open
-      return true
-    }
-    return isOpen
-  }
-  
-  const effectiveIsOpen = getEffectiveIsOpen()
+  // Simple calculation - if guard active, force open
+  const effectiveIsOpen = guardActiveRef.current && openTimeRef.current ? true : isOpen
   
   // Prevent closing during loading or if not user-initiated
   const handleClose = React.useCallback(() => {
