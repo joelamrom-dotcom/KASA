@@ -29,62 +29,63 @@ export default function ConfirmationDialog({
 }: ConfirmationDialogProps) {
   const openTimeRef = React.useRef<number | null>(null)
   const shouldPreventCloseRef = React.useRef(false)
+  const userInitiatedCloseRef = React.useRef(false)
   
-  // Track when dialog opens
+  // Track when dialog opens - keep guard active until user explicitly closes
   React.useEffect(() => {
     if (isOpen) {
       const openTime = Date.now()
       openTimeRef.current = openTime
       shouldPreventCloseRef.current = true
+      userInitiatedCloseRef.current = false
       console.log('ConfirmationDialog: Dialog opened, setting prevent close guard', { 
         title,
         openTime,
         timestamp: Date.now()
       })
-      // Disable prevent close after 5 seconds (extended for safety)
-      const timeoutId = setTimeout(() => {
-        shouldPreventCloseRef.current = false
-        const timeSinceOpen = Date.now() - openTime
-        console.log('ConfirmationDialog: Prevent close guard disabled', {
-          timeSinceOpen: `${timeSinceOpen}ms`
-        })
-      }, 5000)
-      
-      return () => {
-        clearTimeout(timeoutId)
-        console.log('ConfirmationDialog: Cleanup - clearing timeout', { title })
-      }
     } else {
+      // Only reset guards if user explicitly closed it
+      if (!userInitiatedCloseRef.current) {
+        console.warn('ConfirmationDialog: Dialog closed without user action - this should not happen!', {
+          title,
+          timeSinceOpen: openTimeRef.current ? Date.now() - openTimeRef.current : null
+        })
+      }
       openTimeRef.current = null
       shouldPreventCloseRef.current = false
+      userInitiatedCloseRef.current = false
       console.log('ConfirmationDialog: Dialog closed, resetting guards', { title })
     }
   }, [isOpen, title])
   
-  // Prevent closing during loading or immediately after opening
+  // Prevent closing during loading or if not user-initiated
   const handleClose = React.useCallback(() => {
     console.log('ConfirmationDialog: handleClose called', {
       isLoading,
       isOpen,
       shouldPreventClose: shouldPreventCloseRef.current,
+      userInitiated: userInitiatedCloseRef.current,
       timeSinceOpen: openTimeRef.current ? Date.now() - openTimeRef.current : null,
       stackTrace: new Error().stack
     })
+    
     if (isLoading) {
       console.log('ConfirmationDialog: handleClose prevented - isLoading is true')
       return
     }
     
-    // Prevent closing if dialog was just opened
-    if (shouldPreventCloseRef.current) {
+    // Always allow close if user explicitly clicked Cancel button
+    // The Cancel button should set userInitiatedCloseRef.current = true before calling this
+    if (!userInitiatedCloseRef.current) {
       const timeSinceOpen = openTimeRef.current ? Date.now() - openTimeRef.current : Infinity
-      console.warn('ConfirmationDialog: handleClose BLOCKED - dialog just opened', {
-        timeSinceOpen: `${timeSinceOpen}ms`
+      console.warn('ConfirmationDialog: handleClose BLOCKED - not user-initiated', {
+        timeSinceOpen: `${timeSinceOpen}ms`,
+        shouldPreventClose: shouldPreventCloseRef.current
       })
       return
     }
     
-    console.log('ConfirmationDialog: handleClose allowed - calling onClose')
+    console.log('ConfirmationDialog: handleClose allowed - user-initiated close')
     onClose()
   }, [isLoading, isOpen, onClose])
   
