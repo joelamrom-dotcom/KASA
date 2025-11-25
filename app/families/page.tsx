@@ -149,22 +149,32 @@ export default function FamiliesPage() {
     familyName: ''
   })
   const [isDeleting, setIsDeleting] = useState(false)
+  const deleteConfirmRef = useRef<{ isOpen: boolean; familyId: string | null; familyName: string }>({
+    isOpen: false,
+    familyId: null,
+    familyName: ''
+  })
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    deleteConfirmRef.current = deleteConfirm
+  }, [deleteConfirm])
   
   // Wrapper to track all setDeleteConfirm calls
   const setDeleteConfirmWithLog = useCallback((newState: { isOpen: boolean; familyId: string | null; familyName: string }) => {
     const stack = new Error().stack
     const caller = stack?.split('\n')[2]?.trim() || 'unknown'
-    const currentState = deleteConfirm
+    const currentState = deleteConfirmRef.current // Use ref to get latest state
     
-    // Prevent closing if we're trying to close while opening
+    // Prevent closing if we're trying to close while opening (within 2 seconds)
     if (currentState.isOpen && !newState.isOpen && newState.familyId === currentState.familyId) {
       const timeSinceOpen = Date.now() - (currentState as any).openTime || 0
-      if (timeSinceOpen < 1000) {
+      if (timeSinceOpen < 2000) {
         console.warn('setDeleteConfirm: BLOCKED - trying to close dialog immediately after opening', {
           currentState,
           newState,
           caller,
-          timeSinceOpen,
+          timeSinceOpen: `${timeSinceOpen}ms`,
           fullStack: stack?.split('\n').slice(0, 15).join('\n')
         })
         // Don't allow the close - keep it open
@@ -187,8 +197,10 @@ export default function FamiliesPage() {
       (newState as any).openTime = Date.now()
     }
     
+    // Update ref immediately
+    deleteConfirmRef.current = newState
     setDeleteConfirm(newState)
-  }, [deleteConfirm])
+  }, [])
   
   // Debug: Monitor deleteConfirm state changes
   useEffect(() => {
