@@ -175,6 +175,135 @@ export async function GET(request: NextRequest) {
         }]
         break
 
+      case 'withdrawals':
+        headers = [
+          'familyName',
+          'familyEmail',
+          'familyId',
+          'amount',
+          'withdrawalDate',
+          'reason',
+          'notes'
+        ]
+        sampleData = [{
+          familyName: 'Sample Family',
+          familyEmail: 'family@example.com',
+          familyId: '',
+          amount: '200',
+          withdrawalDate: '2024-01-15',
+          reason: 'Refund',
+          notes: 'Withdrawal notes'
+        }]
+        break
+
+      case 'refunds':
+        headers = [
+          'paymentId',
+          'familyName',
+          'familyEmail',
+          'familyId',
+          'amount',
+          'refundDate',
+          'reason',
+          'notes'
+        ]
+        sampleData = [{
+          paymentId: '',
+          familyName: 'Sample Family',
+          familyEmail: 'family@example.com',
+          familyId: '',
+          amount: '100',
+          refundDate: '2024-01-20',
+          reason: 'requested_by_customer',
+          notes: 'Refund notes'
+        }]
+        break
+
+      case 'tasks':
+        headers = [
+          'title',
+          'description',
+          'dueDate',
+          'email',
+          'isCompleted',
+          'priority'
+        ]
+        sampleData = [{
+          title: 'Follow up with family',
+          description: 'Call to discuss payment',
+          dueDate: '2024-02-15',
+          email: 'admin@example.com',
+          isCompleted: 'false',
+          priority: 'high'
+        }]
+        break
+
+      case 'family-tags':
+        headers = [
+          'name',
+          'color',
+          'description'
+        ]
+        sampleData = [{
+          name: 'VIP',
+          color: '#3b82f6',
+          description: 'VIP families'
+        }]
+        break
+
+      case 'family-groups':
+        headers = [
+          'name',
+          'description',
+          'color',
+          'familyNames'
+        ]
+        sampleData = [{
+          name: 'Group A',
+          description: 'First group',
+          color: '#10b981',
+          familyNames: 'Family 1,Family 2,Family 3'
+        }]
+        break
+
+      case 'family-notes':
+        headers = [
+          'familyName',
+          'familyEmail',
+          'familyId',
+          'note',
+          'checked'
+        ]
+        sampleData = [{
+          familyName: 'Sample Family',
+          familyEmail: 'family@example.com',
+          familyId: '',
+          note: 'Important note about this family',
+          checked: 'false'
+        }]
+        break
+
+      case 'family-relationships':
+        headers = [
+          'family1Name',
+          'family1Email',
+          'family1Id',
+          'family2Name',
+          'family2Email',
+          'family2Id',
+          'relationshipType'
+        ]
+        sampleData = [{
+          family1Name: 'Family A',
+          family1Email: 'familya@example.com',
+          family1Id: '',
+          family2Name: 'Family B',
+          family2Email: 'familyb@example.com',
+          family2Id: '',
+          relationshipType: 'related'
+        }]
+        break
+
       default:
         return NextResponse.json({ error: `Unknown type: ${type}` }, { status: 400 })
     }

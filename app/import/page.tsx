@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { ArrowUpTrayIcon, DocumentArrowDownIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
-type ImportType = 'families' | 'members' | 'payments' | 'lifecycle-events' | 'payment-plans' | 'lifecycle-event-types'
+type ImportType = 'families' | 'members' | 'payments' | 'lifecycle-events' | 'payment-plans' | 'lifecycle-event-types' | 'withdrawals' | 'refunds' | 'tasks' | 'family-tags' | 'family-groups' | 'family-notes' | 'family-relationships'
 
 interface ImportResult {
   success: boolean
@@ -145,8 +145,8 @@ export default function ImportPage() {
         {/* Import Type Selection */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Select Import Type</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {(['families', 'members', 'payments', 'lifecycle-events', 'payment-plans', 'lifecycle-event-types'] as ImportType[]).map((type) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {(['families', 'members', 'payments', 'lifecycle-events', 'payment-plans', 'lifecycle-event-types', 'withdrawals', 'refunds', 'tasks', 'family-tags', 'family-groups', 'family-notes', 'family-relationships'] as ImportType[]).map((type) => (
               <button
                 key={type}
                 onClick={() => {
