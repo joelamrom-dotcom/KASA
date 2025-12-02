@@ -16,7 +16,8 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   MapPinIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
@@ -74,7 +75,7 @@ interface ContactInfo {
 export default function PortalPage() {
   const router = useRouter()
   const user = getUser()
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'documents' | 'contact' | 'support'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'documents' | 'contact' | 'support' | 'financial' | 'events'>('overview')
   const [loading, setLoading] = useState(true)
   const [payments, setPayments] = useState<Payment[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
@@ -93,6 +94,19 @@ export default function PortalPage() {
   })
   const [newMessage, setNewMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [lifecycleEvents, setLifecycleEvents] = useState<any[]>([])
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<any[]>([])
+  const [financialData, setFinancialData] = useState<any>(null)
+  const [paymentFilters, setPaymentFilters] = useState({
+    year: '',
+    paymentMethod: '',
+    type: '',
+    startDate: '',
+    endDate: ''
+  })
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('')
 
   useEffect(() => {
     // Redirect if not a family user
@@ -113,12 +127,15 @@ export default function PortalPage() {
       const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {}
 
       // Fetch all data in parallel
-      const [familyRes, paymentsRes, documentsRes, ticketsRes, contactRes] = await Promise.all([
+      const [familyRes, paymentsRes, documentsRes, ticketsRes, contactRes, eventsRes, paymentMethodsRes, financialRes] = await Promise.all([
         fetch('/api/kasa/families/me', { headers }),
         fetch('/api/kasa/portal/payments?limit=10', { headers }),
         fetch('/api/kasa/portal/documents', { headers }),
         fetch('/api/kasa/portal/support-tickets?limit=5', { headers }),
-        fetch('/api/kasa/portal/contact', { headers })
+        fetch('/api/kasa/portal/contact', { headers }),
+        fetch('/api/kasa/portal/lifecycle-events?upcoming=true&limit=10', { headers }),
+        fetch('/api/kasa/portal/saved-payment-methods', { headers }),
+        fetch('/api/kasa/portal/financial-dashboard', { headers })
       ])
 
       if (familyRes.ok) {
@@ -145,6 +162,25 @@ export default function PortalPage() {
         const data = await contactRes.json()
         setContactInfo(data)
         setContactForm(data)
+      }
+
+      if (eventsRes.ok) {
+        const data = await eventsRes.json()
+        setLifecycleEvents(data.events || [])
+      }
+
+      if (paymentMethodsRes.ok) {
+        const data = await paymentMethodsRes.json()
+        setSavedPaymentMethods(data.paymentMethods || [])
+        if (data.paymentMethods && data.paymentMethods.length > 0) {
+          const defaultMethod = data.paymentMethods.find((pm: any) => pm.isDefault) || data.paymentMethods[0]
+          setSelectedPaymentMethod(defaultMethod._id)
+        }
+      }
+
+      if (financialRes.ok) {
+        const data = await financialRes.json()
+        setFinancialData(data)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -323,7 +359,9 @@ export default function PortalPage() {
           <nav className="-mb-px flex space-x-8">
             {[
               { id: 'overview', label: 'Overview', icon: ChartBarIcon },
+              { id: 'financial', label: 'Financial Dashboard', icon: ChartBarIcon },
               { id: 'payments', label: 'Payment History', icon: CreditCardIcon },
+              { id: 'events', label: 'Upcoming Events', icon: CalendarIcon },
               { id: 'documents', label: 'Documents', icon: DocumentArrowDownIcon },
               { id: 'contact', label: 'Contact Info', icon: PencilIcon },
               { id: 'support', label: 'Support', icon: ChatBubbleLeftRightIcon }
@@ -413,50 +451,261 @@ export default function PortalPage() {
           </div>
         )}
 
+        {/* Financial Dashboard Tab */}
+        {activeTab === 'financial' && (
+          <div className="space-y-6">
+            {financialData ? (
+              <>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Paid This Year</p>
+                        <p className="text-2xl font-bold text-gray-900 mt-1">
+                          {formatCurrency(financialData.totalPaidThisYear || 0)}
+                        </p>
+                      </div>
+                      <CreditCardIcon className="h-12 w-12 text-blue-500" />
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Payments This Year</p>
+                        <p className="text-2xl font-bold text-gray-900 mt-1">
+                          {financialData.paymentsThisYearCount || 0}
+                        </p>
+                      </div>
+                      <ChartBarIcon className="h-12 w-12 text-green-500" />
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Current Balance</p>
+                        <p className="text-2xl font-bold text-gray-900 mt-1">
+                          {formatCurrency(financialData.currentBalance || 0)}
+                        </p>
+                      </div>
+                      <CurrencyDollarIcon className="h-12 w-12 text-purple-500" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Upcoming Payments */}
+                {financialData.upcomingPayments && financialData.upcomingPayments.length > 0 && (
+                  <div className="bg-white rounded-lg shadow">
+                    <div className="p-6 border-b">
+                      <h3 className="text-lg font-semibold">Upcoming Payments (Next 30 Days)</h3>
+                    </div>
+                    <div className="p-6">
+                      <div className="space-y-4">
+                        {financialData.upcomingPayments.map((payment: any) => (
+                          <div key={payment._id} className="flex items-center justify-between py-3 border-b last:border-0">
+                            <div>
+                              <p className="font-medium">{formatCurrency(payment.amount)}</p>
+                              <p className="text-sm text-gray-600">{formatDate(payment.nextPaymentDate)}</p>
+                            </div>
+                            <span className="text-sm text-gray-500 capitalize">{payment.frequency}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Methods Breakdown */}
+                {financialData.paymentMethodsBreakdown && Object.keys(financialData.paymentMethodsBreakdown).length > 0 && (
+                  <div className="bg-white rounded-lg shadow">
+                    <div className="p-6 border-b">
+                      <h3 className="text-lg font-semibold">Payment Methods Used This Year</h3>
+                    </div>
+                    <div className="p-6">
+                      <div className="space-y-2">
+                        {Object.entries(financialData.paymentMethodsBreakdown).map(([method, count]: [string, any]) => (
+                          <div key={method} className="flex items-center justify-between py-2">
+                            <span className="text-sm text-gray-700 capitalize">{method.replace('_', ' ')}</span>
+                            <span className="text-sm font-medium text-gray-900">{count} payments</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="bg-white rounded-lg shadow p-6">
+                <p className="text-gray-500 text-center py-8">Loading financial data...</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Payments Tab */}
         {activeTab === 'payments' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Payment History</h2>
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                  Make Payment
+                </button>
+              </div>
+              
+              {/* Filters */}
+              <div className="p-6 border-b bg-gray-50">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                    <input
+                      type="number"
+                      value={paymentFilters.year}
+                      onChange={(e) => setPaymentFilters({ ...paymentFilters, year: e.target.value })}
+                      placeholder="Filter by year"
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                    <select
+                      value={paymentFilters.paymentMethod}
+                      onChange={(e) => setPaymentFilters({ ...paymentFilters, paymentMethod: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-2"
+                    >
+                      <option value="">All Methods</option>
+                      <option value="cash">Cash</option>
+                      <option value="credit_card">Credit Card</option>
+                      <option value="check">Check</option>
+                      <option value="quick_pay">Quick Pay</option>
+                      <option value="ach">ACH</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      value={paymentFilters.startDate}
+                      onChange={(e) => setPaymentFilters({ ...paymentFilters, startDate: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      value={paymentFilters.endDate}
+                      onChange={(e) => setPaymentFilters({ ...paymentFilters, endDate: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    const token = localStorage.getItem('token')
+                    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {}
+                    let url = '/api/kasa/portal/payments?'
+                    const params = new URLSearchParams()
+                    if (paymentFilters.year) params.append('year', paymentFilters.year)
+                    if (paymentFilters.paymentMethod) params.append('paymentMethod', paymentFilters.paymentMethod)
+                    if (paymentFilters.startDate) params.append('startDate', paymentFilters.startDate)
+                    if (paymentFilters.endDate) params.append('endDate', paymentFilters.endDate)
+                    url += params.toString()
+                    
+                    const res = await fetch(url, { headers })
+                    if (res.ok) {
+                      const data = await res.json()
+                      setPayments(data.payments || [])
+                    }
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Apply Filters
+                </button>
+              </div>
+
+              <div className="p-6">
+                {payments.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Year</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {payments.map((payment) => (
+                          <tr key={payment._id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {formatDate(payment.paymentDate)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {formatCurrency(payment.amount)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                              {payment.paymentMethod}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                              {payment.type}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {payment.year || '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No payment history found</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Events Tab */}
+        {activeTab === 'events' && (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b">
-              <h2 className="text-lg font-semibold">Payment History</h2>
+              <h2 className="text-lg font-semibold">Upcoming Lifecycle Events</h2>
             </div>
             <div className="p-6">
-              {payments.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Year</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {payments.map((payment) => (
-                        <tr key={payment._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatDate(payment.paymentDate)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {formatCurrency(payment.amount)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                            {payment.paymentMethod}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                            {payment.type}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {payment.year || '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {lifecycleEvents.length > 0 ? (
+                <div className="space-y-4">
+                  {lifecycleEvents.map((event) => (
+                    <div key={event._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">{event.eventTypeLabel}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {formatDate(event.eventDate)}
+                            {event.year && ` • Year ${event.year}`}
+                          </p>
+                          {event.amount > 0 && (
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {formatCurrency(event.amount)}
+                            </p>
+                          )}
+                          {event.notes && (
+                            <p className="text-sm text-gray-600 mt-2">{event.notes}</p>
+                          )}
+                        </div>
+                        <CalendarIcon className="h-8 w-8 text-blue-500" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">No payment history found</p>
+                <p className="text-gray-500 text-center py-8">No upcoming events</p>
               )}
             </div>
           </div>
@@ -915,6 +1164,103 @@ export default function PortalPage() {
           </div>
         )
       })()}
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Make a Payment</h2>
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false)
+                  setPaymentAmount('')
+                }}
+                className="p-2 hover:bg-gray-100 rounded"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+                alert('Please enter a valid amount')
+                return
+              }
+              setSaving(true)
+              try {
+                const token = localStorage.getItem('token')
+                // For now, just show a message - full Stripe integration would go here
+                alert('Payment functionality requires Stripe integration. Please contact support to make a payment.')
+                setShowPaymentModal(false)
+                setPaymentAmount('')
+              } catch (error) {
+                console.error('Error processing payment:', error)
+                alert('Failed to process payment')
+              } finally {
+                setSaving(false)
+              }
+            }} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Amount ($) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2"
+                  required
+                  placeholder="0.00"
+                />
+              </div>
+              
+              {savedPaymentMethods.length > 0 ? (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Payment Method</label>
+                  <select
+                    value={selectedPaymentMethod}
+                    onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2"
+                  >
+                    {savedPaymentMethods.map((pm) => (
+                      <option key={pm._id} value={pm._id}>
+                        {pm.cardType?.toUpperCase()} •••• {pm.last4} {pm.isDefault ? '(Default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    No saved payment methods. Please contact support to add a payment method.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-4 justify-end pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPaymentModal(false)
+                    setPaymentAmount('')
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || !paymentAmount || savedPaymentMethods.length === 0}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? 'Processing...' : 'Pay Now'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
