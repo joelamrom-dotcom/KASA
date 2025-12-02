@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { ArrowUpTrayIcon, DocumentArrowDownIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
-type ImportType = 'families' | 'members' | 'payments' | 'lifecycle-events'
+type ImportType = 'families' | 'members' | 'payments' | 'lifecycle-events' | 'payment-plans' | 'lifecycle-event-types'
 
 interface ImportResult {
   success: boolean
@@ -110,24 +110,26 @@ export default function ImportPage() {
     }
   }
 
-  const downloadTemplate = () => {
-    const templates: { [key in ImportType]: string } = {
-      'families': `name,hebrewName,weddingDate,husbandFirstName,husbandHebrewName,husbandFatherHebrewName,wifeFirstName,wifeHebrewName,wifeFatherHebrewName,email,phone,address,city,state,zip,husbandCellPhone,wifeCellPhone,paymentPlanNumber`,
-      'members': `familyName,familyEmail,firstName,lastName,hebrewFirstName,hebrewLastName,birthDate,gender,barMitzvahDate,batMitzvahDate,weddingDate`,
-      'payments': `familyName,familyEmail,amount,paymentDate,type,paymentMethod,notes`,
-      'lifecycle-events': `familyName,familyEmail,eventType,eventDate,amount,notes`
+  const downloadTemplate = async () => {
+    try {
+      const res = await fetch(`/api/kasa/import/template?type=${importType}`)
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${importType}-template.csv`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      } else {
+        alert('Failed to download template')
+      }
+    } catch (error) {
+      console.error('Error downloading template:', error)
+      alert('Failed to download template')
     }
-
-    const csv = templates[importType]
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${importType}-template.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
   }
 
   return (
@@ -143,8 +145,8 @@ export default function ImportPage() {
         {/* Import Type Selection */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Select Import Type</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {(['families', 'members', 'payments', 'lifecycle-events'] as ImportType[]).map((type) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {(['families', 'members', 'payments', 'lifecycle-events', 'payment-plans', 'lifecycle-event-types'] as ImportType[]).map((type) => (
               <button
                 key={type}
                 onClick={() => {
@@ -162,7 +164,7 @@ export default function ImportPage() {
                     : 'border-gray-200 hover:border-gray-300 text-gray-700'
                 }`}
               >
-                {type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
+                {type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
               </button>
             ))}
           </div>

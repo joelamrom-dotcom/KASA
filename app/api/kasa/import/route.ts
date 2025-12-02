@@ -1,47 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { Family, FamilyMember, Payment, LifecycleEventPayment, PaymentPlan } from '@/lib/models'
+import { Family, FamilyMember, Payment, LifecycleEventPayment, PaymentPlan, LifecycleEvent } from '@/lib/models'
+import { parse } from 'fast-csv'
 
 export const dynamic = 'force-dynamic'
 
-// Helper function to parse CSV
-function parseCSV(csvText: string): { headers: string[], rows: string[][] } {
-  const lines = csvText.split('\n').filter(line => line.trim())
-  if (lines.length === 0) {
-    return { headers: [], rows: [] }
-  }
+// Helper function to parse CSV using fast-csv
+async function parseCSV(csvText: string): Promise<{ headers: string[], rows: any[] }> {
+  return new Promise((resolve, reject) => {
+    const rows: any[] = []
+    let headers: string[] = []
 
-  // Parse headers
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+    const stream = parse({ headers: true, skipEmptyLines: true })
+      .on('headers', (headerList) => {
+        headers = headerList
+      })
+      .on('data', (row) => {
+        rows.push(row)
+      })
+      .on('error', (error) => {
+        reject(error)
+      })
+      .on('end', () => {
+        resolve({ headers, rows })
+      })
 
-  // Parse rows
-  const rows: string[][] = []
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line) continue
-
-    // Handle CSV with quoted values that may contain commas
-    const values: string[] = []
-    let current = ''
-    let inQuotes = false
-
-    for (let j = 0; j < line.length; j++) {
-      const char = line[j]
-      if (char === '"') {
-        inQuotes = !inQuotes
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim())
-        current = ''
-      } else {
-        current += char
-      }
-    }
-    values.push(current.trim()) // Add last value
-
-    rows.push(values.map(v => v.replace(/^"|"$/g, '')))
-  }
-
-  return { headers, rows }
+    stream.write(csvText)
+    stream.end()
+  })
 }
 
 // Helper to normalize column names
@@ -91,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // Read CSV file
     const csvText = await file.text()
-    const { headers, rows } = parseCSV(csvText)
+    const { headers, rows } = await parseCSV(csvText)
 
     if (headers.length === 0) {
       return NextResponse.json(
@@ -100,11 +86,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Normalize headers
+    // Normalize headers for lookup
     const normalizedHeaders = headers.map(h => normalizeColumnName(h))
-    const headerMap: { [key: string]: number } = {}
-    normalizedHeaders.forEach((h, i) => {
-      headerMap[h] = i
+    const headerMap: { [key: string]: string } = {}
+    headers.forEach((h) => {
+      headerMap[normalizeColumnName(h)] = h
     })
 
     const imported: number[] = []
@@ -114,16 +100,22 @@ export async function POST(request: NextRequest) {
     // Import based on type
     switch (importType) {
       case 'families':
-        await importFamilies(rows, headerMap, headers, imported, errors, warnings)
+        await importFamilies(rows, headerMap, imported, errors, warnings)
         break
       case 'members':
-        await importMembers(rows, headerMap, headers, imported, errors, warnings)
+        await importMembers(rows, headerMap, imported, errors, warnings)
         break
       case 'payments':
-        await importPayments(rows, headerMap, headers, imported, errors, warnings)
+        await importPayments(rows, headerMap, imported, errors, warnings)
         break
       case 'lifecycle-events':
-        await importLifecycleEvents(rows, headerMap, headers, imported, errors, warnings)
+        await importLifecycleEvents(rows, headerMap, imported, errors, warnings)
+        break
+      case 'payment-plans':
+        await importPaymentPlans(rows, headerMap, imported, errors, warnings)
+        break
+      case 'lifecycle-event-types':
+        await importLifecycleEventTypes(rows, headerMap, imported, errors, warnings)
         break
       default:
         return NextResponse.json(
@@ -149,16 +141,22 @@ export async function POST(request: NextRequest) {
 }
 
 async function importFamilies(
-  rows: string[][],
-  headerMap: { [key: string]: number },
-  originalHeaders: string[],
+  rows: any[],
+  headerMap: { [key: string]: string },
   imported: number[],
   errors: string[],
   warnings: string[]
 ) {
-  const getValue = (row: string[], field: string): string => {
-    const index = headerMap[normalizeColumnName(field)]
-    return index !== undefined ? (row[index] || '').trim() : ''
+  const getValue = (row: any, field: string): string => {
+    const normalizedField = normalizeColumnName(field)
+    const actualHeader = headerMap[normalizedField]
+    if (actualHeader && row[actualHeader] !== undefined) {
+      return String(row[actualHeader] || '').trim()
+    }
+    if (row[field] !== undefined) {
+      return String(row[field] || '').trim()
+    }
+    return ''
   }
 
   // Get payment plans for lookup
@@ -240,16 +238,22 @@ async function importFamilies(
 }
 
 async function importMembers(
-  rows: string[][],
-  headerMap: { [key: string]: number },
-  originalHeaders: string[],
+  rows: any[],
+  headerMap: { [key: string]: string },
   imported: number[],
   errors: string[],
   warnings: string[]
 ) {
-  const getValue = (row: string[], field: string): string => {
-    const index = headerMap[normalizeColumnName(field)]
-    return index !== undefined ? (row[index] || '').trim() : ''
+  const getValue = (row: any, field: string): string => {
+    const normalizedField = normalizeColumnName(field)
+    const actualHeader = headerMap[normalizedField]
+    if (actualHeader && row[actualHeader] !== undefined) {
+      return String(row[actualHeader] || '').trim()
+    }
+    if (row[field] !== undefined) {
+      return String(row[field] || '').trim()
+    }
+    return ''
   }
 
   for (let i = 0; i < rows.length; i++) {
@@ -265,7 +269,7 @@ async function importMembers(
       // Find family by name or email (familyId is not in template)
       const familyName = getValue(row, 'familyName')
       const familyEmail = getValue(row, 'familyEmail')
-      let familyId = getValue(row, 'familyId') // Optional if provided
+      let familyId = getValue(row, 'familyId')
       
       if (!familyId && (familyName || familyEmail)) {
         const family = await findFamilyByNameOrEmail(familyName, familyEmail)
@@ -287,10 +291,12 @@ async function importMembers(
         hebrewFirstName: getValue(row, 'hebrewFirstName') || undefined,
         hebrewLastName: getValue(row, 'hebrewLastName') || undefined,
         birthDate: parseDate(getValue(row, 'birthDate')) || undefined,
+        hebrewBirthDate: getValue(row, 'hebrewBirthDate') || undefined,
         gender: getValue(row, 'gender') || undefined,
         barMitzvahDate: parseDate(getValue(row, 'barMitzvahDate')) || undefined,
         batMitzvahDate: parseDate(getValue(row, 'batMitzvahDate')) || undefined,
-        weddingDate: parseDate(getValue(row, 'weddingDate')) || undefined
+        weddingDate: parseDate(getValue(row, 'weddingDate')) || undefined,
+        paymentPlan: getValue(row, 'paymentPlan') ? parseInt(getValue(row, 'paymentPlan')) : undefined
       })
 
       imported.push(i)
@@ -301,16 +307,22 @@ async function importMembers(
 }
 
 async function importPayments(
-  rows: string[][],
-  headerMap: { [key: string]: number },
-  originalHeaders: string[],
+  rows: any[],
+  headerMap: { [key: string]: string },
   imported: number[],
   errors: string[],
   warnings: string[]
 ) {
-  const getValue = (row: string[], field: string): string => {
-    const index = headerMap[normalizeColumnName(field)]
-    return index !== undefined ? (row[index] || '').trim() : ''
+  const getValue = (row: any, field: string): string => {
+    const normalizedField = normalizeColumnName(field)
+    const actualHeader = headerMap[normalizedField]
+    if (actualHeader && row[actualHeader] !== undefined) {
+      return String(row[actualHeader] || '').trim()
+    }
+    if (row[field] !== undefined) {
+      return String(row[field] || '').trim()
+    }
+    return ''
   }
 
   for (let i = 0; i < rows.length; i++) {
@@ -332,7 +344,7 @@ async function importPayments(
       // Find family by name or email (familyId is not in template)
       const familyName = getValue(row, 'familyName')
       const familyEmail = getValue(row, 'familyEmail')
-      let familyId = getValue(row, 'familyId') // Optional if provided
+      let familyId = getValue(row, 'familyId')
       
       if (!familyId && (familyName || familyEmail)) {
         const family = await findFamilyByNameOrEmail(familyName, familyEmail)
@@ -367,16 +379,22 @@ async function importPayments(
 }
 
 async function importLifecycleEvents(
-  rows: string[][],
-  headerMap: { [key: string]: number },
-  originalHeaders: string[],
+  rows: any[],
+  headerMap: { [key: string]: string },
   imported: number[],
   errors: string[],
   warnings: string[]
 ) {
-  const getValue = (row: string[], field: string): string => {
-    const index = headerMap[normalizeColumnName(field)]
-    return index !== undefined ? (row[index] || '').trim() : ''
+  const getValue = (row: any, field: string): string => {
+    const normalizedField = normalizeColumnName(field)
+    const actualHeader = headerMap[normalizedField]
+    if (actualHeader && row[actualHeader] !== undefined) {
+      return String(row[actualHeader] || '').trim()
+    }
+    if (row[field] !== undefined) {
+      return String(row[field] || '').trim()
+    }
+    return ''
   }
 
   for (let i = 0; i < rows.length; i++) {
@@ -400,7 +418,7 @@ async function importLifecycleEvents(
       // Find family by name or email (familyId is not in template)
       const familyName = getValue(row, 'familyName')
       const familyEmail = getValue(row, 'familyEmail')
-      let familyId = getValue(row, 'familyId') // Optional if provided
+      let familyId = getValue(row, 'familyId')
       
       if (!familyId && (familyName || familyEmail)) {
         const family = await findFamilyByNameOrEmail(familyName, familyEmail)
@@ -434,3 +452,119 @@ async function importLifecycleEvents(
   }
 }
 
+async function importPaymentPlans(
+  rows: any[],
+  headerMap: { [key: string]: string },
+  imported: number[],
+  errors: string[],
+  warnings: string[]
+) {
+  const getValue = (row: any, field: string): string => {
+    const normalizedField = normalizeColumnName(field)
+    const actualHeader = headerMap[normalizedField]
+    if (actualHeader && row[actualHeader] !== undefined) {
+      return String(row[actualHeader] || '').trim()
+    }
+    if (row[field] !== undefined) {
+      return String(row[field] || '').trim()
+    }
+    return ''
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    try {
+      const name = getValue(row, 'name')
+      const planNumberStr = getValue(row, 'planNumber')
+      const yearlyPriceStr = getValue(row, 'yearlyPrice')
+
+      if (!name || !planNumberStr || !yearlyPriceStr) {
+        errors.push(`Row ${i + 2}: Name, plan number, and yearly price are required`)
+        continue
+      }
+
+      const planNumber = parseInt(planNumberStr)
+      const yearlyPrice = parseFloat(yearlyPriceStr)
+
+      if (isNaN(planNumber) || isNaN(yearlyPrice)) {
+        errors.push(`Row ${i + 2}: Plan number and yearly price must be valid numbers`)
+        continue
+      }
+
+      // Check if plan already exists
+      const existing = await PaymentPlan.findOne({ planNumber })
+      if (existing) {
+        warnings.push(`Row ${i + 2}: Payment plan ${planNumber} already exists, skipping`)
+        continue
+      }
+
+      await PaymentPlan.create({
+        name,
+        planNumber,
+        yearlyPrice,
+        description: getValue(row, 'description') || undefined
+      })
+
+      imported.push(i)
+    } catch (error: any) {
+      errors.push(`Row ${i + 2}: ${error.message || 'Failed to import payment plan'}`)
+    }
+  }
+}
+
+async function importLifecycleEventTypes(
+  rows: any[],
+  headerMap: { [key: string]: string },
+  imported: number[],
+  errors: string[],
+  warnings: string[]
+) {
+  const getValue = (row: any, field: string): string => {
+    const normalizedField = normalizeColumnName(field)
+    const actualHeader = headerMap[normalizedField]
+    if (actualHeader && row[actualHeader] !== undefined) {
+      return String(row[actualHeader] || '').trim()
+    }
+    if (row[field] !== undefined) {
+      return String(row[field] || '').trim()
+    }
+    return ''
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    try {
+      const type = getValue(row, 'type')
+      const name = getValue(row, 'name')
+      const amountStr = getValue(row, 'amount')
+
+      if (!type || !name || !amountStr) {
+        errors.push(`Row ${i + 2}: Type, name, and amount are required`)
+        continue
+      }
+
+      const amount = parseFloat(amountStr)
+      if (isNaN(amount)) {
+        errors.push(`Row ${i + 2}: Amount must be a valid number`)
+        continue
+      }
+
+      // Check if event type already exists
+      const existing = await LifecycleEvent.findOne({ type: type.toLowerCase() })
+      if (existing) {
+        warnings.push(`Row ${i + 2}: Lifecycle event type "${type}" already exists, skipping`)
+        continue
+      }
+
+      await LifecycleEvent.create({
+        type: type.toLowerCase(),
+        name,
+        amount
+      })
+
+      imported.push(i)
+    } catch (error: any) {
+      errors.push(`Row ${i + 2}: ${error.message || 'Failed to import lifecycle event type'}`)
+    }
+  }
+}
