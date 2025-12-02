@@ -64,11 +64,48 @@ export default function GlobalSearch() {
     }
 
     const searchTimeout = setTimeout(() => {
-      performSearch(query)
+      performAdvancedSearch(query)
     }, 300)
 
     return () => clearTimeout(searchTimeout)
   }, [query])
+
+  const performAdvancedSearch = async (searchQuery: string) => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/kasa/search/advanced?q=${encodeURIComponent(searchQuery)}&types=family,member,payment&limit=20`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        const formattedResults: SearchResult[] = data.results.map((r: any) => ({
+          type: r.type as any,
+          id: r._id,
+          title: r.title,
+          subtitle: r.subtitle,
+          url: r.url,
+          icon: getIconForType(r.type)
+        }))
+        setResults(formattedResults)
+      }
+    } catch (error) {
+      console.error('Error performing search:', error)
+      setResults([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getIconForType = (type: string) => {
+    switch (type) {
+      case 'family': return UserGroupIcon
+      case 'member': return UserIcon
+      case 'payment': return CurrencyDollarIcon
+      default: return DocumentTextIcon
+    }
+  }
 
   // Keyboard navigation
   useEffect(() => {
@@ -107,14 +144,33 @@ export default function GlobalSearch() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`/api/kasa/search?q=${encodeURIComponent(searchQuery)}`, {
+      // Try advanced search first, fallback to regular search
+      const response = await fetch(`/api/kasa/search/advanced?q=${encodeURIComponent(searchQuery)}&types=family,member,payment&limit=20`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       })
 
       if (response.ok) {
         const data = await response.json()
-        setResults(data.results || [])
+        const formattedResults: SearchResult[] = data.results.map((r: any) => ({
+          type: r.type as any,
+          id: r._id,
+          title: r.title,
+          subtitle: r.subtitle,
+          url: r.url,
+          icon: getResultIcon(r.type)
+        }))
+        setResults(formattedResults)
         setSelectedIndex(0)
+      } else {
+        // Fallback to regular search
+        const fallbackResponse = await fetch(`/api/kasa/search?q=${encodeURIComponent(searchQuery)}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        })
+        if (fallbackResponse.ok) {
+          const data = await fallbackResponse.json()
+          setResults(data.results || [])
+          setSelectedIndex(0)
+        }
       }
     } catch (error) {
       console.error('Search error:', error)

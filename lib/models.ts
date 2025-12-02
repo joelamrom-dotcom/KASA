@@ -148,6 +148,10 @@ const FamilySchema = new Schema({
   // Communication Preferences
   receiveEmails: { type: Boolean, default: true }, // Opt-in for email notifications
   receiveSMS: { type: Boolean, default: true }, // Opt-in for SMS notifications
+  // Payment Reminder Preferences
+  reminderFrequency: { type: String, enum: ['daily', 'weekly', 'biweekly', 'monthly'], default: 'weekly' },
+  preferredReminderDay: { type: Number, min: 0, max: 6, default: 1 }, // 0 = Sunday, 1 = Monday, etc.
+  reminderAdvanceDays: { type: Number, default: 7 }, // Days in advance to send reminders
 }, { timestamps: true })
 
 // Add index for userId for better query performance
@@ -1115,6 +1119,12 @@ const AutomationSettingsSchema = new Schema({
   // Payment Reminders
   enablePaymentReminders: { type: Boolean, default: false },
   reminderDaysBefore: { type: [Number], default: [3, 1] }, // Send reminders 3 days and 1 day before payment
+  
+  // Automated Statements
+  autoGenerateStatements: { type: Boolean, default: false },
+  statementFrequency: { type: String, enum: ['monthly', 'quarterly', 'yearly'], default: 'monthly' },
+  statementDay: { type: Number, default: 1 }, // Day of month to generate (1-28)
+  autoSendStatementEmails: { type: Boolean, default: false },
   
   isActive: { type: Boolean, default: true },
   lastUpdated: { type: Date, default: Date.now },
