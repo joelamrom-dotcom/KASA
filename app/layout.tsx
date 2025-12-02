@@ -13,6 +13,9 @@ import FontSubsetter from './components/FontSubsetter'
 import CacheWarmer from './components/CacheWarmer'
 import NetworkOptimizer from './components/NetworkOptimizer'
 import AnimationOptimizer from './components/AnimationOptimizer'
+import PassiveEventListeners from './components/PassiveEventListeners'
+import PreloadKeyRequests from './components/PreloadKeyRequests'
+import ReduceJSExecution from './components/ReduceJSExecution'
 
 export const metadata: Metadata = {
   title: 'Real Estate SaaS Platform',
@@ -47,6 +50,9 @@ export default function RootLayout({
         <CacheWarmer />
         <NetworkOptimizer />
         <AnimationOptimizer />
+        <PassiveEventListeners />
+        <PreloadKeyRequests />
+        <ReduceJSExecution />
         <PerformanceOptimizer />
         <I18nProvider>
           <AccessibilityWrapper>
