@@ -43,7 +43,9 @@ import {
   SparklesIcon,
   MagnifyingGlassIcon,
   ClockIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  TrophyIcon,
+  PaintBrushIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -75,7 +77,9 @@ import {
   SparklesIcon as SparklesIconSolid,
   MagnifyingGlassIcon as MagnifyingGlassIconSolid,
   ClockIcon as ClockIconSolid,
-  EnvelopeIcon as EnvelopeIconSolid
+  EnvelopeIcon as EnvelopeIconSolid,
+  TrophyIcon as TrophyIconSolid,
+  PaintBrushIcon as PaintBrushIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
