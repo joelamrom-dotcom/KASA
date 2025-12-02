@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { Comment } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,11 +19,20 @@ export async function GET(request: NextRequest) {
     const entityType = searchParams.get('entityType')
     const entityId = searchParams.get('entityId')
 
-    // Comments would be stored in Comment schema
-    return NextResponse.json({
-      comments: [],
-      message: 'Comment system ready (schema needed)'
-    })
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+
+    const query: any = {}
+    if (entityType) query.entityType = entityType
+    if (entityId) query.entityId = new mongoose.Types.ObjectId(entityId)
+
+    const comments = await Comment.find(query)
+      .populate('createdBy', 'name email')
+      .populate('mentions', 'name email')
+      .sort({ createdAt: 1 })
+      .lean()
+
+    return NextResponse.json({ comments })
   } catch (error: any) {
     console.error('Error fetching comments:', error)
     return NextResponse.json(
@@ -49,17 +59,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Create comment with @mentions support
-    const commentData = {
-      entityType,
-      entityId,
-      comment,
-      mentions: mentions || [],
-      createdBy: user.userId,
-      createdAt: new Date()
-    }
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
 
-    return NextResponse.json({ comment: commentData })
+    const mentionIds = (mentions || []).map((id: string) => new mongoose.Types.ObjectId(id))
+
+    const commentData = await Comment.create({
+      userId,
+      entityType,
+      entityId: new mongoose.Types.ObjectId(entityId),
+      comment,
+      mentions: mentionIds,
+      createdBy: userId
+    })
+
+    const populated = await Comment.findById(commentData._id)
+      .populate('createdBy', 'name email')
+      .populate('mentions', 'name email')
+      .lean()
+
+    return NextResponse.json({ comment: populated })
   } catch (error: any) {
     console.error('Error creating comment:', error)
     return NextResponse.json(

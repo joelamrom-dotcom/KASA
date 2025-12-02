@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { Workspace } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,11 +15,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Workspace structure (would need Workspace schema)
-    return NextResponse.json({
-      workspaces: [],
-      message: 'Workspace system ready (schema needed)'
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+
+    const workspaces = await Workspace.find({
+      $or: [
+        { userId },
+        { members: userId }
+      ],
+      isActive: true
     })
+      .populate('members', 'name email')
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 })
+      .lean()
+
+    return NextResponse.json({ workspaces })
   } catch (error: any) {
     console.error('Error fetching workspaces:', error)
     return NextResponse.json(
@@ -45,14 +57,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Workspace name is required' }, { status: 400 })
     }
 
-    // Create workspace (would need Workspace schema)
-    const workspace = {
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+
+    const memberIds = (members || [user.userId]).map((id: string) => new mongoose.Types.ObjectId(id))
+
+    const workspace = await Workspace.create({
+      userId,
       name,
       description,
-      members: members || [user.userId],
-      createdBy: user.userId,
-      createdAt: new Date()
-    }
+      members: memberIds,
+      createdBy: userId
+    })
 
     return NextResponse.json({ workspace })
   } catch (error: any) {

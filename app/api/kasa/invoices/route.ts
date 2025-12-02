@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
-import { Family, Payment, InvoiceTemplate } from '@/lib/models'
+import { Family, Payment, InvoiceTemplate, Invoice } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,12 +22,23 @@ export async function GET(request: NextRequest) {
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
-    // Invoices would be stored in Invoice schema (would need to add)
-    // For now, return structure
-    return NextResponse.json({
-      invoices: [],
-      message: 'Invoice system ready (schema needed)'
-    })
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+
+    const query: any = { userId }
+    if (familyId) {
+      query.familyId = new mongoose.Types.ObjectId(familyId)
+    }
+    if (status) {
+      query.status = status
+    }
+
+    const invoices = await Invoice.find(query)
+      .populate('familyId', 'name email')
+      .sort({ createdAt: -1 })
+      .lean()
+
+    return NextResponse.json({ invoices })
   } catch (error: any) {
     console.error('Error fetching invoices:', error)
     return NextResponse.json(
@@ -61,22 +72,30 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = items.reduce((sum: number, item: any) => sum + (item.amount || 0), 0)
 
-    // Create invoice (would need Invoice schema)
-    const invoice = {
-      invoiceNumber: `INV-${Date.now()}`,
-      familyId,
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+    const familyIdObj = new mongoose.Types.ObjectId(familyId)
+
+    // Generate unique invoice number
+    const invoiceCount = await Invoice.countDocuments({ userId })
+    const invoiceNumber = `INV-${String(invoiceCount + 1).padStart(6, '0')}`
+
+    const invoice = await Invoice.create({
+      userId,
+      invoiceNumber,
+      familyId: familyIdObj,
       items,
       subtotal: totalAmount,
       total: totalAmount,
       dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
       status: 'draft',
-      createdAt: new Date()
-    }
+      templateId: templateId ? new mongoose.Types.ObjectId(templateId) : undefined,
+      notes
+    })
 
     return NextResponse.json({
       success: true,
-      invoice,
-      message: 'Invoice created (schema needed for persistence)'
+      invoice
     })
   } catch (error: any) {
     console.error('Error creating invoice:', error)

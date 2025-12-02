@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
-import { Payment, Family } from '@/lib/models'
+import { Payment, Family, InstallmentPlan } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +22,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+    const familyIdObj = new mongoose.Types.ObjectId(familyId)
+
     const installmentAmount = totalAmount / numberOfInstallments
     const installments: any[] = []
     const start = new Date(startDate)
@@ -34,6 +38,8 @@ export async function POST(request: NextRequest) {
         dueDate.setDate(dueDate.getDate() + (i * 7))
       } else if (frequency === 'biweekly') {
         dueDate.setDate(dueDate.getDate() + (i * 14))
+      } else if (frequency === 'quarterly') {
+        dueDate.setMonth(dueDate.getMonth() + (i * 3))
       }
 
       installments.push({
@@ -44,12 +50,20 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create payment plan record (would need InstallmentPlan schema)
+    const installmentPlan = await InstallmentPlan.create({
+      userId,
+      familyId: familyIdObj,
+      totalAmount,
+      numberOfInstallments,
+      frequency: frequency || 'monthly',
+      startDate: start,
+      installments,
+      status: 'active'
+    })
+
     return NextResponse.json({
       success: true,
-      installments,
-      totalAmount,
-      numberOfInstallments
+      installmentPlan
     })
   } catch (error: any) {
     console.error('Error creating installments:', error)

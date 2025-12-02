@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
-import { Payment, Family } from '@/lib/models'
+import { Payment, Family, ScheduledPayment } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,24 +27,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Scheduled date must be in the future' }, { status: 400 })
     }
 
-    // Create scheduled payment (would need ScheduledPayment schema)
-    // For now, create a payment with future date and status 'scheduled'
-    const payment = await Payment.create({
-      familyId,
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+    const familyIdObj = new mongoose.Types.ObjectId(familyId)
+
+    const scheduledPayment = await ScheduledPayment.create({
+      userId,
+      familyId: familyIdObj,
       amount,
-      paymentDate: scheduledDateObj,
-      year: scheduledDateObj.getFullYear(),
-      type: 'membership',
+      scheduledDate: scheduledDateObj,
       paymentMethod: paymentMethod || 'cash',
-      notes: `${notes || ''} (Scheduled payment)`.trim(),
-      // Add status field if schema supports it
+      notes,
+      autoProcess: autoProcess || false,
+      status: 'scheduled'
     })
 
     return NextResponse.json({
       success: true,
-      payment,
-      scheduledDate: scheduledDateObj,
-      autoProcess: autoProcess || false
+      scheduledPayment
     })
   } catch (error: any) {
     console.error('Error scheduling payment:', error)

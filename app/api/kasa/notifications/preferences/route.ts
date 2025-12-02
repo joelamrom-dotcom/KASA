@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
-import { User } from '@/lib/models'
+import { User, NotificationPreference } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,42 +18,16 @@ export async function GET(request: NextRequest) {
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
-    const userDoc = await User.findById(userId).lean()
+    let pref = await NotificationPreference.findOne({ userId }).lean()
 
-    return NextResponse.json({
-      preferences: {
-        email: {
-          enabled: true,
-          frequency: 'real-time', // 'real-time', 'daily', 'weekly'
-          categories: {
-            payments: true,
-            events: true,
-            tasks: true,
-            system: true
-          }
-        },
-        sms: {
-          enabled: (userDoc as any)?.receiveSMS || false,
-          categories: {
-            payments: true,
-            reminders: true
-          }
-        },
-        push: {
-          enabled: (userDoc as any)?.pushEnabled || false,
-          categories: {
-            payments: true,
-            events: true,
-            tasks: true
-          }
-        },
-        digest: {
-          enabled: false,
-          frequency: 'daily', // 'daily', 'weekly'
-          time: '09:00'
-        }
-      }
-    })
+    if (!pref) {
+      // Create default preferences
+      pref = await NotificationPreference.create({
+        userId
+      })
+    }
+
+    return NextResponse.json({ preferences: pref })
   } catch (error: any) {
     console.error('Error fetching preferences:', error)
     return NextResponse.json(
@@ -79,12 +53,11 @@ export async function PUT(request: NextRequest) {
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
-    // Update user notification preferences (would need schema fields)
-    await User.findByIdAndUpdate(userId, {
-      $set: {
-        notificationPreferences: preferences
-      }
-    })
+    await NotificationPreference.findOneAndUpdate(
+      { userId },
+      { $set: preferences },
+      { upsert: true, new: true }
+    )
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

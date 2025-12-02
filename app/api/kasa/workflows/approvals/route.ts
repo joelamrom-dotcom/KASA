@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
-import { createApprovalWorkflow, approveWorkflowStep, delegateApproval, escalateApproval } from '@/lib/workflow-engine'
+import { createApprovalWorkflow, approveWorkflowStep, rejectWorkflowStep, delegateApproval, escalateApproval } from '@/lib/workflow-engine'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,11 +23,11 @@ export async function POST(request: NextRequest) {
     }
 
     const workflow = await createApprovalWorkflow(
+      user.userId,
       entityType,
       entityId,
       action,
-      approvers,
-      user.userId
+      approvers
     )
 
     return NextResponse.json({ workflow })
@@ -55,6 +55,8 @@ export async function PUT(request: NextRequest) {
 
     if (action === 'approve') {
       await approveWorkflowStep(workflowId, stepIndex, user.userId, comments)
+    } else if (action === 'reject') {
+      await rejectWorkflowStep(workflowId, stepIndex, user.userId, comments)
     } else if (action === 'delegate' && delegateTo) {
       await delegateApproval(workflowId, stepIndex, user.userId, delegateTo)
     } else if (action === 'escalate') {

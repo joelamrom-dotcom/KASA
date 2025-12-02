@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
-import { Family, MessageTemplate } from '@/lib/models'
+import { Family, MessageTemplate, Campaign } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,22 +35,36 @@ export async function POST(request: NextRequest) {
 
     const families = await Family.find(query).lean()
 
-    // Campaign would be stored in Campaign schema
-    const campaign = {
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+
+    const recipients = families.map((f: any) => ({
+      familyId: f._id,
+      email: f.email,
+      phone: f.phone,
+      status: 'pending'
+    }))
+
+    const campaign = await Campaign.create({
+      userId,
       name,
-      type, // 'email', 'sms'
-      templateId,
-      recipients: families.map((f: any) => ({
-        familyId: f._id.toString(),
-        email: f.email,
-        phone: f.phone
-      })),
-      schedule,
-      abTest: abTest || null,
+      type,
+      templateId: templateId ? new mongoose.Types.ObjectId(templateId) : undefined,
+      recipients,
+      schedule: schedule ? {
+        scheduledAt: new Date(schedule.scheduledAt),
+        timezone: schedule.timezone || 'UTC'
+      } : undefined,
+      abTest: abTest || undefined,
       status: 'draft',
-      createdBy: user.userId,
-      createdAt: new Date()
-    }
+      stats: {
+        total: recipients.length,
+        sent: 0,
+        failed: 0,
+        opened: 0,
+        clicked: 0
+      }
+    })
 
     return NextResponse.json({ campaign })
   } catch (error: any) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { CustomField } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,11 +18,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const entityType = searchParams.get('entityType') // 'family', 'member', 'payment'
 
-    // Custom fields would be stored in CustomField schema
-    return NextResponse.json({
-      fields: [],
-      message: 'Custom fields system ready (schema needed)'
-    })
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+
+    const query: any = { userId, isActive: true }
+    if (entityType) {
+      query.entityType = entityType
+    }
+
+    const fields = await CustomField.find(query)
+      .sort({ displayOrder: 1, createdAt: 1 })
+      .lean()
+
+    return NextResponse.json({ fields })
   } catch (error: any) {
     console.error('Error fetching custom fields:', error)
     return NextResponse.json(
@@ -48,16 +57,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const field = {
+    const mongoose = require('mongoose')
+    const userId = new mongoose.Types.ObjectId(user.userId)
+
+    const field = await CustomField.create({
+      userId,
       entityType,
       name,
-      fieldType, // 'text', 'number', 'date', 'select', 'checkbox', etc.
+      fieldType,
       options: options || [],
       required: required || false,
-      defaultValue,
-      createdBy: user.userId,
-      createdAt: new Date()
-    }
+      defaultValue
+    })
 
     return NextResponse.json({ field })
   } catch (error: any) {

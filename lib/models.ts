@@ -1541,7 +1541,239 @@ SupportTicketSchema.index({ userId: 1, createdAt: -1 })
 SupportTicketSchema.index({ status: 1, priority: -1 })
 SupportTicketSchema.index({ assignedTo: 1, status: 1 })
 
+// Approval Workflow Schema
+const ApprovalWorkflowSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  entityType: { type: String, required: true }, // 'payment', 'refund', 'payment_plan', etc.
+  entityId: { type: Schema.Types.ObjectId, required: true },
+  action: { type: String, required: true }, // 'approve', 'refund', 'change_plan', etc.
+  steps: [{
+    approverId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    approverEmail: String,
+    status: { type: String, enum: ['pending', 'approved', 'rejected', 'delegated'], default: 'pending' },
+    comments: String,
+    approvedAt: Date,
+    delegatedTo: { type: Schema.Types.ObjectId, ref: 'User' }
+  }],
+  currentStep: { type: Number, default: 0 },
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'], default: 'pending' },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  completedAt: Date
+}, { timestamps: true })
+
+ApprovalWorkflowSchema.index({ userId: 1, status: 1 })
+ApprovalWorkflowSchema.index({ entityType: 1, entityId: 1 })
+
+// Invoice Schema
+const InvoiceSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  invoiceNumber: { type: String, required: true, unique: true },
+  familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  items: [{
+    description: { type: String, required: true },
+    quantity: { type: Number, default: 1 },
+    unitPrice: { type: Number, required: true },
+    amount: { type: Number, required: true }
+  }],
+  subtotal: { type: Number, required: true },
+  tax: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  total: { type: Number, required: true },
+  dueDate: { type: Date, required: true },
+  status: { type: String, enum: ['draft', 'sent', 'paid', 'overdue', 'cancelled'], default: 'draft' },
+  paidAt: Date,
+  paidAmount: { type: Number, default: 0 },
+  templateId: { type: Schema.Types.ObjectId, ref: 'InvoiceTemplate' },
+  notes: String,
+  sentAt: Date
+}, { timestamps: true })
+
+InvoiceSchema.index({ userId: 1, status: 1 })
+InvoiceSchema.index({ familyId: 1, createdAt: -1 })
+InvoiceSchema.index({ invoiceNumber: 1 })
+InvoiceSchema.index({ dueDate: 1, status: 1 })
+
+// Installment Plan Schema
+const InstallmentPlanSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  totalAmount: { type: Number, required: true },
+  numberOfInstallments: { type: Number, required: true },
+  frequency: { type: String, enum: ['weekly', 'biweekly', 'monthly', 'quarterly'], default: 'monthly' },
+  startDate: { type: Date, required: true },
+  installments: [{
+    installmentNumber: { type: Number, required: true },
+    amount: { type: Number, required: true },
+    dueDate: { type: Date, required: true },
+    status: { type: String, enum: ['pending', 'paid', 'overdue', 'cancelled'], default: 'pending' },
+    paidAt: Date,
+    paymentId: { type: Schema.Types.ObjectId, ref: 'Payment' }
+  }],
+  status: { type: String, enum: ['active', 'completed', 'cancelled'], default: 'active' }
+}, { timestamps: true })
+
+InstallmentPlanSchema.index({ userId: 1, familyId: 1 })
+InstallmentPlanSchema.index({ 'installments.dueDate': 1, 'installments.status': 1 })
+
+// Scheduled Payment Schema
+const ScheduledPaymentSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  familyId: { type: Schema.Types.ObjectId, ref: 'Family', required: true },
+  amount: { type: Number, required: true },
+  scheduledDate: { type: Date, required: true },
+  paymentMethod: String,
+  notes: String,
+  autoProcess: { type: Boolean, default: false },
+  status: { type: String, enum: ['scheduled', 'processed', 'cancelled', 'failed'], default: 'scheduled' },
+  processedAt: Date,
+  paymentId: { type: Schema.Types.ObjectId, ref: 'Payment' }
+}, { timestamps: true })
+
+ScheduledPaymentSchema.index({ userId: 1, scheduledDate: 1 })
+ScheduledPaymentSchema.index({ familyId: 1, status: 1 })
+
+// Custom Field Schema
+const CustomFieldSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  entityType: { type: String, required: true }, // 'family', 'member', 'payment', etc.
+  name: { type: String, required: true },
+  fieldType: { type: String, enum: ['text', 'number', 'date', 'select', 'checkbox', 'textarea', 'email', 'phone'], required: true },
+  options: [String], // For select fields
+  required: { type: Boolean, default: false },
+  defaultValue: Schema.Types.Mixed,
+  validation: {
+    min: Number,
+    max: Number,
+    pattern: String,
+    minLength: Number,
+    maxLength: Number
+  },
+  displayOrder: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true })
+
+CustomFieldSchema.index({ userId: 1, entityType: 1 })
+CustomFieldSchema.index({ userId: 1, entityType: 1, name: 1 }, { unique: true })
+
+// Workspace Schema
+const WorkspaceSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  description: String,
+  members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true })
+
+WorkspaceSchema.index({ userId: 1 })
+WorkspaceSchema.index({ members: 1 })
+
+// Comment Schema
+const CommentSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  entityType: { type: String, required: true },
+  entityId: { type: Schema.Types.ObjectId, required: true },
+  comment: { type: String, required: true },
+  mentions: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  parentCommentId: { type: Schema.Types.ObjectId, ref: 'Comment' }, // For threaded comments
+  isEdited: { type: Boolean, default: false },
+  editedAt: Date,
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
+}, { timestamps: true })
+
+CommentSchema.index({ entityType: 1, entityId: 1, createdAt: -1 })
+CommentSchema.index({ userId: 1 })
+CommentSchema.index({ mentions: 1 })
+
+// Campaign Schema
+const CampaignSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  type: { type: String, enum: ['email', 'sms'], required: true },
+  templateId: { type: Schema.Types.ObjectId, ref: 'MessageTemplate' },
+  recipients: [{
+    familyId: { type: Schema.Types.ObjectId, ref: 'Family' },
+    email: String,
+    phone: String,
+    status: { type: String, enum: ['pending', 'sent', 'failed', 'bounced'], default: 'pending' },
+    sentAt: Date,
+    error: String
+  }],
+  schedule: {
+    scheduledAt: Date,
+    timezone: String
+  },
+  abTest: {
+    enabled: { type: Boolean, default: false },
+    variants: [{
+      name: String,
+      templateId: { type: Schema.Types.ObjectId, ref: 'MessageTemplate' },
+      percentage: Number
+    }],
+    winner: String
+  },
+  status: { type: String, enum: ['draft', 'scheduled', 'sending', 'completed', 'cancelled'], default: 'draft' },
+  sentAt: Date,
+  completedAt: Date,
+  stats: {
+    total: { type: Number, default: 0 },
+    sent: { type: Number, default: 0 },
+    failed: { type: Number, default: 0 },
+    opened: { type: Number, default: 0 },
+    clicked: { type: Number, default: 0 }
+  }
+}, { timestamps: true })
+
+CampaignSchema.index({ userId: 1, status: 1 })
+CampaignSchema.index({ 'schedule.scheduledAt': 1 })
+
+// Notification Preference Schema (extends User, but stored separately for flexibility)
+const NotificationPreferenceSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  email: {
+    enabled: { type: Boolean, default: true },
+    frequency: { type: String, enum: ['real-time', 'daily', 'weekly'], default: 'real-time' },
+    categories: {
+      payments: { type: Boolean, default: true },
+      events: { type: Boolean, default: true },
+      tasks: { type: Boolean, default: true },
+      system: { type: Boolean, default: true }
+    }
+  },
+  sms: {
+    enabled: { type: Boolean, default: false },
+    categories: {
+      payments: { type: Boolean, default: true },
+      reminders: { type: Boolean, default: true }
+    }
+  },
+  push: {
+    enabled: { type: Boolean, default: false },
+    categories: {
+      payments: { type: Boolean, default: true },
+      events: { type: Boolean, default: true },
+      tasks: { type: Boolean, default: true }
+    }
+  },
+  digest: {
+    enabled: { type: Boolean, default: false },
+    frequency: { type: String, enum: ['daily', 'weekly'], default: 'daily' },
+    time: { type: String, default: '09:00' }
+  }
+}, { timestamps: true })
+
+NotificationPreferenceSchema.index({ userId: 1 })
+
 export const MessageTemplate = mongoose.models.MessageTemplate || mongoose.model('MessageTemplate', MessageTemplateSchema)
 export const MessageHistory = mongoose.models.MessageHistory || mongoose.model('MessageHistory', MessageHistorySchema)
 export const SavedView = mongoose.models.SavedView || mongoose.model('SavedView', SavedViewSchema)
 export const SupportTicket = mongoose.models.SupportTicket || mongoose.model('SupportTicket', SupportTicketSchema)
+export const ApprovalWorkflow = mongoose.models.ApprovalWorkflow || mongoose.model('ApprovalWorkflow', ApprovalWorkflowSchema)
+export const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', InvoiceSchema)
+export const InstallmentPlan = mongoose.models.InstallmentPlan || mongoose.model('InstallmentPlan', InstallmentPlanSchema)
+export const ScheduledPayment = mongoose.models.ScheduledPayment || mongoose.model('ScheduledPayment', ScheduledPaymentSchema)
+export const CustomField = mongoose.models.CustomField || mongoose.model('CustomField', CustomFieldSchema)
+export const Workspace = mongoose.models.Workspace || mongoose.model('Workspace', WorkspaceSchema)
+export const Comment = mongoose.models.Comment || mongoose.model('Comment', CommentSchema)
+export const Campaign = mongoose.models.Campaign || mongoose.model('Campaign', CampaignSchema)
+export const NotificationPreference = mongoose.models.NotificationPreference || mongoose.model('NotificationPreference', NotificationPreferenceSchema)
