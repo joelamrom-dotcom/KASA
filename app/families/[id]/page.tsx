@@ -23,6 +23,7 @@ import { calculateHebrewAge, convertToHebrewDate } from '@/lib/hebrew-date'
 import StripePaymentForm from '@/app/components/StripePaymentForm'
 import Pagination from '@/app/components/Pagination'
 import { getUser } from '@/lib/auth'
+import PaymentInsights from '@/app/components/PaymentInsights'
 
 // QWERTY to Hebrew keyboard mapping
 const qwertyToHebrew: { [key: string]: string } = {
@@ -2505,6 +2506,17 @@ export default function FamilyDetailPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Payment Insights */}
+                  {data?.family && (
+                    <div className="mt-6">
+                      <PaymentInsights
+                        familyId={params.id as string}
+                        familyName={data.family.name}
+                        currentBalance={data.balance?.openBalance}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
