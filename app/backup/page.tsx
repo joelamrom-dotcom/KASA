@@ -7,6 +7,12 @@ export default function BackupPage() {
   const [backupType, setBackupType] = useState<'full' | 'families' | 'payments' | 'members'>('full')
   const [backingUp, setBackingUp] = useState(false)
   const [restoring, setRestoring] = useState(false)
+  const [backups, setBackups] = useState<any[]>([])
+  const [schedule, setSchedule] = useState({
+    enabled: false,
+    frequency: 'daily' as 'daily' | 'weekly' | 'monthly',
+    time: '02:00'
+  })
 
   const handleBackup = async () => {
     try {

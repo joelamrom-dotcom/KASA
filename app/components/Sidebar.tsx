@@ -8,6 +8,7 @@ import GlobalSearch from './GlobalSearch'
 import NotificationCenter from './NotificationCenter'
 import DarkModeToggle from './DarkModeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
+import KeyboardShortcutsHelp from './KeyboardShortcutsHelp'
 import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useState, useRef, useEffect } from 'react'
 import { 
@@ -40,7 +41,8 @@ import {
   ComputerDesktopIcon,
   SparklesIcon,
   MagnifyingGlassIcon,
-  ClockIcon
+  ClockIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -71,7 +73,8 @@ import {
   ComputerDesktopIcon as ComputerDesktopIconSolid,
   SparklesIcon as SparklesIconSolid,
   MagnifyingGlassIcon as MagnifyingGlassIconSolid,
-  ClockIcon as ClockIconSolid
+  ClockIcon as ClockIconSolid,
+  EnvelopeIcon as EnvelopeIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -135,6 +138,13 @@ export default function Sidebar() {
       { href: '/custom-fields', label: 'Custom Fields', icon: TagIcon, iconSolid: TagIconSolid },
       { href: '/integrations', label: 'Integrations', icon: LinkIcon, iconSolid: LinkIconSolid },
       { href: '/ai-assistant', label: 'AI Assistant', icon: SparklesIcon, iconSolid: SparklesIconSolid },
+      { href: '/communication/compose', label: 'Compose', icon: EnvelopeIcon, iconSolid: EnvelopeIconSolid },
+      { href: '/payments/matching', label: 'Payment Matching', icon: LinkIcon, iconSolid: LinkIconSolid },
+      { href: '/permissions/matrix', label: 'Permissions', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
+      { href: '/export/advanced', label: 'Advanced Export', icon: ArrowDownTrayIcon, iconSolid: ArrowDownTrayIconSolid },
+      { href: '/rate-limiting', label: 'Rate Limiting', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
+      { href: '/cache-dashboard', label: 'Cache Dashboard', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
+      { href: '/tutorials', label: 'Tutorials', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/documents/enhanced', label: 'Enhanced Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
