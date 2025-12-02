@@ -57,6 +57,35 @@ export async function autoUpdatePaymentPlan(memberId: string, notifyFamily: bool
   await member.save()
 
   const family = member.familyId as any
+  
+  // Create audit log entry for payment plan change
+  try {
+    const { AuditLog } = await import('./models')
+    const familyUserId = (family as any)?.userId?.toString()
+    if (familyUserId) {
+      await AuditLog.create({
+        userId: familyUserId,
+        action: 'member_update',
+        entityType: 'member',
+        entityId: member._id,
+        entityName: `${member.firstName} ${member.lastName}`,
+        description: `Payment plan updated for ${member.firstName} ${member.lastName}: Plan ${oldPlan || 'None'} → Plan ${recommendedPlan}`,
+        changes: {
+          paymentPlan: { old: oldPlan || null, new: recommendedPlan }
+        },
+        metadata: {
+          memberName: `${member.firstName} ${member.lastName}`,
+          oldPlan: oldPlan || null,
+          newPlan: recommendedPlan,
+          reason: 'automatic_age_based_update',
+          familyId: family?._id?.toString()
+        }
+      })
+    }
+  } catch (auditError) {
+    console.error('Error creating audit log for payment plan change:', auditError)
+    // Don't fail the update if audit log fails
+  }
 
   // Get payment plan name
   let planName = `Plan ${recommendedPlan}`
