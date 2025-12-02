@@ -7,6 +7,7 @@ import PushNotificationManager from './PushNotificationManager'
 import GlobalSearch from './GlobalSearch'
 import NotificationCenter from './NotificationCenter'
 import DarkModeToggle from './DarkModeToggle'
+import LanguageSwitcher from './LanguageSwitcher'
 import { ArrowRightOnRectangleIcon, UserCircleIcon, ChevronDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useState, useRef, useEffect } from 'react'
 import { 
@@ -118,6 +119,7 @@ export default function Sidebar() {
       { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
+      { href: '/documents/enhanced', label: 'Enhanced Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/communication', label: 'Communication', icon: ChatBubbleLeftRightIcon, iconSolid: ChatBubbleLeftRightIconSolid },
       ...(user?.role !== 'family' ? [
         { href: '/automation-rules', label: 'Automation Rules', icon: SparklesIcon, iconSolid: SparklesIconSolid },
@@ -195,6 +197,7 @@ export default function Sidebar() {
                   <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <LanguageSwitcher />
                   <DarkModeToggle />
                   <NotificationCenter />
                   <PushNotificationManager />
