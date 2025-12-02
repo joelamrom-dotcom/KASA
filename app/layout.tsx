@@ -5,6 +5,9 @@ import AccessibilityWrapper from './components/AccessibilityWrapper'
 import { RealtimeProvider } from './components/RealtimeProvider'
 import PerformanceOptimizer from './components/PerformanceOptimizer'
 import ResourceHints from './components/ResourceHints'
+import ResourcePrioritizer from './components/ResourcePrioritizer'
+import PreloadCriticalResources from './components/PreloadCriticalResources'
+import HTTP3Optimizer from './components/HTTP3Optimizer'
 
 export const metadata: Metadata = {
   title: 'Real Estate SaaS Platform',
@@ -31,6 +34,9 @@ export default function RootLayout({
       </head>
       <body className="bg-gray-50 min-h-screen">
         <ResourceHints />
+        <ResourcePrioritizer />
+        <PreloadCriticalResources />
+        <HTTP3Optimizer />
         <PerformanceOptimizer />
         <I18nProvider>
           <AccessibilityWrapper>

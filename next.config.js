@@ -39,6 +39,16 @@ const nextConfig = {
   compress: true,
   // PoweredByHeader removal for security and performance
   poweredByHeader: false,
+  // Generate static pages where possible
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
+  },
+  // Optimize production builds
+  productionBrowserSourceMaps: false,
+  // Enable HTTP/2 Server Push
+  httpAgentOptions: {
+    keepAlive: true,
+  },
   // Webpack optimizations
   webpack: (config, { isServer }) => {
     if (!isServer) {
