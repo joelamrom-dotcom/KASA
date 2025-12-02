@@ -39,7 +39,8 @@ import {
   ShieldCheckIcon,
   ComputerDesktopIcon,
   SparklesIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -69,7 +70,8 @@ import {
   ShieldCheckIcon as ShieldCheckIconSolid,
   ComputerDesktopIcon as ComputerDesktopIconSolid,
   SparklesIcon as SparklesIconSolid,
-  MagnifyingGlassIcon as MagnifyingGlassIconSolid
+  MagnifyingGlassIcon as MagnifyingGlassIconSolid,
+  ClockIcon as ClockIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -120,6 +122,11 @@ export default function Sidebar() {
       { href: '/backup', label: 'Backup & Restore', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
       { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
       { href: '/duplicates', label: 'Duplicates', icon: MagnifyingGlassIcon, iconSolid: MagnifyingGlassIconSolid },
+      { href: '/data-quality', label: 'Data Quality', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
+      { href: '/activity', label: 'Activity Feed', icon: ClockIcon, iconSolid: ClockIconSolid },
+      { href: '/calendar', label: 'Calendar', icon: CalendarDaysIcon, iconSolid: CalendarDaysIconSolid },
+      { href: '/communication/inbox', label: 'Inbox', icon: ChatBubbleLeftRightIcon, iconSolid: ChatBubbleLeftRightIconSolid },
+      { href: '/analytics/predictive', label: 'Predictive Analytics', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/documents/enhanced', label: 'Enhanced Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
