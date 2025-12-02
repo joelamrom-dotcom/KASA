@@ -29,10 +29,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const checkAuth = async () => {
-      const publicRoute = publicRoutes.some(route => pathname?.startsWith(route))
+      // Get pathname without query parameters for route matching
+      const pathWithoutQuery = pathname?.split('?')[0] || pathname
+      const publicRoute = publicRoutes.some(route => pathWithoutQuery?.startsWith(route))
       setIsPublicRoute(publicRoute)
       
-      // If it's a public route, allow access
+      // If it's a public route, allow access immediately
       if (publicRoute) {
         setIsChecking(false)
         return
@@ -42,9 +44,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setTimeout(async () => {
         // Check if user is authenticated
         if (!isAuthenticated()) {
-          // Redirect to login with return URL
-          const loginUrl = `/login?redirect=${encodeURIComponent(pathname || '/')}`
-          router.push(loginUrl)
+          // Only redirect if not already on login page to prevent loops
+          if (pathWithoutQuery !== '/login') {
+            const loginUrl = `/login?redirect=${encodeURIComponent(pathname || '/')}`
+            router.push(loginUrl)
+          } else {
+            // Already on login page, just stop checking
+            setIsChecking(false)
+          }
           return
         }
 

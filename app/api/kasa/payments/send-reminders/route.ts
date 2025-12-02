@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { RecurringPayment, Family, AutomationSettings, User } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
+import { getPaymentSuggestions } from '@/lib/payment-pattern-analysis'
 
 // POST - Send payment reminders for upcoming payments
 // Can be called manually (with auth) or by cron job (without auth)
@@ -100,6 +101,24 @@ export async function POST(request: NextRequest) {
             // Only send if today matches the reminder date and payment hasn't been processed yet
             if (reminderDate.getTime() === today.getTime() && nextPaymentDate >= today) {
               try {
+                // Get smart payment suggestions
+                let smartSuggestion = null
+                let currentBalance = null
+                try {
+                  const fullFamily = await Family.findById(family._id).lean()
+                  if (fullFamily) {
+                    currentBalance = fullFamily.openBalance || 0
+                    smartSuggestion = await getPaymentSuggestions(
+                      family._id.toString(),
+                      currentBalance,
+                      nextPaymentDate
+                    )
+                  }
+                } catch (suggestionError) {
+                  console.error('Error getting payment suggestions:', suggestionError)
+                  // Continue without suggestions if there's an error
+                }
+
                 // Send email reminder (check if family wants emails)
                 const familyWantsEmails = family.receiveEmails !== false // Default to true if not set
                 if (family.email && familyWantsEmails) {
@@ -110,7 +129,9 @@ export async function POST(request: NextRequest) {
                     recurringPayment.amount,
                     nextPaymentDate,
                     daysBefore,
-                    admin.userId
+                    admin.userId,
+                    smartSuggestion || undefined,
+                    currentBalance || undefined
                   )
                 }
 
@@ -125,7 +146,9 @@ export async function POST(request: NextRequest) {
                     recurringPayment.amount,
                     nextPaymentDate,
                     daysBefore,
-                    admin.userId
+                    admin.userId,
+                    smartSuggestion || undefined,
+                    currentBalance || undefined
                   )
                 }
 

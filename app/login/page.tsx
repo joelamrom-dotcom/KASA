@@ -157,7 +157,7 @@ function LoginForm() {
             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
               <ChartBarIcon className="h-7 w-7 text-white" />
             </div>
-            <span className="ml-3 text-2xl font-bold text-gray-900">Kasa Family</span>
+            <span className="ml-3 text-2xl font-bold text-gray-900">AI SaaS Platform</span>
           </div>
 
           {/* Login Form Card with Glass Effect */}
@@ -228,7 +228,7 @@ function LoginForm() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Family Login
+                  User Login
                 </button>
               </div>
             </div>
@@ -348,7 +348,7 @@ function LoginForm() {
                     )}
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
-                    Use any phone number on file for your family account
+                    Use any phone number on file for your account
                   </p>
                 </div>
               )}
@@ -430,7 +430,7 @@ function LoginForm() {
 
           {/* Footer */}
           <div className="mt-8 text-center text-xs text-gray-500">
-            © 2025 Kasa Family Management. All rights reserved.
+            © 2025 AI SaaS Platform. All rights reserved.
           </div>
         </div>
       </div>
@@ -451,19 +451,19 @@ function LoginForm() {
         <div className="relative z-10 flex flex-col h-full">
           {/* Brand Name */}
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-white mb-2">Kasa Family</h1>
-            <p className="text-blue-200 text-sm">Management System</p>
+            <h1 className="text-4xl font-bold text-white mb-2">AI SaaS Platform</h1>
+            <p className="text-blue-200 text-sm">Business Management System</p>
           </div>
 
           {/* Promotional Content */}
           <div className="flex-1 flex flex-col justify-center">
             <h2 className="text-5xl font-bold text-white mb-6 leading-tight">
-              Manage Your Family Finances
+              Manage Your Business Operations
             </h2>
             <p className="text-blue-100 text-lg mb-8 leading-relaxed">
-              Track payments, manage family members, monitor lifecycle events, and stay organized 
-              with our comprehensive family management platform. Everything you need to manage 
-              your family's financial activities in one place.
+              Streamline your workflow, automate processes, generate insights, and stay organized 
+              with our comprehensive business management platform. Everything you need to manage 
+              your business operations, data, and analytics in one powerful system.
             </p>
           </div>
         </div>

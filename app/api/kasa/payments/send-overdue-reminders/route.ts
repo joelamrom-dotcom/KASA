@@ -5,6 +5,7 @@ import { getAuthenticatedUser } from '@/lib/middleware'
 import { calculateDaysOverdue, getOverdueLevel, updateOverdueStatus } from '@/lib/overdue-helpers'
 import { sendPaymentReminderEmail } from '@/lib/email-helpers'
 import { sendPaymentReminderSMS } from '@/lib/sms-helpers'
+import { getPaymentSuggestions } from '@/lib/payment-pattern-analysis'
 
 export const dynamic = 'force-dynamic'
 
@@ -129,6 +130,24 @@ export async function POST(request: NextRequest) {
           if (reminderLevelToSend === 0) continue
 
           try {
+            // Get smart payment suggestions
+            let smartSuggestion = null
+            let currentBalance = null
+            try {
+              const fullFamily = await Family.findById(family._id).lean()
+              if (fullFamily) {
+                currentBalance = fullFamily.openBalance || 0
+                smartSuggestion = await getPaymentSuggestions(
+                  family._id.toString(),
+                  currentBalance,
+                  recurringPayment.nextPaymentDate
+                )
+              }
+            } catch (suggestionError) {
+              console.error('Error getting payment suggestions:', suggestionError)
+              // Continue without suggestions if there's an error
+            }
+
             // Send email reminder (if enabled and family wants emails)
             const shouldSendEmail = admin.automationSettings?.enablePaymentEmails !== false
             const familyWantsEmails = family.receiveEmails !== false
@@ -139,8 +158,10 @@ export async function POST(request: NextRequest) {
                 family.name,
                 recurringPayment.amount,
                 recurringPayment.nextPaymentDate,
-                daysOverdue,
-                admin.userId
+                -daysOverdue, // Negative for overdue
+                admin.userId,
+                smartSuggestion || undefined,
+                currentBalance || undefined
               )
             }
 
@@ -155,8 +176,10 @@ export async function POST(request: NextRequest) {
                 family.name,
                 recurringPayment.amount,
                 recurringPayment.nextPaymentDate,
-                daysOverdue,
-                admin.userId
+                -daysOverdue, // Negative for overdue
+                admin.userId,
+                smartSuggestion || undefined,
+                currentBalance || undefined
               )
             }
 

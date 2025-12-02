@@ -64,6 +64,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { getUser } from '@/lib/auth'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
+import FormulaBuilder from '@/components/FormulaBuilder'
+import ConditionalFormattingEditor from '@/components/ConditionalFormattingEditor'
 
 interface ReportField {
   fieldName: string
@@ -74,6 +76,14 @@ interface ReportField {
   sortOrder: number
   format?: string
   formula?: string // For calculated fields
+  conditionalFormatting?: Array<{
+    condition: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'between'
+    value: any
+    value2?: any
+    backgroundColor?: string
+    textColor?: string
+    fontWeight?: string
+  }>
 }
 
 interface ReportFilter {
@@ -445,6 +455,8 @@ export default function CustomReportsPage() {
   const [selectedCommentCell, setSelectedCommentCell] = useState<{field: string, rowIndex: number} | null>(null)
   const [showAdvancedScheduling, setShowAdvancedScheduling] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [editingFormulaField, setEditingFormulaField] = useState<{ index: number; field: ReportField } | null>(null)
+  const [editingFormattingField, setEditingFormattingField] = useState<{ index: number; field: ReportField } | null>(null)
   const [showPublicSharing, setShowPublicSharing] = useState(false)
   const [showDataQuality, setShowDataQuality] = useState(false)
   const [showMergeReports, setShowMergeReports] = useState(false)
@@ -1947,29 +1959,59 @@ export default function CustomReportsPage() {
                   ) : (
                     <div className="space-y-2">
                       {formData.fields.map((field, index) => (
-                        <div key={index} className="border rounded-lg p-4 flex items-center gap-4">
-                          <div className="flex-1">
-                            <div className="font-medium">{field.label}</div>
-                            <div className="text-sm text-gray-500">{field.fieldName}</div>
+                        <div key={index} className="border rounded-lg p-4">
+                          <div className="flex items-center gap-4 mb-2">
+                            <div className="flex-1">
+                              <div className="font-medium">{field.label}</div>
+                              <div className="text-sm text-gray-500">{field.fieldName}</div>
+                              {field.dataType === 'calculated' && field.formula && (
+                                <div className="text-xs text-blue-600 mt-1 font-mono">
+                                  Formula: {field.formula}
+                                </div>
+                              )}
+                              {field.conditionalFormatting && field.conditionalFormatting.length > 0 && (
+                                <div className="text-xs text-purple-600 mt-1">
+                                  {field.conditionalFormatting.length} formatting rule(s)
+                                </div>
+                              )}
+                            </div>
+                            <select
+                              value={field.aggregate}
+                              onChange={(e) => updateField(index, { aggregate: e.target.value as any })}
+                              className="border rounded px-2 py-1 text-sm"
+                            >
+                              <option value="none">No Aggregation</option>
+                              <option value="sum">Sum</option>
+                              <option value="avg">Average</option>
+                              <option value="count">Count</option>
+                              <option value="min">Min</option>
+                              <option value="max">Max</option>
+                            </select>
+                            <button
+                              onClick={() => {
+                                setEditingFormulaField({ index, field })
+                              }}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              title="Edit Formula"
+                            >
+                              <FormulaIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingFormattingField({ index, field })
+                              }}
+                              className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                              title="Edit Conditional Formatting"
+                            >
+                              <PaintBrushIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => removeField(index)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
                           </div>
-                          <select
-                            value={field.aggregate}
-                            onChange={(e) => updateField(index, { aggregate: e.target.value as any })}
-                            className="border rounded px-2 py-1 text-sm"
-                          >
-                            <option value="none">No Aggregation</option>
-                            <option value="sum">Sum</option>
-                            <option value="avg">Average</option>
-                            <option value="count">Count</option>
-                            <option value="min">Min</option>
-                            <option value="max">Max</option>
-                          </select>
-                          <button
-                            onClick={() => removeField(index)}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
                         </div>
                       ))}
                     </div>
@@ -2869,6 +2911,40 @@ export default function CustomReportsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Formula Builder Modal */}
+        {editingFormulaField && (
+          <FormulaBuilder
+            fieldName={editingFormulaField.field.fieldName}
+            fieldLabel={editingFormulaField.field.label}
+            availableFields={AVAILABLE_FIELDS.flatMap(cat => cat.fields).filter(f => f.fieldName !== editingFormulaField.field.fieldName)}
+            formula={editingFormulaField.field.formula}
+            onSave={(formula) => {
+              updateField(editingFormulaField.index, {
+                formula,
+                dataType: 'calculated',
+              })
+              setEditingFormulaField(null)
+            }}
+            onCancel={() => setEditingFormulaField(null)}
+          />
+        )}
+
+        {/* Conditional Formatting Editor Modal */}
+        {editingFormattingField && (
+          <ConditionalFormattingEditor
+            fieldName={editingFormattingField.field.fieldName}
+            fieldLabel={editingFormattingField.field.label}
+            rules={editingFormattingField.field.conditionalFormatting}
+            onSave={(rules) => {
+              updateField(editingFormattingField.index, {
+                conditionalFormatting: rules,
+              })
+              setEditingFormattingField(null)
+            }}
+            onCancel={() => setEditingFormattingField(null)}
+          />
         )}
       </div>
     </div>

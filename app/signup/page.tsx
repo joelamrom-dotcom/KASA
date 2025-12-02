@@ -66,17 +66,34 @@ function SignupForm() {
         }),
       })
 
-      const data = await response.json()
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type')
+      let data
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json()
+      } else {
+        // If not JSON, read as text to see what we got
+        const text = await response.text()
+        console.error('Non-JSON response:', text)
+        setError('Server returned an invalid response. Please check the console for details.')
+        setIsLoading(false)
+        return
+      }
 
       if (response.ok) {
         // Redirect to login page with success message
         router.push('/login?signup=success')
       } else {
-        setError(data.error || 'Signup failed')
+        // Show detailed error message
+        const errorMessage = data.error || data.message || 'Signup failed'
+        const errorDetails = data.details ? `: ${data.details}` : ''
+        setError(`${errorMessage}${errorDetails}`)
+        console.error('Signup API error:', data)
       }
-    } catch (error) {
-      setError('An error occurred during signup')
+    } catch (error: any) {
       console.error('Signup error:', error)
+      setError(`An error occurred during signup: ${error.message || 'Unknown error'}`)
     } finally {
       setIsLoading(false)
     }
@@ -99,7 +116,7 @@ function SignupForm() {
             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
               <ChartBarIcon className="h-7 w-7 text-white" />
             </div>
-            <span className="ml-3 text-2xl font-bold text-gray-900">Kasa Family</span>
+            <span className="ml-3 text-2xl font-bold text-gray-900">AI SaaS Platform</span>
           </div>
 
           {/* Signup Form Card */}
@@ -107,7 +124,7 @@ function SignupForm() {
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
               <p className="text-sm text-gray-600">
-                Sign up to get started with Kasa Family Management
+                Sign up to get started with AI SaaS Platform
               </p>
             </div>
             
@@ -350,7 +367,7 @@ function SignupForm() {
 
           {/* Footer */}
           <div className="mt-8 text-center text-xs text-gray-500">
-            © 2025 Kasa Family Management. All rights reserved.
+            © 2025 AI SaaS Platform. All rights reserved.
           </div>
         </div>
       </div>
@@ -359,8 +376,8 @@ function SignupForm() {
       <div className="hidden lg:flex lg:w-2/5 flex-col justify-between bg-gradient-to-br from-blue-600 via-blue-700 to-purple-800 p-12 relative overflow-hidden">
         <div className="relative z-10 flex flex-col h-full">
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-white mb-2">Kasa Family</h1>
-            <p className="text-blue-200 text-sm">Management System</p>
+            <h1 className="text-4xl font-bold text-white mb-2">AI SaaS Platform</h1>
+            <p className="text-blue-200 text-sm">Business Management System</p>
           </div>
 
           <div className="flex-1 flex flex-col justify-center">
@@ -368,7 +385,9 @@ function SignupForm() {
               Join Our Community
             </h2>
             <p className="text-blue-100 text-lg mb-8 leading-relaxed">
-              Manage your family finances, track payments, and stay organized with our comprehensive family management platform.
+              Streamline your workflow, automate processes, generate insights, and stay organized 
+              with our comprehensive business management platform. Everything you need to manage 
+              your business operations, data, and analytics in one powerful system.
             </p>
           </div>
         </div>

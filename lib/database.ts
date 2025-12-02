@@ -3,12 +3,8 @@ import mongoose from 'mongoose'
 // MongoDB connection string from environment variable (REQUIRED)
 const MONGODB_URI = process.env.MONGODB_URI
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local')
-}
-
-// TypeScript assertion: we've checked above that MONGODB_URI is defined
-const MONGODB_URI_STRING: string = MONGODB_URI
+// TypeScript assertion: we'll check at runtime
+const MONGODB_URI_STRING: string = MONGODB_URI || ''
 
 interface MongooseCache {
   conn: typeof mongoose | null
@@ -26,6 +22,10 @@ if (!global.mongoose) {
 }
 
 async function connectDB() {
+  if (!MONGODB_URI) {
+    throw new Error('Please define the MONGODB_URI environment variable inside .env.local')
+  }
+
   if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn
   }

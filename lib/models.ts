@@ -499,11 +499,20 @@ const CustomReportSchema = new Schema({
   fields: [{
     fieldName: { type: String, required: true }, // e.g., 'family.name', 'payment.amount'
     label: { type: String, required: true }, // Display label
-    dataType: { type: String, enum: ['string', 'number', 'date', 'currency', 'boolean'], default: 'string' },
+    dataType: { type: String, enum: ['string', 'number', 'date', 'currency', 'boolean', 'calculated'], default: 'string' },
     aggregate: { type: String, enum: ['sum', 'avg', 'count', 'min', 'max', 'none'], default: 'none' },
     groupBy: { type: Boolean, default: false },
     sortOrder: { type: Number, default: 0 },
     format: String, // Custom format (e.g., date format, number format)
+    formula: String, // For calculated fields
+    conditionalFormatting: [{
+      condition: { type: String, enum: ['equals', 'not_equals', 'greater_than', 'less_than', 'contains', 'between'], required: true },
+      value: Schema.Types.Mixed,
+      value2: Schema.Types.Mixed, // For 'between'
+      backgroundColor: String,
+      textColor: String,
+      fontWeight: String,
+    }],
   }],
   // Filters
   filters: [{
@@ -512,9 +521,44 @@ const CustomReportSchema = new Schema({
     value: Schema.Types.Mixed,
     value2: Schema.Types.Mixed, // For 'between' operator
   }],
+  // Cross-filters (filters that apply to related data)
+  crossFilters: [{
+    relatedObject: { type: String, required: true }, // e.g., 'Family', 'Payment'
+    filters: [{
+      fieldName: { type: String, required: true },
+      operator: { type: String, enum: ['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'between', 'in', 'not_in'], required: true },
+      value: Schema.Types.Mixed,
+      value2: Schema.Types.Mixed,
+    }],
+  }],
+  // Field-to-field filters (compare one field to another)
+  fieldToFieldFilters: [{
+    fieldName1: { type: String, required: true },
+    operator: { type: String, enum: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_than_or_equal', 'less_than_or_equal'], required: true },
+    fieldName2: { type: String, required: true },
+  }],
+  // Report parameters/prompts
+  parameters: [{
+    name: { type: String, required: true },
+    label: { type: String, required: true },
+    dataType: { type: String, enum: ['string', 'number', 'date', 'boolean', 'picklist'], required: true },
+    defaultValue: Schema.Types.Mixed,
+    required: { type: Boolean, default: false },
+    picklistValues: [String], // For picklist type
+    promptText: String, // Text shown when prompting user
+  }],
+  // Row-level security
+  rowLevelSecurity: {
+    enabled: { type: Boolean, default: false },
+    rules: [{
+      fieldName: { type: String, required: true },
+      operator: { type: String, enum: ['equals', 'in', 'not_in'], required: true },
+      value: Schema.Types.Mixed, // Can be user field like 'userId', 'role', etc.
+    }],
+  },
   // Date range configuration
   dateRange: {
-    type: { type: String, enum: ['custom', 'this_month', 'last_month', 'this_year', 'last_year', 'last_30_days', 'last_90_days', 'last_365_days'], default: 'custom' },
+    type: { type: String, enum: ['custom', 'this_month', 'last_month', 'this_year', 'last_year', 'last_30_days', 'last_90_days', 'last_365_days', 'this_quarter', 'last_quarter', 'this_fiscal_year', 'last_fiscal_year', 'ytd', 'mtd', 'qtd'], default: 'custom' },
     startDate: Date,
     endDate: Date,
   },
@@ -536,6 +580,29 @@ const CustomReportSchema = new Schema({
     pageOrientation: { type: String, enum: ['portrait', 'landscape'], default: 'portrait' },
     pageSize: { type: String, enum: ['letter', 'a4', 'legal'], default: 'letter' },
   },
+  // Report caching
+  cache: {
+    enabled: { type: Boolean, default: false },
+    ttl: { type: Number, default: 3600 }, // Time to live in seconds
+    lastCached: Date,
+    cachedData: Schema.Types.Mixed,
+  },
+  // Report analytics
+  analytics: {
+    viewCount: { type: Number, default: 0 },
+    lastViewed: Date,
+    lastViewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    exportCount: { type: Number, default: 0 },
+    scheduleCount: { type: Number, default: 0 },
+  },
+  // Report history (for versioning)
+  reportHistory: [{
+    version: { type: Number, required: true },
+    changedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    changedAt: { type: Date, default: Date.now },
+    changes: String, // Description of changes
+    snapshot: Schema.Types.Mixed, // Full report configuration at this version
+  }],
   isActive: { type: Boolean, default: true },
 }, { timestamps: true })
 
@@ -572,6 +639,282 @@ const ScheduledReportSchema = new Schema({
 
 ScheduledReportSchema.index({ userId: 1, isActive: 1 })
 ScheduledReportSchema.index({ nextRun: 1, isActive: 1 })
+
+// Report Snapshot Schema (for capturing report data at specific points in time)
+const ReportSnapshotSchema = new Schema({
+  reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport', required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  description: String,
+  snapshotDate: { type: Date, default: Date.now },
+  data: Schema.Types.Mixed, // The actual report data at this point in time
+  summary: Schema.Types.Mixed, // Summary statistics
+  metadata: {
+    recordCount: Number,
+    totalAmount: Number,
+    averageAmount: Number,
+    dateRange: {
+      startDate: Date,
+      endDate: Date,
+    },
+  },
+  tags: [String],
+}, { timestamps: true })
+
+ReportSnapshotSchema.index({ reportId: 1, snapshotDate: -1 })
+ReportSnapshotSchema.index({ userId: 1 })
+
+// Dashboard Schema (combining multiple reports into a single view)
+const DashboardSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  description: String,
+  layout: {
+    type: { type: String, enum: ['grid', 'custom'], default: 'grid' },
+    columns: { type: Number, default: 2 },
+    rows: { type: Number, default: 2 },
+  },
+  components: [{
+    reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport' },
+    snapshotId: { type: Schema.Types.ObjectId, ref: 'ReportSnapshot' }, // Optional: use snapshot instead of live report
+    title: String,
+    chartType: { type: String, enum: ['table', 'bar', 'line', 'pie', 'donut', 'area', 'funnel', 'gauge', 'scatter', 'heatmap'], default: 'table' },
+    position: {
+      x: { type: Number, default: 0 },
+      y: { type: Number, default: 0 },
+      width: { type: Number, default: 1 },
+      height: { type: Number, default: 1 },
+    },
+    filters: Schema.Types.Mixed, // Override filters for this component
+    refreshInterval: Number, // Auto-refresh interval in seconds (0 = no auto-refresh)
+  }],
+  isPublic: { type: Boolean, default: false },
+  sharedWith: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  tags: [String],
+  isActive: { type: Boolean, default: true },
+}, { timestamps: true })
+
+DashboardSchema.index({ userId: 1, isActive: 1 })
+DashboardSchema.index({ isPublic: 1 })
+
+// Report Version Schema (for tracking report definition changes)
+const ReportVersionSchema = new Schema({
+  reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport', required: true },
+  version: { type: Number, required: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  description: String, // What changed in this version
+  reportDefinition: Schema.Types.Mixed, // Full report configuration at this version
+  isCurrent: { type: Boolean, default: false }, // Is this the current version
+}, { timestamps: true })
+
+ReportVersionSchema.index({ reportId: 1, version: -1 })
+ReportVersionSchema.index({ reportId: 1, isCurrent: 1 })
+
+// Report Dependency Schema (tracks data source dependencies)
+const ReportDependencySchema = new Schema({
+  reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport', required: true },
+  // Data source dependencies
+  dataSources: [{
+    sourceType: { type: String, enum: ['model', 'field', 'calculated', 'external'], required: true },
+    sourceName: { type: String, required: true }, // e.g., 'Payment', 'Family', 'payment.amount'
+    sourcePath: String, // Full path to the data source
+    isRequired: { type: Boolean, default: true },
+    lastVerified: Date,
+  }],
+  // Report dependencies (this report depends on other reports)
+  dependsOnReports: [{ type: Schema.Types.ObjectId, ref: 'CustomReport' }],
+  // Reports that depend on this report
+  dependentReports: [{ type: Schema.Types.ObjectId, ref: 'CustomReport' }],
+  // Impact analysis metadata
+  impactAnalysis: {
+    lastAnalyzed: Date,
+    affectedUsers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    estimatedImpact: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
+    changeHistory: [{
+      changedAt: { type: Date, default: Date.now },
+      changedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      changeType: { type: String, enum: ['field_added', 'field_removed', 'filter_changed', 'data_source_changed'] },
+      description: String,
+    }],
+  },
+}, { timestamps: true })
+
+ReportDependencySchema.index({ reportId: 1 })
+ReportDependencySchema.index({ 'dataSources.sourceName': 1 })
+
+// Report Share Schema (granular sharing and permissions)
+const ReportShareSchema = new Schema({
+  reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport', required: true },
+  sharedWith: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  sharedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Granular permissions
+  permissions: {
+    view: { type: Boolean, default: true },
+    edit: { type: Boolean, default: false },
+    share: { type: Boolean, default: false },
+    delete: { type: Boolean, default: false },
+    export: { type: Boolean, default: true },
+    schedule: { type: Boolean, default: false },
+    comment: { type: Boolean, default: true },
+  },
+  // Share type
+  shareType: {
+    type: String,
+    enum: ['user', 'role', 'public', 'link'],
+    default: 'user',
+  },
+  // For role-based sharing
+  roleId: { type: Schema.Types.ObjectId, ref: 'Role' },
+  // For link-based sharing
+  shareLink: {
+    token: String,
+    expiresAt: Date,
+    password: String, // Hashed password
+    accessCount: { type: Number, default: 0 },
+    maxAccessCount: Number, // Limit number of accesses
+  },
+  // Restrictions
+  restrictions: {
+    ipWhitelist: [String],
+    allowedDomains: [String],
+    requireAuth: { type: Boolean, default: true },
+  },
+  // Status
+  isActive: { type: Boolean, default: true },
+  revokedAt: Date,
+  revokedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+}, { timestamps: true })
+
+ReportShareSchema.index({ reportId: 1, sharedWith: 1 })
+ReportShareSchema.index({ reportId: 1, shareType: 1 })
+ReportShareSchema.index({ 'shareLink.token': 1 }, { unique: true, sparse: true })
+
+// Report Drill-Down Configuration Schema
+const ReportDrillDownSchema = new Schema({
+  reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport', required: true },
+  // Drill-down configurations
+  configurations: [{
+    sourceField: { type: String, required: true }, // Field to click on
+    targetReport: { type: Schema.Types.ObjectId, ref: 'CustomReport' }, // Report to navigate to
+    targetView: { type: String, enum: ['detail', 'list', 'custom'], default: 'detail' },
+    // Field mappings (source field -> target filter)
+    fieldMappings: [{
+      sourceField: { type: String, required: true },
+      targetField: { type: String, required: true },
+      mappingType: { type: String, enum: ['equals', 'contains', 'filter'], default: 'equals' },
+    }],
+    // Custom drill-down query
+    customQuery: Schema.Types.Mixed,
+    // Display options
+    displayOptions: {
+      title: String,
+      showBreadcrumb: { type: Boolean, default: true },
+      showBackButton: { type: Boolean, default: true },
+      maxRecords: { type: Number, default: 100 },
+    },
+  }],
+  // Default drill-down behavior
+  defaultBehavior: {
+    enabled: { type: Boolean, default: true },
+    showRelatedRecords: { type: Boolean, default: true },
+    showDetails: { type: Boolean, default: true },
+  },
+}, { timestamps: true })
+
+ReportDrillDownSchema.index({ reportId: 1 })
+
+// Report Template Schema (Pre-built report templates)
+const ReportTemplateSchema = new Schema({
+  name: { type: String, required: true },
+  description: String,
+  category: { type: String, enum: ['financial', 'sales', 'operations', 'custom'], default: 'custom' },
+  icon: String, // Icon name or URL
+  reportDefinition: Schema.Types.Mixed, // Full report configuration
+  isPublic: { type: Boolean, default: false }, // Can be used by all users
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  usageCount: { type: Number, default: 0 },
+  tags: [String],
+}, { timestamps: true })
+
+ReportTemplateSchema.index({ category: 1, isPublic: 1 })
+
+// Report Comment/Annotation Schema
+const ReportCommentSchema = new Schema({
+  reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport', required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  comment: { type: String, required: true },
+  // For cell-level comments
+  cellReference: {
+    rowIndex: Number,
+    fieldName: String,
+  },
+  // For general report comments
+  isGeneral: { type: Boolean, default: false },
+  // Threading support
+  parentCommentId: { type: Schema.Types.ObjectId, ref: 'ReportComment' },
+  mentions: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  resolved: { type: Boolean, default: false },
+  resolvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  resolvedAt: Date,
+}, { timestamps: true })
+
+ReportCommentSchema.index({ reportId: 1, createdAt: -1 })
+ReportCommentSchema.index({ userId: 1 })
+
+// Report Bookmark Schema
+const ReportBookmarkSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport', required: true },
+  name: String, // Custom bookmark name
+  filters: Schema.Types.Mixed, // Saved filter state
+  dateRange: Schema.Types.Mixed, // Saved date range
+  viewSettings: Schema.Types.Mixed, // Column visibility, sorting, etc.
+  notes: String,
+  tags: [String],
+}, { timestamps: true })
+
+ReportBookmarkSchema.index({ userId: 1, reportId: 1 }, { unique: true })
+
+// Report Alert Schema
+const ReportAlertSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  reportId: { type: Schema.Types.ObjectId, ref: 'CustomReport', required: true },
+  name: { type: String, required: true },
+  description: String,
+  // Alert conditions
+  conditions: [{
+    fieldName: { type: String, required: true },
+    operator: { type: String, enum: ['greater_than', 'less_than', 'equals', 'not_equals', 'contains', 'between'], required: true },
+    value: Schema.Types.Mixed,
+    value2: Schema.Types.Mixed, // For 'between'
+    aggregate: { type: String, enum: ['sum', 'avg', 'count', 'min', 'max'], default: 'sum' },
+  }],
+  // Alert frequency
+  frequency: {
+    type: { type: String, enum: ['realtime', 'daily', 'weekly', 'monthly'], default: 'daily' },
+    time: String, // HH:mm format
+    dayOfWeek: Number, // 0-6 for weekly
+    dayOfMonth: Number, // 1-31 for monthly
+  },
+  // Notification settings
+  notificationType: {
+    type: String,
+    enum: ['email', 'in_app', 'both'],
+    default: 'email',
+  },
+  recipients: [{
+    email: { type: String, required: true },
+    name: String,
+  }],
+  // Status
+  isActive: { type: Boolean, default: true },
+  lastTriggered: Date,
+  triggerCount: { type: Number, default: 0 },
+  lastError: String,
+}, { timestamps: true })
+
+ReportAlertSchema.index({ userId: 1, isActive: 1 })
+ReportAlertSchema.index({ reportId: 1, isActive: 1 })
 
 // Permission Schema (Granular permissions)
 const PermissionSchema = new Schema({
@@ -1037,6 +1380,16 @@ export const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema)
 export const Report = mongoose.models.Report || mongoose.model('Report', ReportSchema)
 export const CustomReport = mongoose.models.CustomReport || mongoose.model('CustomReport', CustomReportSchema)
 export const ScheduledReport = mongoose.models.ScheduledReport || mongoose.model('ScheduledReport', ScheduledReportSchema)
+export const ReportSnapshot = mongoose.models.ReportSnapshot || mongoose.model('ReportSnapshot', ReportSnapshotSchema)
+export const Dashboard = mongoose.models.Dashboard || mongoose.model('Dashboard', DashboardSchema)
+export const ReportVersion = mongoose.models.ReportVersion || mongoose.model('ReportVersion', ReportVersionSchema)
+export const ReportTemplate = mongoose.models.ReportTemplate || mongoose.model('ReportTemplate', ReportTemplateSchema)
+export const ReportComment = mongoose.models.ReportComment || mongoose.model('ReportComment', ReportCommentSchema)
+export const ReportBookmark = mongoose.models.ReportBookmark || mongoose.model('ReportBookmark', ReportBookmarkSchema)
+export const ReportAlert = mongoose.models.ReportAlert || mongoose.model('ReportAlert', ReportAlertSchema)
+export const ReportDependency = mongoose.models.ReportDependency || mongoose.model('ReportDependency', ReportDependencySchema)
+export const ReportShare = mongoose.models.ReportShare || mongoose.model('ReportShare', ReportShareSchema)
+export const ReportDrillDown = mongoose.models.ReportDrillDown || mongoose.model('ReportDrillDown', ReportDrillDownSchema)
 export const FamilyTag = mongoose.models.FamilyTag || mongoose.model('FamilyTag', FamilyTagSchema)
 export const FamilyGroup = mongoose.models.FamilyGroup || mongoose.model('FamilyGroup', FamilyGroupSchema)
 export const FamilyRelationship = mongoose.models.FamilyRelationship || mongoose.model('FamilyRelationship', FamilyRelationshipSchema)

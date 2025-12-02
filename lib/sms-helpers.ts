@@ -175,7 +175,7 @@ export async function sendPaymentConfirmationSMS(
 }
 
 /**
- * Send payment reminder SMS
+ * Send payment reminder SMS with smart suggestions
  */
 export async function sendPaymentReminderSMS(
   phoneNumber: string,
@@ -183,7 +183,13 @@ export async function sendPaymentReminderSMS(
   amount: number,
   dueDate: Date,
   daysUntilDue: number,
-  userId?: string
+  userId?: string,
+  smartSuggestion?: {
+    suggestedAmount: number | null
+    suggestedDate: Date | null
+    reason: string
+  },
+  currentBalance?: number
 ) {
   const formatCurrency = (amt: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -201,7 +207,26 @@ export async function sendPaymentReminderSMS(
     }).format(date)
   }
   
-  const message = `Reminder ${familyName}: Payment of ${formatCurrency(amount)} due ${daysUntilDue === 1 ? 'tomorrow' : `in ${daysUntilDue} days`} (${formatDate(dueDate)}). Thank you!`
+  let message = `Reminder ${familyName}: Payment of ${formatCurrency(amount)} due ${daysUntilDue === 1 ? 'tomorrow' : `in ${daysUntilDue} days`} (${formatDate(dueDate)}).`
+  
+  // Add balance info if provided
+  if (currentBalance && currentBalance > 0) {
+    message += ` Current balance: ${formatCurrency(currentBalance)}.`
+  }
+  
+  // Add smart suggestion if provided (keep it short for SMS)
+  if (smartSuggestion) {
+    if (smartSuggestion.suggestedAmount && smartSuggestion.suggestedAmount !== amount) {
+      message += ` Suggested: ${formatCurrency(smartSuggestion.suggestedAmount)}.`
+    }
+    // Only include reason if it's very short
+    if (smartSuggestion.reason && smartSuggestion.reason.length < 60) {
+      message += ` ${smartSuggestion.reason}`
+    }
+  }
+  
+  message += ' Thank you!'
+  
   return await sendSMS(phoneNumber, message, userId)
 }
 

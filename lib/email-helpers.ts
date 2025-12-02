@@ -248,7 +248,7 @@ export async function sendPaymentConfirmationEmail(
 }
 
 /**
- * Send payment reminder email
+ * Send payment reminder email with smart suggestions
  */
 export async function sendPaymentReminderEmail(
   familyEmail: string,
@@ -256,7 +256,13 @@ export async function sendPaymentReminderEmail(
   paymentAmount: number,
   dueDate: Date,
   daysUntilDue: number,
-  userId?: string
+  userId?: string,
+  smartSuggestion?: {
+    suggestedAmount: number | null
+    suggestedDate: Date | null
+    reason: string
+  },
+  currentBalance?: number
 ) {
   const subject = `Payment Reminder - Payment Due in ${daysUntilDue} ${daysUntilDue === 1 ? 'Day' : 'Days'}`
   
@@ -273,6 +279,44 @@ export async function sendPaymentReminderEmail(
       month: 'long',
       day: 'numeric'
     }).format(date)
+  }
+
+  // Build smart suggestion section
+  let suggestionHtml = ''
+  if (smartSuggestion) {
+    const suggestionParts: string[] = []
+    
+    if (smartSuggestion.suggestedAmount && smartSuggestion.suggestedAmount !== paymentAmount) {
+      suggestionParts.push(`<strong>Suggested Amount:</strong> ${formatCurrency(smartSuggestion.suggestedAmount)}`)
+    }
+    
+    if (smartSuggestion.suggestedDate) {
+      suggestionParts.push(`<strong>Suggested Date:</strong> ${formatDate(smartSuggestion.suggestedDate)}`)
+    }
+    
+    if (smartSuggestion.reason) {
+      suggestionParts.push(`<p style="margin-top: 10px; color: #666; font-size: 14px;">💡 ${smartSuggestion.reason}</p>`)
+    }
+    
+    if (suggestionParts.length > 0) {
+      suggestionHtml = `
+        <div style="background: #e0f2fe; padding: 15px; border-left: 4px solid #0ea5e9; margin: 20px 0; border-radius: 5px;">
+          <h3 style="margin-top: 0; color: #0c4a6e;">💡 Smart Payment Suggestion</h3>
+          ${suggestionParts.join('<br>')}
+        </div>
+      `
+    }
+  }
+
+  // Add current balance if provided
+  let balanceHtml = ''
+  if (currentBalance && currentBalance > 0) {
+    balanceHtml = `
+      <div style="background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0; border-radius: 5px;">
+        <p style="margin: 0;"><strong>Current Balance:</strong> ${formatCurrency(currentBalance)}</p>
+        ${currentBalance > paymentAmount ? `<p style="margin: 5px 0 0 0; font-size: 14px; color: #92400e;">Consider paying ${formatCurrency(currentBalance)} to get fully caught up.</p>` : ''}
+      </div>
+    `
   }
 
   const html = `
@@ -311,6 +355,9 @@ export async function sendPaymentReminderEmail(
               <span class="detail-value">${formatDate(dueDate)}</span>
             </div>
           </div>
+          
+          ${balanceHtml}
+          ${suggestionHtml}
           
           <p>Please ensure your payment method is up to date. If you have any questions or need assistance, please don't hesitate to contact us.</p>
           
