@@ -38,7 +38,8 @@ import {
   CalendarDaysIcon,
   ShieldCheckIcon,
   ComputerDesktopIcon,
-  SparklesIcon
+  SparklesIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import { 
   HomeIcon as HomeIconSolid,
@@ -67,7 +68,8 @@ import {
   CalendarDaysIcon as CalendarDaysIconSolid,
   ShieldCheckIcon as ShieldCheckIconSolid,
   ComputerDesktopIcon as ComputerDesktopIconSolid,
-  SparklesIcon as SparklesIconSolid
+  SparklesIcon as SparklesIconSolid,
+  MagnifyingGlassIcon as MagnifyingGlassIconSolid
 } from '@heroicons/react/24/solid'
 
 export default function Sidebar() {
@@ -117,6 +119,7 @@ export default function Sidebar() {
       { href: '/webhooks', label: 'Webhooks & API', icon: LinkIcon, iconSolid: LinkIconSolid },
       { href: '/backup', label: 'Backup & Restore', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
       { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
+      { href: '/duplicates', label: 'Duplicates', icon: MagnifyingGlassIcon, iconSolid: MagnifyingGlassIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/documents/enhanced', label: 'Enhanced Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
