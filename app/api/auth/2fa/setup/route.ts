@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
-import { User } from '@/lib/models'
 import { getAuthenticatedUser } from '@/lib/middleware'
-import speakeasy from 'speakeasy'
-import QRCode from 'qrcode'
+import { User } from '@/lib/models'
+import { generateTOTPSecret, generateQRCode, generateBackupCodes } from '@/lib/2fa-helpers'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * POST /api/auth/2fa/setup
- * Generate 2FA secret and QR code
- */
+// POST - Setup 2FA for user
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
@@ -19,44 +15,54 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
+    const body = await request.json()
+    const { method } = body // 'totp', 'sms', 'email'
+
     const dbUser = await User.findById(user.userId)
     if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-    
-    // Generate secret
-    const secret = speakeasy.generateSecret({
-      name: `Kasa (${dbUser.email})`,
-      length: 32,
-    })
-    
-    // Generate backup codes
-    const backupCodes = Array.from({ length: 10 }, () =>
-      Math.random().toString(36).substring(2, 10).toUpperCase()
-    )
-    
-    // Store secret temporarily (user needs to verify before enabling)
-    dbUser.twoFactorSecret = secret.base32
-    dbUser.twoFactorBackupCodes = backupCodes
-    dbUser.twoFactorVerified = false
-    await dbUser.save()
-    
-    // Generate QR code
-    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url || '')
-    
-    return NextResponse.json({
-      secret: secret.base32,
-      qrCode: qrCodeUrl,
-      backupCodes,
-      manualEntryKey: secret.base32,
-    })
+
+    if (method === 'totp') {
+      // Generate TOTP secret
+      const { secret, otpauthUrl } = generateTOTPSecret(dbUser.email)
+      
+      // Generate QR code
+      const qrCode = await generateQRCode(otpauthUrl)
+      
+      // Generate backup codes
+      const backupCodes = generateBackupCodes(10)
+      
+      // Store secret temporarily (user needs to verify before enabling)
+      dbUser.twoFactorSecret = secret
+      dbUser.twoFactorBackupCodes = backupCodes
+      await dbUser.save()
+
+      return NextResponse.json({
+        secret,
+        qrCode,
+        backupCodes,
+        message: 'Scan QR code with authenticator app and verify to enable 2FA',
+      })
+    }
+
+    if (method === 'sms' || method === 'email') {
+      // SMS and Email 2FA don't need setup, just enable
+      dbUser.twoFactorEnabled = true
+      await dbUser.save()
+
+      return NextResponse.json({
+        message: `${method.toUpperCase()} 2FA enabled. You will receive verification codes via ${method}.`,
+      })
+    }
+
+    return NextResponse.json({ error: 'Invalid 2FA method' }, { status: 400 })
   } catch (error: any) {
     console.error('Error setting up 2FA:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to setup 2FA' },
+      { error: 'Failed to setup 2FA', details: error.message },
       { status: 500 }
     )
   }
 }
-

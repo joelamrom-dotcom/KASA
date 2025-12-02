@@ -136,6 +136,7 @@ export default function Sidebar() {
       { href: '/financial/reports', label: 'Financial Reports', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
       { href: '/team', label: 'Team', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
       { href: '/security', label: 'Security', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
+      { href: '/security/2fa', label: '2FA Settings', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
       { href: '/custom-fields', label: 'Custom Fields', icon: TagIcon, iconSolid: TagIconSolid },
       { href: '/integrations', label: 'Integrations', icon: LinkIcon, iconSolid: LinkIconSolid },
       { href: '/ai-assistant', label: 'AI Assistant', icon: SparklesIcon, iconSolid: SparklesIconSolid },

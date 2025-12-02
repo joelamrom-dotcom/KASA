@@ -381,7 +381,7 @@ function LoginForm() {
                     onClick={() => {
                       setIsGoogleLoading(true)
                       setError('')
-                      window.location.href = '/api/auth/google?mode=login'
+                      window.location.href = '/api/auth/sso/google'
                     }}
                     disabled={isGoogleLoading || isLoading}
                     className="w-full glass-panel bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg border border-gray-300 transition-all duration-300 flex items-center justify-center shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed relative"
@@ -415,6 +415,71 @@ function LoginForm() {
                       </>
                     )}
                   </button>
+
+                  {/* Sign In with Microsoft Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGoogleLoading(true)
+                      setError('')
+                      window.location.href = '/api/auth/sso/microsoft'
+                    }}
+                    disabled={isGoogleLoading || isLoading}
+                    className="w-full glass-panel bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg border border-gray-300 transition-all duration-300 flex items-center justify-center shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed relative mt-2"
+                  >
+                    {isGoogleLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600 mr-2"></div>
+                        <span>Redirecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="h-5 w-5 mr-2" viewBox="0 0 23 23" fill="none">
+                          <path d="M11.4 11.4H22V22H11.4V11.4Z" fill="#F25022"/>
+                          <path d="M0 11.4H11.4V22H0V11.4Z" fill="#7FBA00"/>
+                          <path d="M0 0H11.4V11.4H0V0Z" fill="#00A4EF"/>
+                          <path d="M11.4 0H22V11.4H11.4V0Z" fill="#FFB900"/>
+                        </svg>
+                        Sign in with Microsoft
+                      </>
+                    )}
+                  </button>
+
+                  {/* Magic Link Option */}
+                  <div className="text-center mt-4">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!formData.email) {
+                          setError('Please enter your email first')
+                          return
+                        }
+                        setIsLoading(true)
+                        setError('')
+                        try {
+                          const res = await fetch('/api/auth/magic-link/send', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: formData.email })
+                          })
+                          const data = await res.json()
+                          if (res.ok) {
+                            setSuccess('Magic link sent! Check your email.')
+                          } else {
+                            setError(data.error || 'Failed to send magic link')
+                          }
+                        } catch (error) {
+                          setError('Failed to send magic link')
+                        } finally {
+                          setIsLoading(false)
+                        }
+                      }}
+                      disabled={isLoading || !formData.email}
+                      className="text-sm text-blue-600 hover:text-blue-700 underline disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Send me a magic link instead
+                    </button>
+                  </div>
                 </>
               )}
 
