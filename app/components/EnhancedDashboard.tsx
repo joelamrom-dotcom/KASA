@@ -12,6 +12,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import PaymentInsightsWidget from './PaymentInsightsWidget'
 
 interface DashboardStats {
   totalFamilies: number
@@ -173,7 +174,10 @@ export default function EnhancedDashboard() {
       </div>
 
       {/* Additional Info Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Payment Insights Widget */}
+        <PaymentInsightsWidget />
+
         {/* Upcoming Events */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">

@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
       weddingConversion: { converted: 0 },
       taskEmails: { sent: 0, failed: 0 },
       paymentReminders: { sent: 0, failed: 0 },
-      overdueReminders: { sent: 0, failed: 0 }
+      overdueReminders: { sent: 0, failed: 0 },
+      paymentPlanUpdates: { checked: 0, updated: 0, failed: 0 }
     }
 
     // Get base URL from request or environment
@@ -186,6 +187,26 @@ export async function POST(request: NextRequest) {
     } catch (scheduledError: any) {
       console.error('⚠️ Error processing scheduled reports:', scheduledError.message)
       // Don't fail the entire automation if scheduled reports fail
+    }
+
+    // Auto-update payment plans for all families
+    try {
+      const { checkAndUpdateAllPaymentPlans } = await import('@/lib/payment-plan-auto-adjust')
+      
+      for (const admin of adminUsers) {
+        try {
+          const updateResults = await checkAndUpdateAllPaymentPlans(admin.userId)
+          results.paymentPlanUpdates.checked += updateResults.checked
+          results.paymentPlanUpdates.updated += updateResults.updated
+          console.log(`✅ Updated ${updateResults.updated} payment plans for admin ${admin.userId}`)
+        } catch (adminError: any) {
+          console.error(`⚠️ Error updating payment plans for admin ${admin.userId}:`, adminError.message)
+          results.paymentPlanUpdates.failed++
+        }
+      }
+    } catch (paymentPlanError: any) {
+      console.error('⚠️ Error processing payment plan updates:', paymentPlanError.message)
+      // Don't fail the entire automation if payment plan updates fail
     }
 
     return NextResponse.json({

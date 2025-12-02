@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { showToast } from '@/app/components/Toast'
 
 interface Family {
   _id: string
@@ -24,6 +25,7 @@ export default function PaymentPlansPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingPlan, setEditingPlan] = useState<PaymentPlan | null>(null)
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null)
+  const [updatingPlans, setUpdatingPlans] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     yearlyPrice: 0
@@ -104,6 +106,37 @@ export default function PaymentPlansPage() {
     setExpandedPlan(expandedPlan === planId ? null : planId)
   }
 
+  const handleUpdateAllPaymentPlans = async () => {
+    if (!confirm('This will check all family members and update their payment plans based on age. Continue?')) {
+      return
+    }
+
+    try {
+      setUpdatingPlans(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/kasa/payment-plans/update-all', {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        showToast(
+          `Successfully updated ${result.results.updated} payment plans (checked ${result.results.checked} members)`,
+          'success'
+        )
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Failed to update payment plans', 'error')
+      }
+    } catch (error: any) {
+      console.error('Error updating payment plans:', error)
+      showToast('Error updating payment plans', 'error')
+    } finally {
+      setUpdatingPlans(false)
+    }
+  }
+
   if (loading) {
     return <div className="min-h-screen p-8">Loading...</div>
   }
@@ -118,17 +151,28 @@ export default function PaymentPlansPage() {
             </h1>
             <p className="text-gray-600">Manage payment plans and view families using each plan</p>
           </div>
-          <button
-            onClick={() => {
-              resetForm()
-              setEditingPlan(null)
-              setShowModal(true)
-            }}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Add Payment Plan
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleUpdateAllPaymentPlans}
+              disabled={updatingPlans}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Update all payment plans based on member ages"
+            >
+              <ArrowPathIcon className={`h-5 w-5 ${updatingPlans ? 'animate-spin' : ''}`} />
+              {updatingPlans ? 'Updating...' : 'Update All Plans'}
+            </button>
+            <button
+              onClick={() => {
+                resetForm()
+                setEditingPlan(null)
+                setShowModal(true)
+              }}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Payment Plan
+            </button>
+          </div>
         </div>
 
         <div className="glass-strong rounded-2xl shadow-xl overflow-hidden border border-white/30">
