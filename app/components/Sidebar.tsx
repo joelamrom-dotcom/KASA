@@ -107,6 +107,8 @@ export default function Sidebar() {
       { href: '/calculations', label: 'Calculations', icon: CalculatorIcon, iconSolid: CalculatorIconSolid },
       { href: '/events', label: 'Events & Calendar', icon: CalendarIcon, iconSolid: CalendarIconSolid },
       { href: '/reports/custom', label: 'Reports', icon: PresentationChartBarIcon, iconSolid: PresentationChartBarIconSolid },
+      { href: '/forecasting', label: 'Forecasting', icon: ChartPieIcon, iconSolid: ChartPieIconSolid },
+      { href: '/analytics', label: 'Analytics', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
       { href: '/statements', label: 'Statements', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/import', label: 'Import', icon: ArrowUpTrayIcon, iconSolid: ArrowUpTrayIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },

@@ -24,6 +24,7 @@ import StripePaymentForm from '@/app/components/StripePaymentForm'
 import Pagination from '@/app/components/Pagination'
 import { getUser } from '@/lib/auth'
 import PaymentInsights from '@/app/components/PaymentInsights'
+import PaymentPlanHistory from '@/app/components/PaymentPlanHistory'
 
 // QWERTY to Hebrew keyboard mapping
 const qwertyToHebrew: { [key: string]: string } = {
@@ -2517,6 +2518,11 @@ export default function FamilyDetailPage() {
                       />
                     </div>
                   )}
+
+                  {/* Payment Plan History */}
+                  <div className="mt-6">
+                    <PaymentPlanHistory familyId={params.id as string} />
+                  </div>
                 </div>
               </div>
             )}
