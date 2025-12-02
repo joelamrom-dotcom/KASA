@@ -3,6 +3,7 @@ import './globals.css'
 import { I18nProvider } from './i18n/provider'
 import AccessibilityWrapper from './components/AccessibilityWrapper'
 import { RealtimeProvider } from './components/RealtimeProvider'
+import PerformanceOptimizer from './components/PerformanceOptimizer'
 
 export const metadata: Metadata = {
   title: 'Real Estate SaaS Platform',
@@ -18,6 +19,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <meta name="theme-color" content="#3b82f6" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -25,6 +29,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Kasa" />
       </head>
       <body className="bg-gray-50 min-h-screen">
+        <PerformanceOptimizer />
         <I18nProvider>
           <AccessibilityWrapper>
             <RealtimeProvider>
@@ -38,7 +43,21 @@ export default function RootLayout({
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
                   navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('SW registered:', reg))
+                    .then(reg => {
+                      console.log('SW registered:', reg);
+                      // Check for updates
+                      reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (newWorker) {
+                          newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                              // New service worker available
+                              console.log('New service worker available');
+                            }
+                          });
+                        }
+                      });
+                    })
                     .catch(err => console.log('SW registration failed:', err));
                 });
               }
