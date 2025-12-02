@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useCallback } from 'react'
+import { useEffect, useMemo, useCallback, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import React from 'react'
 
 /**
  * Performance optimization component
