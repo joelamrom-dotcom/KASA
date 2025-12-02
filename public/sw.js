@@ -1,7 +1,8 @@
 // Enhanced Service Worker for PWA with aggressive caching
-const CACHE_NAME = 'kasa-cache-v2'
-const STATIC_CACHE = 'kasa-static-v2'
-const API_CACHE = 'kasa-api-v2'
+const CACHE_NAME = 'kasa-cache-v3'
+const STATIC_CACHE = 'kasa-static-v3'
+const API_CACHE = 'kasa-api-v3'
+const RUNTIME_CACHE = 'kasa-runtime-v3'
 
 // Cache static assets
 const staticAssets = [
@@ -92,10 +93,22 @@ self.addEventListener('fetch', (event) => {
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
+        // Return cached version immediately
         if (cachedResponse) {
+          // Update cache in background (stale-while-revalidate)
+          fetch(request).then((response) => {
+            if (response && response.status === 200 && response.type === 'basic') {
+              const responseToCache = response.clone()
+              caches.open(STATIC_CACHE).then((cache) => {
+                cache.put(request, responseToCache)
+              })
+            }
+          }).catch(() => {}) // Ignore errors
+          
           return cachedResponse
         }
         
+        // Not in cache, fetch and cache
         return fetch(request).then((response) => {
           // Don't cache if not a valid response
           if (!response || response.status !== 200 || response.type !== 'basic') {

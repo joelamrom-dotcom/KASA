@@ -8,6 +8,11 @@ import ResourceHints from './components/ResourceHints'
 import ResourcePrioritizer from './components/ResourcePrioritizer'
 import PreloadCriticalResources from './components/PreloadCriticalResources'
 import HTTP3Optimizer from './components/HTTP3Optimizer'
+import CriticalPathOptimizer from './components/CriticalPathOptimizer'
+import FontSubsetter from './components/FontSubsetter'
+import CacheWarmer from './components/CacheWarmer'
+import NetworkOptimizer from './components/NetworkOptimizer'
+import AnimationOptimizer from './components/AnimationOptimizer'
 
 export const metadata: Metadata = {
   title: 'Real Estate SaaS Platform',
@@ -37,6 +42,11 @@ export default function RootLayout({
         <ResourcePrioritizer />
         <PreloadCriticalResources />
         <HTTP3Optimizer />
+        <CriticalPathOptimizer />
+        <FontSubsetter />
+        <CacheWarmer />
+        <NetworkOptimizer />
+        <AnimationOptimizer />
         <PerformanceOptimizer />
         <I18nProvider>
           <AccessibilityWrapper>

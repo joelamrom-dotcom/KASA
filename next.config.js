@@ -32,6 +32,10 @@ const nextConfig = {
     serverActions: true,
     // Optimize server imports
     serverMinification: true,
+    // Partial prerendering for better performance
+    ppr: true,
+    // Optimize server rendering
+    optimizeServerReact: true,
   },
   // Output configuration for better performance
   output: 'standalone',
