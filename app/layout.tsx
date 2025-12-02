@@ -4,6 +4,7 @@ import { I18nProvider } from './i18n/provider'
 import AccessibilityWrapper from './components/AccessibilityWrapper'
 import { RealtimeProvider } from './components/RealtimeProvider'
 import PerformanceOptimizer from './components/PerformanceOptimizer'
+import ResourceHints from './components/ResourceHints'
 
 export const metadata: Metadata = {
   title: 'Real Estate SaaS Platform',
@@ -29,6 +30,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Kasa" />
       </head>
       <body className="bg-gray-50 min-h-screen">
+        <ResourceHints />
         <PerformanceOptimizer />
         <I18nProvider>
           <AccessibilityWrapper>

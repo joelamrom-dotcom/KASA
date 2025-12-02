@@ -22,7 +22,17 @@ const nextConfig = {
       'react-window',
       'react-quill',
     ],
+    // Enable modern image formats
+    images: {
+      formats: ['image/avif', 'image/webp'],
+    },
   },
+  // Output configuration for better performance
+  output: 'standalone',
+  // Enable compression
+  compress: true,
+  // PoweredByHeader removal for security and performance
+  poweredByHeader: false,
   // Webpack optimizations
   webpack: (config, { isServer }) => {
     if (!isServer) {
