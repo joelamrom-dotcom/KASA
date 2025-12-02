@@ -227,6 +227,7 @@ export default function Sidebar() {
                 <div className="flex items-center gap-2">
                   <LanguageSwitcher />
                   <DarkModeToggle />
+                  <KeyboardShortcutsHelp />
                   <NotificationCenter />
                   <PushNotificationManager />
                 </div>
