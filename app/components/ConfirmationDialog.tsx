@@ -31,14 +31,18 @@ export default function ConfirmationDialog({
   const userInitiatedCloseRef = React.useRef(false)
   const guardActiveRef = React.useRef(false)
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  const forcedOpenRef = React.useRef(false) // Track if we're forcing it open
+  const lastIsOpenRef = React.useRef(isOpen)
   
-  // Track when dialog opens
+  // Track when dialog opens - use ref to track previous value to detect transitions
   React.useEffect(() => {
-    if (isOpen) {
+    // Only react to isOpen changing from false to true
+    if (isOpen && !lastIsOpenRef.current) {
       const openTime = Date.now()
       openTimeRef.current = openTime
       userInitiatedCloseRef.current = false
       guardActiveRef.current = true
+      forcedOpenRef.current = true // Force it open during guard period
       console.log('ConfirmationDialog: Dialog opened, guard active for 10 seconds', { 
         title,
         openTime
@@ -48,10 +52,20 @@ export default function ConfirmationDialog({
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       timeoutRef.current = setTimeout(() => {
         guardActiveRef.current = false
+        forcedOpenRef.current = false // Allow parent to control after guard expires
         console.log('ConfirmationDialog: Guard disabled after 10 seconds')
       }, 10000)
-    } else {
-      // Reset when closed
+    } else if (!isOpen && lastIsOpenRef.current) {
+      // Dialog is closing - only allow if guard is not active or user-initiated
+      if (guardActiveRef.current && !userInitiatedCloseRef.current) {
+        console.warn('ConfirmationDialog: Parent tried to close during guard period - blocking', {
+          guardActive: guardActiveRef.current,
+          userInitiated: userInitiatedCloseRef.current
+        })
+        // Don't update lastIsOpenRef - keep it as true so we stay open
+        return
+      }
+      // Reset when closed (and allowed)
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null
@@ -59,7 +73,11 @@ export default function ConfirmationDialog({
       openTimeRef.current = null
       guardActiveRef.current = false
       userInitiatedCloseRef.current = false
+      forcedOpenRef.current = false
     }
+    
+    // Always update lastIsOpenRef to track current state
+    lastIsOpenRef.current = isOpen
     
     return () => {
       if (timeoutRef.current) {
@@ -69,8 +87,8 @@ export default function ConfirmationDialog({
     }
   }, [isOpen, title])
   
-  // Use isOpen directly - no override logic to avoid render loops
-  const effectiveIsOpen = isOpen
+  // If guard is active, force open. Otherwise use isOpen prop
+  const effectiveIsOpen = forcedOpenRef.current || isOpen
   
   // Prevent closing during loading or if guard is active and not user-initiated
   const handleClose = React.useCallback(() => {
@@ -96,6 +114,9 @@ export default function ConfirmationDialog({
       return
     }
     
+    // Mark that we're closing and disable forced open
+    forcedOpenRef.current = false
+    guardActiveRef.current = false
     console.log('ConfirmationDialog: handleClose allowed')
     onClose()
   }, [isLoading, isOpen, onClose])
