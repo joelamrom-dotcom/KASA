@@ -137,6 +137,8 @@ export default function Sidebar() {
       { href: '/team', label: 'Team', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
       { href: '/security', label: 'Security', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
       { href: '/security/2fa', label: '2FA Settings', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
+      { href: '/gamification', label: 'Gamification', icon: TrophyIcon, iconSolid: TrophyIconSolid },
+      { href: '/branding', label: 'Branding', icon: PaintBrushIcon, iconSolid: PaintBrushIconSolid },
       { href: '/custom-fields', label: 'Custom Fields', icon: TagIcon, iconSolid: TagIconSolid },
       { href: '/integrations', label: 'Integrations', icon: LinkIcon, iconSolid: LinkIconSolid },
       { href: '/ai-assistant', label: 'AI Assistant', icon: SparklesIcon, iconSolid: SparklesIconSolid },

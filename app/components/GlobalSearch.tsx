@@ -74,12 +74,19 @@ export default function GlobalSearch() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/kasa/search/advanced?q=${encodeURIComponent(searchQuery)}&types=family,member,payment&limit=20`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      
+      // Try AI-enhanced search first
+      const aiRes = await fetch('/api/kasa/search/ai-enhanced', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ query: searchQuery, limit: 20 })
       })
       
-      if (res.ok) {
-        const data = await res.json()
+      if (aiRes.ok) {
+        const data = await aiRes.json()
         const formattedResults: SearchResult[] = data.results.map((r: any) => ({
           type: r.type as any,
           id: r._id,
@@ -89,6 +96,29 @@ export default function GlobalSearch() {
           icon: getIconForType(r.type)
         }))
         setResults(formattedResults)
+        
+        // Store suggestions if available
+        if (data.suggestions && data.suggestions.length > 0) {
+          // Could display suggestions in UI
+        }
+      } else {
+        // Fallback to advanced search
+        const res = await fetch(`/api/kasa/search/advanced?q=${encodeURIComponent(searchQuery)}&types=family,member,payment&limit=20`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        })
+        
+        if (res.ok) {
+          const data = await res.json()
+          const formattedResults: SearchResult[] = data.results.map((r: any) => ({
+            type: r.type as any,
+            id: r._id,
+            title: r.title,
+            subtitle: r.subtitle,
+            url: r.url,
+            icon: getIconForType(r.type)
+          }))
+          setResults(formattedResults)
+        }
       }
     } catch (error) {
       console.error('Error performing search:', error)

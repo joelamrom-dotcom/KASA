@@ -1011,6 +1011,13 @@ const UserSchema = new Schema({
   invitationExpires: Date,
   // IP Whitelist
   allowedIPs: [String], // Array of allowed IP addresses (empty = all IPs allowed)
+  // Onboarding
+  onboardingCompleted: { type: Boolean, default: false },
+  onboardingCompletedAt: Date,
+  timezone: { type: String, default: 'America/New_York' },
+  language: { type: String, default: 'en' },
+  theme: { type: String, default: 'light', enum: ['light', 'dark', 'auto'] },
+  notifications: { type: Boolean, default: true },
 }, { timestamps: true })
 
 // Add index for familyId for better query performance

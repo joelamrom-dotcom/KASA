@@ -54,13 +54,15 @@ export default function RootLayout({
         <PreloadKeyRequests />
         <ReduceJSExecution />
         <PerformanceOptimizer />
-        <I18nProvider>
-          <AccessibilityWrapper>
-            <RealtimeProvider>
-              {children}
-            </RealtimeProvider>
-          </AccessibilityWrapper>
-        </I18nProvider>
+          <I18nProvider>
+            <AccessibilityWrapper>
+              <RealtimeProvider>
+                <OnboardingProvider>
+                  {children}
+                </OnboardingProvider>
+              </RealtimeProvider>
+            </AccessibilityWrapper>
+          </I18nProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `
