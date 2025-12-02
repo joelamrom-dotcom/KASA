@@ -133,6 +133,8 @@ export default function Sidebar() {
       { href: '/team', label: 'Team', icon: UserGroupIcon, iconSolid: UserGroupIconSolid },
       { href: '/security', label: 'Security', icon: ShieldCheckIcon, iconSolid: ShieldCheckIconSolid },
       { href: '/custom-fields', label: 'Custom Fields', icon: TagIcon, iconSolid: TagIconSolid },
+      { href: '/integrations', label: 'Integrations', icon: LinkIcon, iconSolid: LinkIconSolid },
+      { href: '/ai-assistant', label: 'AI Assistant', icon: SparklesIcon, iconSolid: SparklesIconSolid },
       { href: '/recycle-bin', label: 'Recycle Bin', icon: TrashIcon, iconSolid: TrashIconSolid },
       { href: '/documents', label: 'Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
       { href: '/documents/enhanced', label: 'Enhanced Documents', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
