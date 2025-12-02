@@ -26,6 +26,12 @@ const nextConfig = {
     images: {
       formats: ['image/avif', 'image/webp'],
     },
+    // Enable React Server Components
+    serverComponents: true,
+    // Enable streaming SSR
+    serverActions: true,
+    // Optimize server imports
+    serverMinification: true,
   },
   // Output configuration for better performance
   output: 'standalone',

@@ -5,6 +5,53 @@
 /* stylelint-disable-next-line */
 @tailwind utilities;
 
+/* Font optimization */
+@font-face {
+  font-family: 'system';
+  font-display: swap; /* Show fallback immediately, swap when loaded */
+}
+
+/* Critical performance optimizations */
+* {
+  /* GPU acceleration for transforms */
+  transform: translateZ(0);
+  will-change: auto;
+}
+
+/* Optimize font rendering */
+body {
+  font-display: swap;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reduce layout shifts */
+img, video {
+  height: auto;
+  max-width: 100%;
+  aspect-ratio: attr(width) / attr(height);
+}
+
+/* Optimize animations for performance */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* PWA and Mobile Optimizations */
 @layer base {
   /* Touch-optimized interactions */

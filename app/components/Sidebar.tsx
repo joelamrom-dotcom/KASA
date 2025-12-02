@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import PrefetchLink from './PrefetchLink'
 import { usePathname } from 'next/navigation'
 import { getUser, logout, setAuth } from '@/lib/auth'
 import PushNotificationManager from './PushNotificationManager'
