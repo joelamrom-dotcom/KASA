@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
 
     const invoices: any[] = []
 
-    for (const family of families) {
+    for (const familyDoc of families) {
+      const family = familyDoc as any
       const paymentPlan = family.paymentPlanId as any
       if (!paymentPlan) continue
 
