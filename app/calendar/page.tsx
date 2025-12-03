@@ -98,7 +98,7 @@ export default function CalendarPage() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow p-6">
               <Calendar
-                onChange={setCurrentDate}
+                onChange={(value) => value && setCurrentDate(value as Date)}
                 value={currentDate}
                 onClickDay={handleDateClick}
                 tileContent={({ date }) => {
