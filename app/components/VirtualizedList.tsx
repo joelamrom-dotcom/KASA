@@ -1,5 +1,8 @@
 'use client'
 
+// Temporarily disabled due to react-window type issues
+// This component is not currently in use
+/*
 import { FixedSizeList } from 'react-window'
 import type { ListChildComponentProps } from 'react-window'
 import { useMemo } from 'react'
@@ -35,4 +38,10 @@ export default function VirtualizedList<T>({
       {renderItem}
     </FixedSizeList>
   )
+}
+*/
+
+// Placeholder export to avoid breaking imports
+export default function VirtualizedList() {
+  return null
 }
