@@ -1,6 +1,7 @@
 'use client'
 
-import { FixedSizeList, ListChildComponentProps } from 'react-window'
+import { FixedSizeList } from 'react-window'
+import type { ListChildComponentProps } from 'react-window'
 import { useMemo } from 'react'
 
 interface VirtualizedListProps<T> {
