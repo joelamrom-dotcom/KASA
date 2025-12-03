@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const family = await Family.findById(user.familyId).lean()
-    if (!family) {
+    const familyResult = await Family.findById(user.familyId).lean()
+    if (!familyResult) {
       return NextResponse.json(
         { error: 'Family not found' },
         { status: 404 }
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Type assertion for lean() result
-    const familyDoc = family as {
+    const familyDoc = familyResult as {
       email?: string
       phone?: string
       husbandCellPhone?: string
@@ -106,13 +106,15 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const family = await Family.findById(user.familyId)
-    if (!family) {
+    const familyResult = await Family.findById(user.familyId)
+    if (!familyResult) {
       return NextResponse.json(
         { error: 'Family not found' },
         { status: 404 }
       )
     }
+
+    const family = familyResult as any
 
     const body = await request.json()
     const {

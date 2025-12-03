@@ -5,7 +5,7 @@ import { PlusIcon, DocumentTextIcon, PrinterIcon, CalendarIcon, ChevronDownIcon,
 import Pagination from '@/app/components/Pagination'
 import Link from 'next/link'
 import TableImportExport from '@/app/components/TableImportExport'
-import { showToast } from '@/app/components/Toast'
+import { showToast } from '@/lib/toast'
 
 interface Statement {
   _id: string

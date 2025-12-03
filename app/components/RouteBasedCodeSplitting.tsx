@@ -16,10 +16,6 @@ export const PaymentsPage = dynamic(() => import('@/app/payments/page'), {
   loading: () => <div>Loading payments...</div>,
 })
 
-export const DashboardPage = dynamic(() => import('@/app/dashboard/page'), {
-  loading: () => <div>Loading dashboard...</div>,
-})
-
 /**
  * Lazy load route components
  */

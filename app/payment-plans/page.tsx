@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserGroupIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
-import { showToast } from '@/app/components/Toast'
+import { showToast } from '@/lib/toast'
 
 interface Family {
   _id: string

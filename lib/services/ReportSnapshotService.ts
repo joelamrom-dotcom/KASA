@@ -1,5 +1,5 @@
 import { ReportSnapshot, CustomReport } from '@/lib/models'
-import { connectDB } from '@/lib/database'
+import connectDB from '@/lib/database'
 
 export class ReportSnapshotService {
   /**

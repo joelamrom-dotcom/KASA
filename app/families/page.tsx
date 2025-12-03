@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import Pagination from '@/app/components/Pagination'
-import { showToast } from '@/app/components/Toast'
+import { showToast } from '@/lib/toast'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
 import { TableSkeleton } from '@/app/components/LoadingSkeleton'
 import EmptyState from '@/app/components/EmptyState'

@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const family = await Family.findById(user.familyId).lean()
-    if (!family) {
+    const familyResult = await Family.findById(user.familyId).lean()
+    if (!familyResult) {
       return NextResponse.json(
         { error: 'Family not found' },
         { status: 404 }
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Type assertion for lean() result
-    const familyDoc = family as { _id: unknown }
+    const familyDoc = familyResult as { _id: unknown }
 
     const searchParams = request.nextUrl.searchParams
     const year = searchParams.get('year')

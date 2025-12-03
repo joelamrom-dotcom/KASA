@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CalendarIcon, PlusIcon, ClockIcon, RepeatIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon, PlusIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import Modal from '@/app/components/Modal'
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css'
@@ -98,7 +98,7 @@ export default function CalendarPage() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow p-6">
               <Calendar
-                onChange={setCurrentDate}
+                onChange={(value) => value && setCurrentDate(value as Date)}
                 value={currentDate}
                 onClickDay={handleDateClick}
                 tileContent={({ date }) => {
@@ -135,7 +135,7 @@ export default function CalendarPage() {
                       </p>
                       {event.isRecurring && (
                         <div className="flex items-center gap-1 mt-1">
-                          <RepeatIcon className="h-3 w-3 text-gray-400" />
+                          <ArrowPathIcon className="h-3 w-3 text-gray-400" />
                           <span className="text-xs text-gray-400">{event.recurrencePattern}</span>
                         </div>
                       )}

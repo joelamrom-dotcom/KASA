@@ -1,4 +1,4 @@
-import { connectDB } from '@/lib/database'
+import connectDB from '@/lib/database'
 import { Family, FamilyMember, Payment, User } from '@/lib/models'
 
 export interface DuplicateMatch {

@@ -9,7 +9,7 @@ import {
   LinkIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
-import { showToast } from './Toast'
+import { showToast } from '@/lib/toast'
 
 interface PaymentInsightsData {
   atRiskCount: number

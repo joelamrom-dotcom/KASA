@@ -157,7 +157,7 @@ export default function DataQualityPage() {
                       <CheckCircleIcon className="h-6 w-6 text-blue-600" />
                     )}
                     <div>
-                      <p className="font-medium">{issue.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                      <p className="font-medium">{issue.type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</p>
                       <p className="text-sm text-gray-500">{issue.count} {issue.count === 1 ? 'record' : 'records'}</p>
                     </div>
                   </div>

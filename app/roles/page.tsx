@@ -22,7 +22,7 @@ import {
 } from '@heroicons/react/24/outline'
 import Modal from '@/app/components/Modal'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
-import { showToast } from '@/app/components/Toast'
+import { showToast } from '@/lib/toast'
 import { TableSkeleton } from '@/app/components/LoadingSkeleton'
 import EmptyState from '@/app/components/EmptyState'
 

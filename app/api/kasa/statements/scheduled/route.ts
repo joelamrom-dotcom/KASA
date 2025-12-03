@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
-    const settings = await AutomationSettings.findOne({ userId }).lean()
+    const settingsResult = await AutomationSettings.findOne({ userId }).lean()
+    const settings = settingsResult as any
 
     return NextResponse.json({
       autoGenerateStatements: settings?.autoGenerateStatements || false,

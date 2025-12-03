@@ -63,6 +63,7 @@ import {
   ChartPieIcon as ChartPieIconSolid,
   ArrowUpTrayIcon as ArrowUpTrayIconSolid,
   ArrowDownTrayIcon as ArrowDownTrayIconSolid,
+  ArrowPathIcon as ArrowPathIconSolid,
   TrashIcon as TrashIconSolid,
   UsersIcon as UsersIconSolid,
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconSolid,

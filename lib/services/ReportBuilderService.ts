@@ -1,5 +1,5 @@
 import { CustomReport } from '@/lib/models'
-import { connectDB } from '@/lib/database'
+import connectDB from '@/lib/database'
 import mongoose from 'mongoose'
 
 export class ReportBuilderService {

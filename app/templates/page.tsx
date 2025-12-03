@@ -331,7 +331,7 @@ export default function TemplatesPage() {
                         className="px-3 py-1 bg-white border rounded text-xs hover:bg-blue-50 hover:border-blue-300"
                         title={v.description}
                       >
-                        {v.displayName} ({{{v.name}}})
+                        {v.displayName} ({'{{'}{v.name}{'}}'})
                       </button>
                     ))}
                   </div>

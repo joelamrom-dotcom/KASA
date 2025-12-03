@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import Modal from './Modal'
 import FormField from './FormField'
-import { showToast } from './Toast'
+import { showToast } from '@/lib/toast'
 
 interface BulkEditModalProps {
   isOpen: boolean

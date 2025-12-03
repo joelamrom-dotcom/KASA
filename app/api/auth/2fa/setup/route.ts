@@ -28,6 +28,10 @@ export async function POST(request: NextRequest) {
       // Generate TOTP secret
       const { secret, otpauthUrl } = generateTOTPSecret(dbUser.email)
       
+      if (!otpauthUrl) {
+        return NextResponse.json({ error: 'Failed to generate TOTP URL' }, { status: 500 })
+      }
+      
       // Generate QR code
       const qrCode = await generateQRCode(otpauthUrl)
       

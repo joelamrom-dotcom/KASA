@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
           const isBackupCode = verifyBackupCode(code, dbUser.twoFactorBackupCodes || [])
           if (isBackupCode) {
             // Remove used backup code
-            dbUser.twoFactorBackupCodes = (dbUser.twoFactorBackupCodes || []).filter(c => c !== code)
+            dbUser.twoFactorBackupCodes = (dbUser.twoFactorBackupCodes || []).filter((c: string) => c !== code)
             await dbUser.save()
           } else {
             return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 })
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
           const isBackupCode = verifyBackupCode(code, dbUser.twoFactorBackupCodes || [])
           if (isBackupCode) {
             // Remove used backup code
-            dbUser.twoFactorBackupCodes = (dbUser.twoFactorBackupCodes || []).filter(c => c !== code)
+            dbUser.twoFactorBackupCodes = (dbUser.twoFactorBackupCodes || []).filter((c: string) => c !== code)
             await dbUser.save()
             return NextResponse.json({ message: 'Verification successful' })
           }

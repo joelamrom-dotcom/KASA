@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 import { exportToCSV } from '@/app/utils/csvExport'
 import { parseCSV } from '@/app/utils/csvImport'
-import { showToast } from './Toast'
+import { showToast } from '@/lib/toast'
 
 interface TableImportExportProps<T extends Record<string, any>> {
   data: T[]

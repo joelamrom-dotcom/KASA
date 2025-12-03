@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { setAuth } from '@/lib/auth'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
-import { showToast } from '@/app/components/Toast'
+import { showToast } from '@/lib/toast'
 import { TableSkeleton } from '@/app/components/LoadingSkeleton'
 
 interface User {
