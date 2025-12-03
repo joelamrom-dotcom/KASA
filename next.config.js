@@ -6,11 +6,6 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  images: {
-    domains: ['localhost'],
-    formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 60,
-  },
   // Compression
   compress: true,
   // Experimental features for performance
@@ -22,25 +17,14 @@ const nextConfig = {
       'react-window',
       'react-quill',
     ],
-    // Enable modern image formats
-    images: {
-      formats: ['image/avif', 'image/webp'],
-    },
-    // Enable React Server Components
-    serverComponents: true,
-    // Enable streaming SSR
-    serverActions: true,
     // Optimize server imports
     serverMinification: true,
-    // Partial prerendering for better performance
-    ppr: true,
     // Optimize server rendering
     optimizeServerReact: true,
-    // Enable edge runtime where possible
-    edgeRuntime: true,
   },
   // Image optimization
   images: {
+    domains: ['localhost'],
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
