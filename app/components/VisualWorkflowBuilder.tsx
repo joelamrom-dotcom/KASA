@@ -16,7 +16,12 @@ interface Connection {
   to: string
 }
 
-export default function VisualWorkflowBuilder() {
+interface VisualWorkflowBuilderProps {
+  onClose: () => void
+  onSave: (rule: any) => void
+}
+
+export default function VisualWorkflowBuilder({ onClose, onSave }: VisualWorkflowBuilderProps) {
   const [nodes, setNodes] = useState<Node[]>([])
   const [connections, setConnections] = useState<Connection[]>([])
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
@@ -53,6 +58,18 @@ export default function VisualWorkflowBuilder() {
           >
             <PlayIcon className="h-5 w-5" />
             Test Workflow
+          </button>
+          <button
+            onClick={() => onSave({ nodes, connections })}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Save
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+          >
+            Close
           </button>
         </div>
       </div>
