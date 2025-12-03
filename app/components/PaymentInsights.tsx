@@ -7,8 +7,8 @@ import {
   CheckCircleIcon,
   InformationCircleIcon,
   LightBulbIcon,
-  TrendingUpIcon,
-  TrendingDownIcon
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
@@ -110,8 +110,8 @@ export default function PaymentInsights({ familyId, familyName, currentBalance }
 
   const getFrequencyIcon = (frequency: string) => {
     switch (frequency) {
-      case 'improving': return <TrendingUpIcon className="h-5 w-5 text-green-600" />
-      case 'declining': return <TrendingDownIcon className="h-5 w-5 text-red-600" />
+      case 'improving': return <ArrowTrendingUpIcon className="h-5 w-5 text-green-600" />
+      case 'declining': return <ArrowTrendingDownIcon className="h-5 w-5 text-red-600" />
       default: return <ChartBarIcon className="h-5 w-5 text-gray-600" />
     }
   }
