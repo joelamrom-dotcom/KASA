@@ -35,13 +35,14 @@ export async function GET(request: NextRequest) {
         }
 
         // Get payment suggestions
-        const recurringPayment = await (await import('@/lib/models')).RecurringPayment.findOne({
+        const recurringPaymentResult = await (await import('@/lib/models')).RecurringPayment.findOne({
           familyId,
           isActive: true
         }).lean()
 
         let suggestions = null
-        if (recurringPayment) {
+        if (recurringPaymentResult) {
+          const recurringPayment = recurringPaymentResult as any
           suggestions = await getPaymentSuggestions(
             familyId,
             family.openBalance || 0,
