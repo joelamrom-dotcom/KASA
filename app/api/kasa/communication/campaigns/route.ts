@@ -35,10 +35,7 @@ export async function POST(request: NextRequest) {
 
     const families = await Family.find(query).lean()
 
-    const mongoose = require('mongoose')
-    const userId = new mongoose.Types.ObjectId(user.userId)
-
-    const recipients = families.map((f: any) => ({
+    const campaignRecipients = families.map((f: any) => ({
       familyId: f._id,
       email: f.email,
       phone: f.phone,
@@ -50,7 +47,7 @@ export async function POST(request: NextRequest) {
       name,
       type,
       templateId: templateId ? new mongoose.Types.ObjectId(templateId) : undefined,
-      recipients,
+      recipients: campaignRecipients,
       schedule: schedule ? {
         scheduledAt: new Date(schedule.scheduledAt),
         timezone: schedule.timezone || 'UTC'
@@ -58,7 +55,7 @@ export async function POST(request: NextRequest) {
       abTest: abTest || undefined,
       status: 'draft',
       stats: {
-        total: recipients.length,
+        total: campaignRecipients.length,
         sent: 0,
         failed: 0,
         opened: 0,

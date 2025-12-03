@@ -33,7 +33,7 @@ export async function GET(
 
     // Create PDF
     const pdfDoc = await PDFDocument.create()
-    const page = pdfDoc.addPage([612, 792]) // US Letter size
+    let page = pdfDoc.addPage([612, 792]) // US Letter size
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 

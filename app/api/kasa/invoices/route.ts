@@ -22,9 +22,6 @@ export async function GET(request: NextRequest) {
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
-    const mongoose = require('mongoose')
-    const userId = new mongoose.Types.ObjectId(user.userId)
-
     const query: any = { userId }
     if (familyId) {
       query.familyId = new mongoose.Types.ObjectId(familyId)
