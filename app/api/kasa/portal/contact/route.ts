@@ -39,12 +39,10 @@ export async function GET(request: NextRequest) {
         { error: 'Family not found' },
         { status: 404 }
       )
-      
-      const family = familyResult as any
     }
 
     // Type assertion for lean() result
-    const familyDoc = family as {
+    const familyDoc = familyResult as {
       email?: string
       phone?: string
       husbandCellPhone?: string
@@ -114,9 +112,9 @@ export async function PUT(request: NextRequest) {
         { error: 'Family not found' },
         { status: 404 }
       )
-      
-      const family = familyResult as any
     }
+
+    const family = familyResult as any
 
     const body = await request.json()
     const {
