@@ -23,13 +23,16 @@ export async function GET(
     const invoiceId = new mongoose.Types.ObjectId(params.id)
     const userId = new mongoose.Types.ObjectId(user.userId)
 
-    const invoice = await Invoice.findOne({ _id: invoiceId, userId })
+    const invoiceResult = await Invoice.findOne({ _id: invoiceId, userId })
       .populate('familyId', 'name email phone address')
       .lean()
 
-    if (!invoice) {
+    if (!invoiceResult) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
+
+    // Cast to proper type (findOne never returns an array)
+    const invoice = invoiceResult as any
 
     // Create PDF
     const pdfDoc = await PDFDocument.create()
