@@ -154,7 +154,8 @@ export default function TemplatesPage() {
     return <div className="min-h-screen p-8">Loading...</div>
   }
 
-  return <div className="min-h-screen p-8">
+  return (
+    <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
