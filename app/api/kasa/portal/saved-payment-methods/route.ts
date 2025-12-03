@@ -34,12 +34,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const family = await Family.findById(user.familyId).lean()
-    if (!family) {
+    const familyResult = await Family.findById(user.familyId).lean()
+    if (!familyResult) {
       return NextResponse.json(
         { error: 'Family not found' },
         { status: 404 }
       )
+      
+      const family = familyResult as any
     }
 
     const familyId = String(family._id)
