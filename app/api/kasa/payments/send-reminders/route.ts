@@ -105,8 +105,9 @@ export async function POST(request: NextRequest) {
                 let smartSuggestion = null
                 let currentBalance = null
                 try {
-                  const fullFamily = await Family.findById(family._id).lean()
-                  if (fullFamily) {
+                  const fullFamilyResult = await Family.findById(family._id).lean()
+                  if (fullFamilyResult) {
+                    const fullFamily = fullFamilyResult as any
                     currentBalance = fullFamily.openBalance || 0
                     smartSuggestion = await getPaymentSuggestions(
                       family._id.toString(),
