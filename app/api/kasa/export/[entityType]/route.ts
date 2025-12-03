@@ -84,9 +84,9 @@ ${Object.entries(item).map(([key, value]) => `    <${key}>${value}</${key}>`).jo
 
       if (data.length > 0) {
         const headers = fields || Object.keys(data[0])
-        worksheet.columns = headers.map(h => ({ header: h, key: h }))
-        data.forEach(row => {
-          worksheet.addRow(headers.map(h => row[h] || ''))
+        worksheet.columns = headers.map((h: string) => ({ header: h, key: h }))
+        data.forEach((row: any) => {
+          worksheet.addRow(headers.map((h: string) => row[h] || ''))
         })
       }
 
@@ -104,8 +104,8 @@ ${Object.entries(item).map(([key, value]) => `    <${key}>${value}</${key}>`).jo
     if (data.length > 0) {
       const headers = fields || Object.keys(data[0])
       csvRows.push(headers.join(','))
-      data.forEach(row => {
-        csvRows.push(headers.map(h => {
+      data.forEach((row: any) => {
+        csvRows.push(headers.map((h: string) => {
           const value = row[h]
           return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value || ''
         }).join(','))
