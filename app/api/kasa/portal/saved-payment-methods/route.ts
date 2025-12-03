@@ -40,10 +40,9 @@ export async function GET(request: NextRequest) {
         { error: 'Family not found' },
         { status: 404 }
       )
-      
-      const family = familyResult as any
     }
 
+    const family = familyResult as any
     const familyId = String(family._id)
     
     const paymentMethods = await SavedPaymentMethod.find({

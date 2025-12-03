@@ -40,12 +40,10 @@ export async function GET(request: NextRequest) {
         { error: 'Family not found' },
         { status: 404 }
       )
-      
-      const family = familyResult as any
     }
 
     // Type assertion for lean() result
-    const familyDoc = family as { _id: unknown }
+    const familyDoc = familyResult as { _id: unknown }
     const familyId = String(familyDoc._id)
     const searchParams = request.nextUrl.searchParams
     const category = searchParams.get('category')
