@@ -15,7 +15,7 @@ async function parseCSV(csvText: string): Promise<{ headers: string[], rows: any
     const rows: any[] = []
     let headers: string[] = []
 
-    const stream = parse({ headers: true, skipEmptyLines: true })
+    const stream = parse({ headers: true })
       .on('headers', (headerList) => {
         headers = headerList
       })
