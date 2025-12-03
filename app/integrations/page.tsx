@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { LinkIcon, KeyIcon, WebhookIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { LinkIcon, KeyIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 
 export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState([
