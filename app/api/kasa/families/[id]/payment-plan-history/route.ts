@@ -59,7 +59,7 @@ export async function GET(
 
     // Format the response
     const history = auditLogs.map((log: any) => {
-      const member = members.find(m => m._id.toString() === log.entityId?.toString())
+      const member = members.find((m: any) => m._id.toString() === log.entityId?.toString())
       const changes = log.changes?.paymentPlan || {}
       
       return {
