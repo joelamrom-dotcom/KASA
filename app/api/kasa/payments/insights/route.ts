@@ -21,11 +21,13 @@ export async function GET(request: NextRequest) {
       // Get insights for a specific family
       try {
         const pattern = await analyzePaymentPattern(familyId)
-        const family = await Family.findById(familyId).lean()
+        const familyResult = await Family.findById(familyId).lean()
         
-        if (!family) {
+        if (!familyResult) {
           return NextResponse.json({ error: 'Family not found' }, { status: 404 })
         }
+
+        const family = familyResult as any
 
         // Check if user has access to this family
         if (family.userId?.toString() !== user.userId) {
