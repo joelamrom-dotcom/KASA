@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Modal from './Modal'
 import FormField from './FormField'
-import { showToast } from './Toast'
+import { showToast } from '@/lib/toast'
 import Badge from './Badge'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 

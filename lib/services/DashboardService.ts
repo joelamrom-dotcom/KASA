@@ -1,5 +1,5 @@
 import { Dashboard, CustomReport, ReportSnapshot } from '@/lib/models'
-import { connectDB } from '@/lib/database'
+import connectDB from '@/lib/database'
 
 export class DashboardService {
   /**

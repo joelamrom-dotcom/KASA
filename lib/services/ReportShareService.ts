@@ -1,5 +1,5 @@
 import { ReportShare, CustomReport, User, Role } from '@/lib/models'
-import { connectDB } from '@/lib/database'
+import connectDB from '@/lib/database'
 import mongoose from 'mongoose'
 import crypto from 'crypto'
 

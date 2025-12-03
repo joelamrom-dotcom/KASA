@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
-import { Organization } from '@/lib/models'
+// TODO: Organization model not yet implemented
+// import { Organization } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // TODO: Implement Organization model
+    return NextResponse.json({ error: 'Organization branding not yet implemented' }, { status: 501 })
+
+    /*
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
@@ -44,6 +49,7 @@ export async function GET(request: NextRequest) {
         language: organization.language
       }
     })
+    */
   } catch (error: any) {
     console.error('Error fetching branding:', error)
     return NextResponse.json(
@@ -63,6 +69,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // TODO: Implement Organization model
+    return NextResponse.json({ error: 'Organization branding not yet implemented' }, { status: 501 })
+
+    /*
     const body = await request.json()
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
@@ -91,6 +101,7 @@ export async function PUT(request: NextRequest) {
         defaultCurrency: organization.defaultCurrency
       }
     })
+    */
   } catch (error: any) {
     console.error('Error updating branding:', error)
     return NextResponse.json(

@@ -8,7 +8,7 @@ import TwoFactorAuth from '@/app/components/TwoFactorAuth'
 import { getUser } from '@/lib/auth'
 import Modal from '@/app/components/Modal'
 import ConfirmationDialog from '@/app/components/ConfirmationDialog'
-import { showToast } from '@/app/components/Toast'
+import { showToast } from '@/lib/toast'
 import VariablePicker from '@/app/components/VariablePicker'
 
 interface LifecycleEventType {

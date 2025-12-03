@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { connectDB } from '@/lib/database'
+import connectDB from '@/lib/database'
 import { DashboardService } from '@/lib/services/DashboardService'
 import { getAuthenticatedUser } from '@/lib/middleware'
 import { hasPermission, PERMISSIONS } from '@/lib/permissions'
