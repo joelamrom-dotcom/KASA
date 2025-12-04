@@ -145,7 +145,7 @@ export async function batchLoad<T>(
     optimizedQuery(model, filter, options)
   )
 
-  return Promise.all(promises)
+  return Promise.all(promises) as Promise<T[][]>
 }
 
 /**
