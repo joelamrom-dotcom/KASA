@@ -57,7 +57,6 @@ export function getRequestInfo(request: NextRequest): { ipAddress?: string; user
   const ipAddress = 
     request.headers.get('x-forwarded-for')?.split(',')[0] ||
     request.headers.get('x-real-ip') ||
-    request.ip ||
     undefined
   
   const userAgent = request.headers.get('user-agent') || undefined
