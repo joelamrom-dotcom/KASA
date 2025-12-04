@@ -136,7 +136,9 @@ export async function generateFinancialProjection(
     
     // Remove members
     if (scenario.memberRemovals) {
-      members = members.filter(m => !scenario.memberRemovals!.includes(m._id.toString()))
+      members = members.filter(
+        (m: any) => !scenario.memberRemovals!.includes((m._id as any)?.toString())
+      )
     }
   }
   
