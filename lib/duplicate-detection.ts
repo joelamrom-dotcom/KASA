@@ -188,7 +188,7 @@ export async function generateMergePreview(
         field,
         value1,
         value2,
-        resolution: typeof resolution === 'string' ? resolution : 'custom',
+        resolution: (typeof resolution === 'string' ? resolution : 'custom') as MergePreview['conflicts'][number]['resolution'],
         customValue: typeof resolution !== 'string' ? resolution : undefined
       })
 
