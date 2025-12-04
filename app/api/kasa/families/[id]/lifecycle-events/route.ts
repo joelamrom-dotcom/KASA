@@ -21,6 +21,8 @@ export async function GET(
       )
     }
     
+    const { id } = await params
+    
     // Check if family exists and user has access
     const family = await Family.findById(id)
     if (!family) {
@@ -68,6 +70,8 @@ export async function POST(
         { status: 401 }
       )
     }
+    
+    const { id } = await params
     
     // Check if family exists and user has access
     const family = await Family.findById(id)
