@@ -1,13 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Performance optimizations
-  swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  // Compression
-  compress: true,
   // Experimental features for performance
   experimental: {
     optimizeCss: true,
@@ -34,7 +30,7 @@ const nextConfig = {
   },
   // Output configuration for better performance
   output: 'standalone',
-  // Enable compression
+  // Compression is enabled by default in Next.js 15
   compress: true,
   // PoweredByHeader removal for security and performance
   poweredByHeader: false,
