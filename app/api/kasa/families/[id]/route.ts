@@ -15,6 +15,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     // Get authenticated user
     const user = getAuthenticatedUser(request)
@@ -85,6 +86,7 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     // Get authenticated user
     const user = getAuthenticatedUser(request)
@@ -431,6 +433,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     // Get authenticated user
     const user = getAuthenticatedUser(request)
