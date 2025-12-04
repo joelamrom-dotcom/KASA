@@ -12,6 +12,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id, eventId } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -45,6 +46,7 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    const { id, eventId } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -134,6 +136,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id, eventId } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -164,4 +167,3 @@ export async function DELETE(
     )
   }
 }
-

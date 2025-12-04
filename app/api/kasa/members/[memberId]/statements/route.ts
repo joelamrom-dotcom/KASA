@@ -10,6 +10,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { memberId } = await params
     
     const statements = await Statement.find({ memberId: memberId })
       .sort({ date: -1 })
@@ -32,6 +33,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { memberId } = await params
     const body = await request.json()
     const { fromDate, toDate } = body
 
@@ -104,4 +106,3 @@ export async function POST(
     )
   }
 }
-

@@ -11,6 +11,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { linkId } = await params
     
     const link = await PaymentLink.findOne({
       linkId: linkId,
@@ -66,6 +67,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { linkId } = await params
     
     const body = await request.json()
     const { amount, paymentMethod, paymentData } = body
@@ -175,4 +177,3 @@ export async function POST(
     )
   }
 }
-

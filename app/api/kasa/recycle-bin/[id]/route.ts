@@ -24,6 +24,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const recycleItem = await RecycleBin.findById(id)
     
@@ -111,6 +112,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const recycleItem = await RecycleBin.findByIdAndDelete(id)
     
@@ -130,4 +132,3 @@ export async function DELETE(
     )
   }
 }
-

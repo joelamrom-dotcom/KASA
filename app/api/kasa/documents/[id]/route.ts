@@ -16,6 +16,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -66,6 +67,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -120,4 +122,3 @@ export async function DELETE(
     )
   }
 }
-

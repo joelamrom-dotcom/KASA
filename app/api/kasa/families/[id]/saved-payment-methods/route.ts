@@ -11,6 +11,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const paymentMethods = await SavedPaymentMethod.find({
       familyId: id,
@@ -34,6 +35,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -128,6 +130,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     const searchParams = request.nextUrl.searchParams
     const paymentMethodId = searchParams.get('paymentMethodId')
 
@@ -151,4 +154,3 @@ export async function DELETE(
     )
   }
 }
-

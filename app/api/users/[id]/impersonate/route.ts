@@ -18,6 +18,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const adminUser = getAuthenticatedUser(request)
     if (!adminUser) {
@@ -140,4 +141,3 @@ export async function POST(
     )
   }
 }
-

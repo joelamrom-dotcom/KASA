@@ -14,6 +14,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { entityType } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -127,4 +128,3 @@ ${Object.entries(item).map(([key, value]) => `    <${key}>${value}</${key}>`).jo
     )
   }
 }
-

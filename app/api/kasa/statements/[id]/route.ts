@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const statement = await Statement.findById(id)
     if (!statement) {
@@ -73,4 +74,3 @@ export async function GET(
     )
   }
 }
-
