@@ -74,6 +74,7 @@ export async function DELETE(
     // Check permission or ownership
     const canViewAll = await hasPermission(user, PERMISSIONS.DOCUMENTS_VIEW)
 
+    const { id } = await params
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
     const documentId = new mongoose.Types.ObjectId(id)
