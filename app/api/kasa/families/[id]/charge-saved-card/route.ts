@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  let amount = 0
+  let amount: number = 0
   let memberId: string | undefined = undefined
   
   try {

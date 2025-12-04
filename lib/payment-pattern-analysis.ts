@@ -25,7 +25,8 @@ export interface PaymentSuggestion {
 export async function analyzePaymentPattern(familyId: string): Promise<PaymentPattern> {
   await connectDB()
   
-  const family = await Family.findById(familyId).lean()
+  const familyRaw = await Family.findById(familyId).lean()
+  const family = familyRaw as any
   if (!family) {
     throw new Error('Family not found')
   }
@@ -34,13 +35,14 @@ export async function analyzePaymentPattern(familyId: string): Promise<PaymentPa
   const twoYearsAgo = new Date()
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
   
-  const payments = await Payment.find({
+  const paymentsRaw = await Payment.find({
     familyId,
     paymentDate: { $gte: twoYearsAgo },
     isFullyRefunded: { $ne: true }
   })
     .sort({ paymentDate: 1 })
     .lean()
+  const payments = paymentsRaw as any
 
   if (payments.length === 0) {
     return {
@@ -56,10 +58,11 @@ export async function analyzePaymentPattern(familyId: string): Promise<PaymentPa
   }
 
   // Get recurring payments to calculate due dates
-  const recurringPayments = await RecurringPayment.find({
+  const recurringPaymentsRaw = await RecurringPayment.find({
     familyId,
     isActive: true
   }).lean()
+  const recurringPayments = recurringPaymentsRaw as any
 
   // Analyze payment timing
   const paymentDays: number[] = []
@@ -186,16 +189,18 @@ export async function getPaymentSuggestions(
   await connectDB()
   
   const pattern = await analyzePaymentPattern(familyId)
-  const family = await Family.findById(familyId).lean()
+  const familyRaw = await Family.findById(familyId).lean()
+  const family = familyRaw as any
   if (!family) {
     throw new Error('Family not found')
   }
 
   // Get recurring payment amount
-  const recurringPayment = await RecurringPayment.findOne({
+  const recurringPaymentRaw = await RecurringPayment.findOne({
     familyId,
     isActive: true
   }).lean()
+  const recurringPayment = recurringPaymentRaw as any
 
   const recurringAmount = recurringPayment?.amount || 0
 
@@ -284,17 +289,19 @@ export async function identifyAtRiskFamilies(userId?: string): Promise<Array<{
     const pattern = await analyzePaymentPattern(familyId.toString())
     
     if (pattern.riskLevel === 'high' || pattern.riskLevel === 'medium') {
-      const family = await Family.findById(familyId).lean()
+      const familyRaw = await Family.findById(familyId).lean()
+      const family = familyRaw as any
       if (!family) continue
 
       // Filter by userId if provided
       if (userId && family.userId?.toString() !== userId) continue
 
       // Get current balance and overdue status
-      const recurringPayment = await RecurringPayment.findOne({
+      const recurringPaymentRaw = await RecurringPayment.findOne({
         familyId,
         isActive: true
       }).lean()
+      const recurringPayment = recurringPaymentRaw as any
 
       const currentBalance = family.openBalance || 0
       const daysOverdue = recurringPayment?.daysOverdue || 0
