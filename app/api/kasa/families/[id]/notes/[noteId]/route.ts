@@ -12,6 +12,7 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    const { id, noteId } = await params
     
     const body = await request.json()
     const { note, checked, checkedBy } = body
@@ -69,6 +70,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id, noteId } = await params
     
     const note = await FamilyNote.findById(noteId)
     
