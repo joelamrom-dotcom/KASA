@@ -36,8 +36,6 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     
-    // Await params in Next.js 15
-    const { entityType, entityId } = await params
     
     // If user doesn't have view all permission, only show logs for their own userId
     const userId = (canViewAll || user.role === 'super_admin') ? undefined : user.userId

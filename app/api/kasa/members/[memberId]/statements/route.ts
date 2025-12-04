@@ -33,7 +33,6 @@ export async function POST(
 ) {
   try {
     await connectDB()
-    const { memberId } = await params
     const body = await request.json()
     const { fromDate, toDate } = body
 

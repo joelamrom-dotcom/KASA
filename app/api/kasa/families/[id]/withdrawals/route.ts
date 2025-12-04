@@ -40,7 +40,6 @@ export async function POST(
 ) {
   try {
     await connectDB()
-    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {

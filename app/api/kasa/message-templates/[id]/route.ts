@@ -41,7 +41,6 @@ export async function PUT(
 ) {
   try {
     await connectDB()
-    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {

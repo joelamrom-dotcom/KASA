@@ -22,7 +22,6 @@ export async function GET(
       )
     }
     
-    const { id } = await params
     
     // Check if family exists and user has access
     const family = await Family.findById(id)
@@ -73,7 +72,6 @@ export async function POST(
       )
     }
     
-    const { id } = await params
     
     // Check if family exists and user has access
     const family = await Family.findById(id)

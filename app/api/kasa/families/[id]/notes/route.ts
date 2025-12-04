@@ -34,7 +34,6 @@ export async function POST(
 ) {
   try {
     await connectDB()
-    const { id } = await params
     
     const body = await request.json()
     const { note } = body
