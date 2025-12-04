@@ -12,13 +12,13 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id, eventId } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { id, eventId } = await params
     const event = await LifecycleEventPayment.findOne({
       _id: eventId,
       familyId: id,
@@ -45,13 +45,13 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    const { id, eventId } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { id, eventId } = await params
     // Check if event exists
     const event = await LifecycleEventPayment.findOne({
       _id: eventId,
@@ -134,6 +134,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id, eventId } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -145,7 +146,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const { id, eventId } = await params
     const event = await LifecycleEventPayment.findOneAndDelete({
       _id: eventId,
       familyId: id,
@@ -164,4 +164,3 @@ export async function DELETE(
     )
   }
 }
-

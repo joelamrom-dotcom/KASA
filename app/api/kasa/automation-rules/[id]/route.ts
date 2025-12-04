@@ -11,6 +11,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -21,7 +22,6 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const { id } = await params
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
     
@@ -62,6 +62,7 @@ export async function PUT(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -72,7 +73,6 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const { id } = await params
     const body = await request.json()
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
@@ -120,6 +120,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -130,7 +131,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const { id } = await params
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
     
@@ -152,4 +152,3 @@ export async function DELETE(
     )
   }
 }
-

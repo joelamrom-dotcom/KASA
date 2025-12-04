@@ -20,6 +20,8 @@ export async function PUT(
       throw new Error('Database connection not ready')
     }
     
+    const { id, memberId } = await params
+    
     // Get authenticated user
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -393,6 +395,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
+    const { id, memberId } = await params
     
     // Get authenticated user
     const user = getAuthenticatedUser(request)

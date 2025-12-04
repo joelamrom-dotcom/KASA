@@ -12,13 +12,13 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
     const mongoose = require('mongoose')
     const documentId = new mongoose.Types.ObjectId(id)
     const userId = new mongoose.Types.ObjectId(user.userId)
@@ -48,4 +48,3 @@ export async function GET(
     )
   }
 }
-

@@ -14,13 +14,13 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { entityType } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { entityType } = await params
     const body = await request.json()
     const { format: exportFormat = 'csv', fields, filters } = body
 
@@ -127,4 +127,3 @@ ${Object.entries(item).map(([key, value]) => `    <${key}>${value}</${key}>`).jo
     )
   }
 }
-

@@ -10,6 +10,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { memberId } = await params
     
     const { searchParams } = new URL(request.url)
     const asOfDateParam = searchParams.get('asOfDate')
@@ -26,4 +27,3 @@ export async function GET(
     )
   }
 }
-

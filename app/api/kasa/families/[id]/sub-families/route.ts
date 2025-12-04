@@ -11,6 +11,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const subFamilies = await Family.find({ parentFamilyId: id })
       .sort({ weddingDate: -1 })
@@ -25,4 +26,3 @@ export async function GET(
     )
   }
 }
-

@@ -9,6 +9,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { id, memberId } = await params
     const body = await request.json()
     const { weddingDate, spouseName } = body
 

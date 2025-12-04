@@ -12,6 +12,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const user = getAuthenticatedUser(request)
     if (!user) {
@@ -22,7 +23,6 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const { id } = await params
     const body = await request.json()
     const { triggerData } = body
     
@@ -61,4 +61,3 @@ export async function POST(
     )
   }
 }
-

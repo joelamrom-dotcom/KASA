@@ -11,6 +11,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
     const notes = await FamilyNote.find({ familyId: id })
       .sort({ createdAt: -1 }) // Newest first
