@@ -69,8 +69,6 @@ export async function POST(
   try {
     await connectDB()
     const { linkId } = await params
-    
-    const { linkId } = await params
     const body = await request.json()
     const { amount, paymentMethod, paymentData } = body
 
