@@ -47,6 +47,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json()
     const { name, subject, body: messageBody, bodyHtml, type, isHtml } = body
 
