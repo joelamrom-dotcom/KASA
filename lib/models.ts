@@ -1771,6 +1771,26 @@ const NotificationPreferenceSchema = new Schema({
 
 NotificationPreferenceSchema.index({ userId: 1 })
 
+// Organization Schema (for white labeling and branding)
+const OrganizationSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  name: { type: String, required: true },
+  logo: String, // URL or data URL of logo
+  primaryColor: { type: String, default: '#3b82f6' },
+  secondaryColor: { type: String, default: '#8b5cf6' },
+  customDomain: String,
+  emailBranding: {
+    fromName: String,
+    fromEmail: String,
+    footerText: String
+  },
+  defaultCurrency: { type: String, default: 'USD' },
+  timezone: { type: String, default: 'America/New_York' },
+  language: { type: String, default: 'en' }
+}, { timestamps: true })
+
+OrganizationSchema.index({ userId: 1 })
+
 export const MessageTemplate = mongoose.models.MessageTemplate || mongoose.model('MessageTemplate', MessageTemplateSchema)
 export const MessageHistory = mongoose.models.MessageHistory || mongoose.model('MessageHistory', MessageHistorySchema)
 export const SavedView = mongoose.models.SavedView || mongoose.model('SavedView', SavedViewSchema)
@@ -1784,3 +1804,4 @@ export const Workspace = mongoose.models.Workspace || mongoose.model('Workspace'
 export const Comment = mongoose.models.Comment || mongoose.model('Comment', CommentSchema)
 export const Campaign = mongoose.models.Campaign || mongoose.model('Campaign', CampaignSchema)
 export const NotificationPreference = mongoose.models.NotificationPreference || mongoose.model('NotificationPreference', NotificationPreferenceSchema)
+export const Organization = mongoose.models.Organization || mongoose.model('Organization', OrganizationSchema)

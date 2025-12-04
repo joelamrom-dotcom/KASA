@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/database'
 import { getAuthenticatedUser } from '@/lib/middleware'
-// TODO: Organization model not yet implemented
-// import { Organization } from '@/lib/models'
+import { Organization } from '@/lib/models'
+import mongoose from 'mongoose'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,11 +16,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // TODO: Implement Organization model
-    return NextResponse.json({ error: 'Organization branding not yet implemented' }, { status: 501 })
-
-    /*
-    const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
     let organization = await Organization.findOne({ userId })
@@ -32,7 +27,12 @@ export async function GET(request: NextRequest) {
         name: 'My Organization',
         primaryColor: '#3b82f6',
         secondaryColor: '#8b5cf6',
-        defaultCurrency: 'USD'
+        defaultCurrency: 'USD',
+        emailBranding: {
+          fromName: '',
+          fromEmail: '',
+          footerText: ''
+        }
       })
     }
 
@@ -49,7 +49,6 @@ export async function GET(request: NextRequest) {
         language: organization.language
       }
     })
-    */
   } catch (error: any) {
     console.error('Error fetching branding:', error)
     return NextResponse.json(
@@ -69,12 +68,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // TODO: Implement Organization model
-    return NextResponse.json({ error: 'Organization branding not yet implemented' }, { status: 501 })
-
-    /*
     const body = await request.json()
-    const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
 
     let organization = await Organization.findOne({ userId })
@@ -98,10 +92,11 @@ export async function PUT(request: NextRequest) {
         secondaryColor: organization.secondaryColor,
         customDomain: organization.customDomain,
         emailBranding: organization.emailBranding,
-        defaultCurrency: organization.defaultCurrency
+        defaultCurrency: organization.defaultCurrency,
+        timezone: organization.timezone,
+        language: organization.language
       }
     })
-    */
   } catch (error: any) {
     console.error('Error updating branding:', error)
     return NextResponse.json(
