@@ -12,8 +12,6 @@ export async function GET(
   try {
     await connectDB()
     const { linkId } = await params
-    
-    const { linkId } = await params
     const link = await PaymentLink.findOne({
       linkId: linkId,
       isActive: true
