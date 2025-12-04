@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get audit logs for a specific entity
 export async function GET(
   request: NextRequest,
-  { params }: { params: { entityType: string; entityId: string } }
+  { params }: { params: Promise<{ entityType: string; entityId: string }> }
 ) {
   try {
     await connectDB()
@@ -35,13 +35,16 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     
+    // Await params in Next.js 15
+    const { entityType, entityId } = await params
+    
     // If user doesn't have view all permission, only show logs for their own userId
     const userId = (canViewAll || user.role === 'super_admin') ? undefined : user.userId
     
     const logs = await getAuditLogs({
       userId,
-      entityType: params.entityType,
-      entityId: params.entityId,
+      entityType,
+      entityId,
       limit,
       skip: 0,
     })

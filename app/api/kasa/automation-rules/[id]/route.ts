@@ -7,7 +7,7 @@ import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 // GET - Get a specific automation rule
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -21,11 +21,12 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
+    const { id } = await params
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
     
     const rule = await AutomationRule.findOne({
-      _id: params.id,
+      _id: id,
       userId: userObjectId,
     })
     
@@ -57,7 +58,7 @@ export async function GET(
 // PUT - Update an automation rule
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -71,12 +72,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
+    const { id } = await params
     const body = await request.json()
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
     
     const rule = await AutomationRule.findOne({
-      _id: params.id,
+      _id: id,
       userId: userObjectId,
     })
     
@@ -114,7 +116,7 @@ export async function PUT(
 // DELETE - Delete an automation rule
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -128,11 +130,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
+    const { id } = await params
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
     
     const rule = await AutomationRule.findOneAndDelete({
-      _id: params.id,
+      _id: id,
       userId: userObjectId,
     })
     
