@@ -25,7 +25,7 @@ export function usePrefetch() {
  */
 export function usePrefetchOnHover(href: string) {
   const { prefetch } = usePrefetch()
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleMouseEnter = () => {
     timeoutRef.current = setTimeout(() => {
