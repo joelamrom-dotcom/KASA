@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { ArrowLeftIcon, ArrowDownTrayIcon, ClockIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function DocumentViewerPage() {
+function DocumentViewer() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const documentId = searchParams.get('id')
@@ -193,3 +193,14 @@ export default function DocumentViewerPage() {
   )
 }
 
+export default function DocumentViewerPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <DocumentViewer />
+    </Suspense>
+  )
+}
