@@ -63,10 +63,11 @@ export class ReportSnapshotService {
       query.userId = userId
     }
 
-    const snapshots = await ReportSnapshot.find(query)
+    const snapshotsRaw = await ReportSnapshot.find(query)
       .sort({ snapshotDate: -1 })
       .populate('userId', 'firstName lastName email')
       .lean()
+    const snapshots = snapshotsRaw as any
 
     return snapshots
   }
@@ -82,10 +83,11 @@ export class ReportSnapshotService {
       query.userId = userId
     }
 
-    const snapshot = await ReportSnapshot.findOne(query)
+    const snapshotRaw = await ReportSnapshot.findOne(query)
       .populate('userId', 'firstName lastName email')
       .populate('reportId', 'name description')
       .lean()
+    const snapshot = snapshotRaw as any
 
     return snapshot
   }
@@ -96,10 +98,12 @@ export class ReportSnapshotService {
   static async compareSnapshots(snapshotId1: string, snapshotId2: string) {
     await connectDB()
 
-    const [snapshot1, snapshot2] = await Promise.all([
+    const [snapshot1Raw, snapshot2Raw] = await Promise.all([
       ReportSnapshot.findById(snapshotId1).lean(),
       ReportSnapshot.findById(snapshotId2).lean(),
     ])
+    const snapshot1 = snapshot1Raw as any
+    const snapshot2 = snapshot2Raw as any
 
     if (!snapshot1 || !snapshot2) {
       throw new Error('One or both snapshots not found')
@@ -170,13 +174,14 @@ export class ReportSnapshotService {
       if (endDate) query.snapshotDate.$lte = endDate
     }
 
-    const snapshots = await ReportSnapshot.find(query)
+    const snapshotsRaw = await ReportSnapshot.find(query)
       .sort({ snapshotDate: 1 })
       .select('snapshotDate metadata summary')
       .lean()
+    const snapshots = snapshotsRaw as any
 
     // Format for trend analysis
-    const trends = snapshots.map((snapshot) => ({
+    const trends = snapshots.map((snapshot: any) => ({
       date: snapshot.snapshotDate,
       recordCount: snapshot.metadata?.recordCount || 0,
       totalAmount: snapshot.metadata?.totalAmount || 0,

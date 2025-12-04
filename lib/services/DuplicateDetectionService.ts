@@ -46,7 +46,8 @@ export class DuplicateDetectionService {
     }
 
     // Find families matching the criteria
-    const families = await Family.find(query).lean()
+    const familiesRaw = await Family.find(query).lean()
+    const families = familiesRaw as any
 
     for (const family of families) {
       if (processedIds.has(family._id.toString())) continue
@@ -60,7 +61,7 @@ export class DuplicateDetectionService {
 
       // Check for duplicates based on name similarity
       if (family.name) {
-        const nameMatches = families.filter(f => 
+        const nameMatches = families.filter((f: any) => 
           f._id.toString() !== family._id.toString() &&
           !processedIds.has(f._id.toString()) &&
           this.calculateSimilarity(family.name, f.name) > 0.8
@@ -80,7 +81,7 @@ export class DuplicateDetectionService {
 
       // Check for duplicates based on email
       if (family.email) {
-        const emailMatches = families.filter(f =>
+        const emailMatches = families.filter((f: any) =>
           f._id.toString() !== family._id.toString() &&
           !processedIds.has(f._id.toString()) &&
           f.email &&
@@ -101,7 +102,7 @@ export class DuplicateDetectionService {
       // Check for duplicates based on phone
       if (family.phone) {
         const normalizedPhone = this.normalizePhone(family.phone)
-        const phoneMatches = families.filter(f =>
+        const phoneMatches = families.filter((f: any) =>
           f._id.toString() !== family._id.toString() &&
           !processedIds.has(f._id.toString()) &&
           f.phone &&
@@ -121,20 +122,21 @@ export class DuplicateDetectionService {
 
       // Check family members for email/phone matches
       if (criteria.personEmail || criteria.personPhone) {
-        const familyMembers = await FamilyMember.find({
-          familyId: { $in: families.map(f => f._id) }
+        const familyMembersRaw = await FamilyMember.find({
+          familyId: { $in: families.map((f: any) => f._id) }
         }).lean()
+        const familyMembers = familyMembersRaw as any
 
         for (const member of familyMembers) {
           if (criteria.personEmail && member.email) {
-            const memberEmailMatches = familyMembers.filter(m =>
+            const memberEmailMatches = familyMembers.filter((m: any) =>
               m._id.toString() !== member._id.toString() &&
               m.email &&
               m.email.toLowerCase() === member.email.toLowerCase()
             )
 
             for (const match of memberEmailMatches) {
-              const matchFamily = families.find(f => f._id.toString() === match.familyId.toString())
+              const matchFamily = families.find((f: any) => f._id.toString() === match.familyId.toString())
               if (matchFamily && !processedIds.has(matchFamily._id.toString())) {
                 matches.push({
                   recordId: matchFamily._id.toString(),
@@ -149,14 +151,14 @@ export class DuplicateDetectionService {
 
           if (criteria.personPhone && member.phone) {
             const normalizedPhone = this.normalizePhone(member.phone)
-            const memberPhoneMatches = familyMembers.filter(m =>
+            const memberPhoneMatches = familyMembers.filter((m: any) =>
               m._id.toString() !== member._id.toString() &&
               m.phone &&
               this.normalizePhone(m.phone) === normalizedPhone
             )
 
             for (const match of memberPhoneMatches) {
-              const matchFamily = families.find(f => f._id.toString() === match.familyId.toString())
+              const matchFamily = families.find((f: any) => f._id.toString() === match.familyId.toString())
               if (matchFamily && !processedIds.has(matchFamily._id.toString())) {
                 matches.push({
                   recordId: matchFamily._id.toString(),
@@ -213,7 +215,8 @@ export class DuplicateDetectionService {
       query.phone = { $regex: criteria.phone, $options: 'i' }
     }
 
-    const members = await FamilyMember.find(query).lean()
+    const membersRaw = await FamilyMember.find(query).lean()
+    const members = membersRaw as any
 
     for (const member of members) {
       if (processedIds.has(member._id.toString())) continue
@@ -227,7 +230,7 @@ export class DuplicateDetectionService {
 
       // Check name similarity
       if (member.name) {
-        const nameMatches = members.filter(m =>
+        const nameMatches = members.filter((m: any) =>
           m._id.toString() !== member._id.toString() &&
           !processedIds.has(m._id.toString()) &&
           this.calculateSimilarity(member.name, m.name) > 0.8
@@ -247,7 +250,7 @@ export class DuplicateDetectionService {
 
       // Check exact email match
       if (member.email) {
-        const emailMatches = members.filter(m =>
+        const emailMatches = members.filter((m: any) =>
           m._id.toString() !== member._id.toString() &&
           !processedIds.has(m._id.toString()) &&
           m.email &&
@@ -268,7 +271,7 @@ export class DuplicateDetectionService {
       // Check exact phone match
       if (member.phone) {
         const normalizedPhone = this.normalizePhone(member.phone)
-        const phoneMatches = members.filter(m =>
+        const phoneMatches = members.filter((m: any) =>
           m._id.toString() !== member._id.toString() &&
           !processedIds.has(m._id.toString()) &&
           m.phone &&

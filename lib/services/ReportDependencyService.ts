@@ -84,13 +84,14 @@ export class ReportDependencyService {
   static async findReportsByDataSource(sourceName: string): Promise<any[]> {
     await connectDB()
 
-    const dependencies = await ReportDependency.find({
+    const dependenciesRaw = await ReportDependency.find({
       'dataSources.sourceName': sourceName,
     })
       .populate('reportId', 'name description')
       .lean()
+    const dependencies = dependenciesRaw as any
 
-    return dependencies.map(dep => ({
+    return dependencies.map((dep: any) => ({
       reportId: dep.reportId,
       reportName: (dep.reportId as any)?.name,
       dependency: dep,
@@ -108,7 +109,8 @@ export class ReportDependencyService {
 
     // Get all users who have access to affected reports
     for (const report of affectedReports) {
-      const reportDoc = await CustomReport.findById(report.reportId).select('userId').lean()
+      const reportDocRaw = await CustomReport.findById(report.reportId).select('userId').lean()
+      const reportDoc = reportDocRaw as any
       if (reportDoc) {
         affectedUsers.add((reportDoc.userId as any).toString())
       }
@@ -164,10 +166,11 @@ export class ReportDependencyService {
   static async getDependencyGraph(reportId: string): Promise<any> {
     await connectDB()
 
-    const dependency = await ReportDependency.findOne({ reportId })
+    const dependencyRaw = await ReportDependency.findOne({ reportId })
       .populate('dependsOnReports', 'name')
       .populate('dependentReports', 'name')
       .lean()
+    const dependency = dependencyRaw as any
 
     if (!dependency) {
       return { nodes: [], edges: [] }

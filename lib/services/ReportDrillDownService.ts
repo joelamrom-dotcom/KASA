@@ -73,13 +73,15 @@ export class ReportDrillDownService {
     query[fieldName] = sourceValue
 
     // Get related records
-    const records = await Model.find(query).limit(100).lean()
+    const recordsRaw = await Model.find(query).limit(100).lean()
+    const records = recordsRaw as any
 
     // Get related records from other models
     const relatedRecords: any[] = []
     if (modelName.toLowerCase() === 'payment') {
       // Get family for this payment
-      const payments = await Model.find(query).populate('familyId').limit(10).lean()
+      const paymentsRaw = await Model.find(query).populate('familyId').limit(10).lean()
+      const payments = paymentsRaw as any
       relatedRecords.push(...payments.map((p: any) => ({
         type: 'family',
         record: p.familyId,
@@ -105,7 +107,8 @@ export class ReportDrillDownService {
   ): Promise<any> {
     await connectDB()
 
-    const targetReport = await CustomReport.findById(config.targetReport).lean()
+    const targetReportRaw = await CustomReport.findById(config.targetReport).lean()
+    const targetReport = targetReportRaw as any
     if (!targetReport) {
       throw new Error('Target report not found')
     }
@@ -190,9 +193,10 @@ export class ReportDrillDownService {
   static async getDrillDownConfig(reportId: string): Promise<any> {
     await connectDB()
 
-    const drillDown = await ReportDrillDown.findOne({ reportId })
+    const drillDownRaw = await ReportDrillDown.findOne({ reportId })
       .populate('configurations.targetReport', 'name description')
       .lean()
+    const drillDown = drillDownRaw as any
 
     return drillDown
   }

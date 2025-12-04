@@ -143,13 +143,15 @@ export class ReportShareService {
     await connectDB()
 
     // Check if user owns the report
-    const report = await CustomReport.findById(reportId).select('userId').lean()
+    const reportRaw = await CustomReport.findById(reportId).select('userId').lean()
+    const report = reportRaw as any
     if (report && (report.userId as any).toString() === userId) {
       return true // Owner has all permissions
     }
 
     // Get user's role
-    const user = await User.findById(userId).select('role customRoleId').lean()
+    const userRaw = await User.findById(userId).select('role customRoleId').lean()
+    const user = userRaw as any
     if (!user) {
       return false
     }
@@ -205,12 +207,13 @@ export class ReportShareService {
   ): Promise<any> {
     await connectDB()
 
-    const share = await ReportShare.findOne({
+    const shareRaw = await ReportShare.findOne({
       'shareLink.token': token,
       isActive: true,
     })
       .populate('reportId', 'name description')
       .lean()
+    const share = shareRaw as any
 
     if (!share) {
       throw new Error('Invalid or expired share link')
@@ -262,11 +265,12 @@ export class ReportShareService {
   static async getReportShares(reportId: string): Promise<any[]> {
     await connectDB()
 
-    const shares = await ReportShare.find({ reportId, isActive: true })
+    const sharesRaw = await ReportShare.find({ reportId, isActive: true })
       .populate('sharedWith', 'firstName lastName email')
       .populate('sharedBy', 'firstName lastName email')
       .populate('roleId', 'name displayName')
       .lean()
+    const shares = sharesRaw as any
 
     return shares
   }
@@ -293,8 +297,9 @@ export class ReportShareService {
   static async getSharedReports(userId: string): Promise<any[]> {
     await connectDB()
 
-    const user = await User.findById(userId).select('role customRoleId').lean()
-    const shares = await ReportShare.find({
+    const userRaw = await User.findById(userId).select('role customRoleId').lean()
+    const user = userRaw as any
+    const sharesRaw = await ReportShare.find({
       $or: [
         { sharedWith: new mongoose.Types.ObjectId(userId), shareType: 'user' },
         { shareType: 'role', roleId: user?.customRoleId || user?.role },
@@ -304,6 +309,7 @@ export class ReportShareService {
     })
       .populate('reportId')
       .lean()
+    const shares = sharesRaw as any
 
     return shares.map((share: any) => ({
       report: share.reportId,

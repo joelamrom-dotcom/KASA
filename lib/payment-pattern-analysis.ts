@@ -79,7 +79,7 @@ export async function analyzePaymentPattern(familyId: string): Promise<PaymentPa
 
     // Find closest recurring payment due date
     if (recurringPayments.length > 0) {
-      const closestRecurring = recurringPayments.find(rp => {
+      const closestRecurring = recurringPayments.find((rp: any) => {
         const dueDate = new Date(rp.nextPaymentDate)
         const daysDiff = Math.abs((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
         return daysDiff <= 15 // Within 15 days of due date
@@ -123,8 +123,8 @@ export async function analyzePaymentPattern(familyId: string): Promise<PaymentPa
     const recentPayments = payments.slice(-6)
     const olderPayments = payments.slice(0, Math.min(6, payments.length - 6))
     
-    const recentAvg = recentPayments.reduce((sum, p) => sum + p.amount, 0) / recentPayments.length
-    const olderAvg = olderPayments.reduce((sum, p) => sum + p.amount, 0) / olderPayments.length
+    const recentAvg = recentPayments.reduce((sum: number, p: any) => sum + p.amount, 0) / recentPayments.length
+    const olderAvg = olderPayments.reduce((sum: number, p: any) => sum + p.amount, 0) / olderPayments.length
     
     if (Math.abs(recentAvg - olderAvg) < olderAvg * 0.1) {
       paymentFrequency = 'consistent'

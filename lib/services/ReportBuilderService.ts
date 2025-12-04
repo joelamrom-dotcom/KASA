@@ -266,11 +266,12 @@ export class ReportBuilderService {
   ): Promise<any> {
     await connectDB()
 
-    const report = await CustomReport.findOne({
+    const reportRaw = await CustomReport.findOne({
       _id: reportId,
       userId: new mongoose.Types.ObjectId(userId),
       isActive: true,
     }).lean()
+    const report = reportRaw as any
 
     if (!report) {
       throw new Error('Report not found')
@@ -295,7 +296,8 @@ export class ReportBuilderService {
 
     // Get user for row-level security
     const User = require('@/lib/models').User
-    const user = await User.findById(userId).lean()
+    const userRaw = await User.findById(userId).lean()
+    const user = userRaw as any
 
     // Build base query
     let query: any = {
@@ -457,9 +459,10 @@ export class ReportBuilderService {
    */
   static async getReportAnalytics(reportId: string): Promise<any> {
     await connectDB()
-    const report = await CustomReport.findById(reportId)
+    const reportRaw = await CustomReport.findById(reportId)
       .select('analytics name')
       .lean()
+    const report = reportRaw as any
 
     return report?.analytics || null
   }

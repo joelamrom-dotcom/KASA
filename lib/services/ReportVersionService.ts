@@ -18,9 +18,10 @@ export class ReportVersionService {
     }
 
     // Get the current version number
-    const latestVersion = await ReportVersion.findOne({ reportId })
+    const latestVersionRaw = await ReportVersion.findOne({ reportId })
       .sort({ version: -1 })
       .lean()
+    const latestVersion = latestVersionRaw as any
 
     const nextVersion = (latestVersion?.version || 0) + 1
 
@@ -60,10 +61,11 @@ export class ReportVersionService {
   static async getVersionsByReport(reportId: string) {
     await connectDB()
 
-    const versions = await ReportVersion.find({ reportId })
+    const versionsRaw = await ReportVersion.find({ reportId })
       .sort({ version: -1 })
       .populate('createdBy', 'firstName lastName email')
       .lean()
+    const versions = versionsRaw as any
 
     return versions
   }
@@ -74,10 +76,11 @@ export class ReportVersionService {
   static async getVersionById(versionId: string) {
     await connectDB()
 
-    const version = await ReportVersion.findById(versionId)
+    const versionRaw = await ReportVersion.findById(versionId)
       .populate('createdBy', 'firstName lastName email')
       .populate('reportId', 'name description')
       .lean()
+    const version = versionRaw as any
 
     return version
   }
@@ -88,9 +91,10 @@ export class ReportVersionService {
   static async getCurrentVersion(reportId: string) {
     await connectDB()
 
-    const version = await ReportVersion.findOne({ reportId, isCurrent: true })
+    const versionRaw = await ReportVersion.findOne({ reportId, isCurrent: true })
       .populate('createdBy', 'firstName lastName email')
       .lean()
+    const version = versionRaw as any
 
     return version
   }
@@ -136,10 +140,12 @@ export class ReportVersionService {
   static async compareVersions(versionId1: string, versionId2: string) {
     await connectDB()
 
-    const [version1, version2] = await Promise.all([
+    const [version1Raw, version2Raw] = await Promise.all([
       ReportVersion.findById(versionId1).lean(),
       ReportVersion.findById(versionId2).lean(),
     ])
+    const version1 = version1Raw as any
+    const version2 = version2Raw as any
 
     if (!version1 || !version2) {
       throw new Error('One or both versions not found')

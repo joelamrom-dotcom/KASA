@@ -90,7 +90,8 @@ export async function autoUpdatePaymentPlan(memberId: string, notifyFamily: bool
   // Get payment plan name
   let planName = `Plan ${recommendedPlan}`
   try {
-    const paymentPlans = await PaymentPlan.find().lean()
+    const paymentPlansRaw = await PaymentPlan.find().lean()
+    const paymentPlans = paymentPlansRaw as any
     const plan = paymentPlans.find((p: any) => p.planNumber === recommendedPlan)
     if (plan) {
       planName = plan.name
@@ -182,12 +183,14 @@ export async function checkAndUpdateAllPaymentPlans(userId?: string): Promise<{
   const query: any = {}
   if (userId) {
     // Get families for this user
-    const families = await Family.find({ userId }).select('_id').lean()
-    const familyIds = families.map(f => f._id)
+    const familiesRaw = await Family.find({ userId }).select('_id').lean()
+    const families = familiesRaw as any
+    const familyIds = families.map((f: any) => f._id)
     query.familyId = { $in: familyIds }
   }
 
-  const members = await FamilyMember.find(query).populate('familyId', 'name userId').lean()
+  const membersRaw = await FamilyMember.find(query).populate('familyId', 'name userId').lean()
+  const members = membersRaw as any
   
   let checked = 0
   let updated = 0
