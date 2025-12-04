@@ -32,7 +32,7 @@ export async function getConnectionPool() {
     readPreference: 'primaryPreferred',
     // Write concern for better performance
     w: 'majority',
-    wtimeout: 5000,
+    wtimeoutMS: 5000,
     // Compression
     compressors: ['zlib'],
     zlibCompressionLevel: 6,
