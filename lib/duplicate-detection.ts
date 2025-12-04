@@ -178,8 +178,8 @@ export async function generateMergePreview(
     'husbandCellPhone', 'wifeCellPhone', 'weddingDate', 'paymentPlanId', 'currentPlan']
 
   for (const field of fieldsToCheck) {
-    const value1 = family1[field]
-    const value2 = family2[field]
+    const value1 = (family1 as any)[field]
+    const value2 = (family2 as any)[field]
 
     if (value1 && value2 && value1 !== value2) {
       const resolution = resolutions?.[field] || 'keep1'
