@@ -35,6 +35,7 @@ export async function POST(
       )
     }
     
+    const { id } = await params
     const body = await request.json()
     const { savedPaymentMethodId, amount: bodyAmount, paymentDate, year, type, notes, saveForFuture, memberId: bodyMemberId } = body
     amount = bodyAmount || 0
