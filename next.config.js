@@ -6,7 +6,7 @@ const nextConfig = {
   },
   // Experimental features for performance
   experimental: {
-    optimizeCss: true,
+    // optimizeCss: true, // Disabled due to critters module issue in Next.js 15
     optimizePackageImports: [
       '@heroicons/react',
       'recharts',
