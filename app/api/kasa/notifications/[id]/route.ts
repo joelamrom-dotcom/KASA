@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // DELETE - Delete notification
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -20,7 +20,7 @@ export async function DELETE(
 
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
-    const notificationId = new mongoose.Types.ObjectId(params.id)
+    const notificationId = new mongoose.Types.ObjectId(id)
 
     const notification = await Notification.findOneAndDelete({
       _id: notificationId,

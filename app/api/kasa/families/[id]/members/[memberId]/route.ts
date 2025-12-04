@@ -11,7 +11,7 @@ import mongoose from 'mongoose'
 // PUT - Update a member
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; memberId: string } }
+  { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
     // Ensure database connection is ready
@@ -141,7 +141,7 @@ export async function PUT(
     }
     
     // Validate ObjectIds
-    if (!mongoose.Types.ObjectId.isValid(params.memberId) || !mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(memberId) || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { error: 'Invalid member or family ID' },
         { status: 400 }
@@ -149,7 +149,7 @@ export async function PUT(
     }
 
     // Check if family exists and user has permission
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -178,7 +178,7 @@ export async function PUT(
     updateData.hebrewLastName = family.hebrewName || null
 
     // Get old member data for audit log and to check barMitzvahEventAdded flag
-    const oldMember = await FamilyMember.findById(params.memberId)
+    const oldMember = await FamilyMember.findById(memberId)
     
     // Preserve barMitzvahEventAdded flag if it exists (don't reset it)
     if (oldMember && oldMember.barMitzvahEventAdded) {
@@ -187,7 +187,7 @@ export async function PUT(
     
     // Mongoose automatically converts string IDs to ObjectIds, so we don't need explicit conversion
     const member = await FamilyMember.findOneAndUpdate(
-      { _id: params.memberId, familyId: params.id },
+      { _id: memberId, familyId: id },
       { $set: updateData },
       { new: true, runValidators: true }
     )
@@ -249,8 +249,8 @@ export async function PUT(
       await executeAutomationRules(
         {
           type: 'member_updated',
-          familyId: params.id,
-          memberId: params.memberId,
+          familyId: id,
+          memberId: memberId,
           data: {
             firstName: member.firstName,
             lastName: member.lastName,
@@ -267,8 +267,8 @@ export async function PUT(
         await executeAutomationRules(
           {
             type: 'member_age_changed',
-            familyId: params.id,
-            memberId: params.memberId,
+            familyId: id,
+            memberId: memberId,
             data: {
               oldAge,
               newAge,
@@ -299,12 +299,12 @@ export async function PUT(
       
       if (Object.keys(changedFields).length > 0) {
         await auditLogFromRequest(request, user, 'member_update', 'member', {
-          entityId: params.memberId,
+          entityId: memberId,
           entityName: `${member.firstName} ${member.lastName}`,
           changes: changedFields,
           description: `Updated member "${member.firstName} ${member.lastName}" - Changed: ${Object.keys(changedFields).join(', ')}`,
           metadata: {
-            familyId: params.id,
+            familyId: id,
             familyName: family?.name,
             memberName: `${member.firstName} ${member.lastName}`,
           }
@@ -319,7 +319,7 @@ export async function PUT(
       try {
         // Check if an event already exists for this member's bar mitzvah date
         const existingEvent = await LifecycleEventPayment.findOne({
-          familyId: params.id,
+          familyId: id,
           eventType: 'bar_mitzvah',
           eventDate: barMitzvahDate,
           notes: { $regex: `${firstName} ${lastName}`, $options: 'i' }
@@ -341,7 +341,7 @@ export async function PUT(
             const eventYear = barMitzvahDate.getFullYear()
 
             await LifecycleEventPayment.create({
-              familyId: params.id, // Mongoose will auto-convert string to ObjectId
+              familyId: id, // Mongoose will auto-convert string to ObjectId
               eventType,
               amount: eventAmount,
               eventDate: barMitzvahDate,
@@ -389,7 +389,7 @@ export async function PUT(
 // DELETE - Delete a member (move to recycle bin)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; memberId: string } }
+  { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
     await connectDB()
@@ -404,7 +404,7 @@ export async function DELETE(
     }
     
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -421,7 +421,7 @@ export async function DELETE(
     // Check access - only super_admin can delete any member, others only their own families
     const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
-    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    const isFamilyMember = user.role === 'family' && user.familyId === id
     
     if (!isSuperAdmin && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
@@ -431,8 +431,8 @@ export async function DELETE(
     }
     
     const member = await FamilyMember.findOne({
-      _id: params.memberId,
-      familyId: params.id
+      _id: memberId,
+      familyId: id
     })
 
     if (!member) {
@@ -444,11 +444,11 @@ export async function DELETE(
 
     // Create audit log entry before deletion
     await auditLogFromRequest(request, user, 'member_delete', 'member', {
-      entityId: params.memberId,
+      entityId: memberId,
       entityName: `${member.firstName} ${member.lastName}`,
       description: `Deleted member "${member.firstName} ${member.lastName}" from family "${family.name}"`,
       metadata: {
-        familyId: params.id,
+        familyId: id,
         familyName: family.name,
         memberName: `${member.firstName} ${member.lastName}`,
       }
@@ -456,7 +456,7 @@ export async function DELETE(
 
     // Move to recycle bin
     const { moveToRecycleBin } = await import('@/lib/recycle-bin')
-    await moveToRecycleBin('member', params.memberId, member.toObject())
+    await moveToRecycleBin('member', memberId, member.toObject())
     
     // Delete from database
     // Trigger automation rules for member deleted
@@ -465,8 +465,8 @@ export async function DELETE(
       await executeAutomationRules(
         {
           type: 'member_deleted',
-          familyId: params.id,
-          memberId: params.memberId,
+          familyId: id,
+          memberId: memberId,
           data: {
             firstName: member.firstName,
             lastName: member.lastName,
@@ -482,8 +482,8 @@ export async function DELETE(
     }
 
     await FamilyMember.findOneAndDelete({
-      _id: params.memberId,
-      familyId: params.id
+      _id: memberId,
+      familyId: id
     })
 
     return NextResponse.json({ message: 'Member moved to recycle bin successfully' })

@@ -7,13 +7,13 @@ import { getAuthenticatedUser } from '@/lib/middleware'
 // GET - Get all saved payment methods for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
     
     const paymentMethods = await SavedPaymentMethod.find({
-      familyId: params.id,
+      familyId: id,
       isActive: true
     }).sort({ isDefault: -1, createdAt: -1 })
 
@@ -30,7 +30,7 @@ export async function GET(
 // POST - Save a new payment method
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -79,14 +79,14 @@ export async function POST(
     // If setting as default, unset other defaults
     if (setAsDefault) {
       await SavedPaymentMethod.updateMany(
-        { familyId: params.id },
+        { familyId: id },
         { isDefault: false }
       )
     }
 
     // Check if this payment method already exists
     const existing = await SavedPaymentMethod.findOne({
-      familyId: params.id,
+      familyId: id,
       stripePaymentMethodId: paymentMethodId
     })
 
@@ -100,7 +100,7 @@ export async function POST(
 
     // Create new saved payment method
     const savedPaymentMethod = await SavedPaymentMethod.create({
-      familyId: params.id,
+      familyId: id,
       stripePaymentMethodId: paymentMethodId,
       last4: paymentMethod.card.last4,
       cardType: paymentMethod.card.brand,
@@ -124,7 +124,7 @@ export async function POST(
 // DELETE - Remove a saved payment method
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()

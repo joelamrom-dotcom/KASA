@@ -9,7 +9,7 @@ import { auditLogFromRequest } from '@/lib/audit-log'
 // GET - Get all members for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -24,7 +24,7 @@ export async function GET(
     }
     
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -41,7 +41,7 @@ export async function GET(
     // Check access - only super_admin can access any family, others only their own
     const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
-    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    const isFamilyMember = user.role === 'family' && user.familyId === id
     
     if (!isSuperAdmin && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
@@ -50,7 +50,7 @@ export async function GET(
       )
     }
     
-    const members = await FamilyMember.find({ familyId: params.id }).sort({ birthDate: 1 })
+    const members = await FamilyMember.find({ familyId: id }).sort({ birthDate: 1 })
     return NextResponse.json(members)
   } catch (error: any) {
     console.error('Error fetching members:', error)
@@ -64,7 +64,7 @@ export async function GET(
 // POST - Add a new member to a family
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -79,7 +79,7 @@ export async function POST(
     }
     
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -136,7 +136,7 @@ export async function POST(
     const familyHebrewLastName = family.hebrewName || null
 
     const member = await FamilyMember.create({
-      familyId: params.id,
+      familyId: id,
       firstName,
       hebrewFirstName: hebrewFirstName || undefined,
       lastName,
@@ -168,7 +168,7 @@ export async function POST(
       entityName: `${firstName} ${lastName}`,
       description: `Created member "${firstName} ${lastName}" for family "${family.name}"`,
       metadata: {
-        familyId: params.id,
+        familyId: id,
         familyName: family.name,
         memberName: `${firstName} ${lastName}`,
         gender,
@@ -213,7 +213,7 @@ export async function POST(
           const eventYear = barMitzvahDate.getFullYear()
 
           await LifecycleEventPayment.create({
-            familyId: params.id,
+            familyId: id,
             eventType,
             amount: eventAmount,
             eventDate: barMitzvahDate,
@@ -241,7 +241,7 @@ export async function POST(
       await executeAutomationRules(
         {
           type: 'member_added',
-          familyId: params.id,
+          familyId: id,
           memberId: member._id.toString(),
           data: {
             firstName: member.firstName,

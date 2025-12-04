@@ -6,7 +6,7 @@ import { getAuthenticatedUser } from '@/lib/middleware'
 // GET - Get a specific lifecycle event type
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -20,7 +20,7 @@ export async function GET(
     }
     
     // Build query - each user sees only their own settings
-    const query: any = { _id: params.id, userId: user.userId }
+    const query: any = { _id: id, userId: user.userId }
     
     const eventType = await LifecycleEvent.findOne(query)
     
@@ -44,7 +44,7 @@ export async function GET(
 // PUT - Update a lifecycle event type
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -68,7 +68,7 @@ export async function PUT(
     }
 
     // Build query - each user sees only their own settings
-    const query: any = { _id: params.id, userId: user.userId }
+    const query: any = { _id: id, userId: user.userId }
 
     const eventType = await LifecycleEvent.findOneAndUpdate(
       query,
@@ -99,7 +99,7 @@ export async function PUT(
 // DELETE - Delete a lifecycle event type
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -113,7 +113,7 @@ export async function DELETE(
     }
     
     // Build query - each user sees only their own settings
-    const query: any = { _id: params.id, userId: user.userId }
+    const query: any = { _id: id, userId: user.userId }
     
     const eventType = await LifecycleEvent.findOneAndDelete(query)
     

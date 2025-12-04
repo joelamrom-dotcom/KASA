@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 // DELETE - Delete invoice template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -36,7 +36,7 @@ export async function DELETE(
     
     // Get template before deleting for audit log
     const template = await InvoiceTemplate.findOne({
-      _id: params.id,
+      _id: id,
       userId: userObjectId
     })
     
@@ -48,13 +48,13 @@ export async function DELETE(
     }
     
     await InvoiceTemplate.findOneAndDelete({
-      _id: params.id,
+      _id: id,
       userId: userObjectId
     })
     
     // Create audit log entry
     await auditLogFromRequest(request, user, 'invoice_template_delete', 'invoice_template', {
-      entityId: params.id,
+      entityId: id,
       entityName: template.templateName,
       description: `Deleted invoice template "${template.templateName}"`,
       metadata: {

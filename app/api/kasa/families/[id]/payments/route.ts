@@ -8,7 +8,7 @@ import { auditLogFromRequest } from '@/lib/audit-log'
 // GET - Get all payments for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -23,7 +23,7 @@ export async function GET(
     }
     
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -34,7 +34,7 @@ export async function GET(
     // Check permission or ownership
     const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
     const isFamilyOwner = family.userId?.toString() === user.userId
-    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    const isFamilyMember = user.role === 'family' && user.familyId === id
     
     if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
@@ -43,10 +43,10 @@ export async function GET(
       )
     }
     
-    const payments = await Payment.find({ familyId: params.id }).sort({ paymentDate: -1 })
+    const payments = await Payment.find({ familyId: id }).sort({ paymentDate: -1 })
     
     // Log payment methods to debug
-    console.log(`Fetched ${payments.length} payments for family ${params.id}`)
+    console.log(`Fetched ${payments.length} payments for family ${id}`)
     payments.forEach((payment: any, index: number) => {
       const paymentObj = payment.toObject ? payment.toObject() : payment
       console.log(`Payment ${index + 1}:`, {
@@ -71,7 +71,7 @@ export async function GET(
 // POST - Add a new payment
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -86,7 +86,7 @@ export async function POST(
     }
     
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -97,7 +97,7 @@ export async function POST(
     // Check permission or ownership
     const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENTS_VIEW)
     const isFamilyOwner = family.userId?.toString() === user.userId
-    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    const isFamilyMember = user.role === 'family' && user.familyId === id
     
     if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
@@ -135,7 +135,7 @@ export async function POST(
     })
 
     const paymentData: any = {
-      familyId: params.id,
+      familyId: id,
       amount: parseFloat(amount),
       paymentDate: new Date(paymentDate),
       year: parseInt(year),
@@ -178,7 +178,7 @@ export async function POST(
       await executeAutomationRules(
         {
           type: 'payment_received',
-          familyId: params.id,
+          familyId: id,
           paymentId: payment._id.toString(),
           data: {
             amount: payment.amount,
@@ -202,7 +202,7 @@ export async function POST(
       entityName: `Payment of $${amount}`,
       description: `Created payment of $${amount} for family "${family.name}"`,
       metadata: {
-        familyId: params.id,
+        familyId: id,
         familyName: family.name,
         amount,
         paymentMethod: finalPaymentMethod,
@@ -222,7 +222,7 @@ export async function POST(
 
     // Send payment confirmation email (if enabled in settings)
     try {
-      const family = await Family.findById(params.id)
+      const family = await Family.findById(id)
       if (family && family.email && family.userId) {
         // Check if payment emails are enabled for this admin
         const { AutomationSettings } = await import('@/lib/models')

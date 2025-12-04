@@ -8,7 +8,7 @@ import { auditLogFromRequest } from '@/lib/audit-log'
 // GET - Get all lifecycle events for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -22,7 +22,7 @@ export async function GET(
     }
     
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -33,7 +33,7 @@ export async function GET(
     // Check permission or ownership
     const canViewAll = await hasPermission(user, PERMISSIONS.LIFECYCLE_EVENTS_VIEW)
     const isFamilyOwner = family.userId?.toString() === user.userId
-    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    const isFamilyMember = user.role === 'family' && user.familyId === id
     
     if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
@@ -42,7 +42,7 @@ export async function GET(
       )
     }
     
-    const events = await LifecycleEventPayment.find({ familyId: params.id }).sort({ eventDate: -1 })
+    const events = await LifecycleEventPayment.find({ familyId: id }).sort({ eventDate: -1 })
     return NextResponse.json(events)
   } catch (error: any) {
     console.error('Error fetching lifecycle events:', error)
@@ -56,7 +56,7 @@ export async function GET(
 // POST - Add a new lifecycle event
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -70,7 +70,7 @@ export async function POST(
     }
     
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -114,7 +114,7 @@ export async function POST(
     }
 
     const event = await LifecycleEventPayment.create({
-      familyId: params.id,
+      familyId: id,
       eventType: eventType.toLowerCase(),
       amount: parseFloat(eventAmount),
       eventDate: new Date(eventDate),
@@ -128,7 +128,7 @@ export async function POST(
       await executeAutomationRules(
         {
           type: 'lifecycle_event_created',
-          familyId: params.id,
+          familyId: id,
           eventId: event._id.toString(),
           data: {
             eventType: eventType,
@@ -153,7 +153,7 @@ export async function POST(
         amount: parseFloat(eventAmount),
         eventDate: new Date(eventDate),
         year: parseInt(year),
-        familyId: params.id,
+        familyId: id,
         familyName: family?.name,
       }
     })

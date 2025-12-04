@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // DELETE - Delete a relationship
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; relationshipId: string } }
+  { params }: { params: Promise<{ id: string; relationshipId: string }> }
 ) {
   try {
     await connectDB()
@@ -22,7 +22,7 @@ export async function DELETE(
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
 
     const relationship = await FamilyRelationship.findOneAndUpdate(
-      { _id: params.relationshipId, userId: userObjectId },
+      { _id: relationshipId, userId: userObjectId },
       { isActive: false },
       { new: true }
     )

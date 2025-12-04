@@ -5,12 +5,12 @@ import { Statement, Payment, LifecycleEventPayment, Withdrawal } from '@/lib/mod
 // GET - Get statement details with all transactions
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
     
-    const statement = await Statement.findById(params.id)
+    const statement = await Statement.findById(id)
     if (!statement) {
       return NextResponse.json(
         { error: 'Statement not found' },

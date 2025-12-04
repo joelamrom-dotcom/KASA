@@ -20,12 +20,12 @@ export const dynamic = 'force-dynamic'
 // POST - Restore a record from recycle bin
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
     
-    const recycleItem = await RecycleBin.findById(params.id)
+    const recycleItem = await RecycleBin.findById(id)
     
     if (!recycleItem) {
       return NextResponse.json(
@@ -107,12 +107,12 @@ export async function POST(
 // DELETE - Permanently delete from recycle bin
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
     
-    const recycleItem = await RecycleBin.findByIdAndDelete(params.id)
+    const recycleItem = await RecycleBin.findByIdAndDelete(id)
     
     if (!recycleItem) {
       return NextResponse.json(

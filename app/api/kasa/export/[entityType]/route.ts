@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 // POST - Export entity data in various formats
 export async function POST(
   request: NextRequest,
-  { params }: { params: { entityType: string } }
+  { params }: { params: Promise<{ entityType: string }> }
 ) {
   try {
     await connectDB()
@@ -29,7 +29,7 @@ export async function POST(
     let data: any[] = []
     let Model: any
 
-    switch (params.entityType) {
+    switch (entityType) {
       case 'families':
         Model = Family
         break
@@ -57,7 +57,7 @@ export async function POST(
       return new NextResponse(JSON.stringify(data, null, 2), {
         headers: {
           'Content-Type': 'application/json',
-          'Content-Disposition': `attachment; filename="${params.entityType}-${new Date().toISOString()}.json"`
+          'Content-Disposition': `attachment; filename="${entityType}-${new Date().toISOString()}.json"`
         }
       })
     }
@@ -73,14 +73,14 @@ ${Object.entries(item).map(([key, value]) => `    <${key}>${value}</${key}>`).jo
       return new NextResponse(xml, {
         headers: {
           'Content-Type': 'application/xml',
-          'Content-Disposition': `attachment; filename="${params.entityType}-${new Date().toISOString()}.xml"`
+          'Content-Disposition': `attachment; filename="${entityType}-${new Date().toISOString()}.xml"`
         }
       })
     }
 
     if (exportFormat === 'excel') {
       const workbook = new ExcelJS.Workbook()
-      const worksheet = workbook.addWorksheet(params.entityType)
+      const worksheet = workbook.addWorksheet(entityType)
 
       if (data.length > 0) {
         const headers = fields || Object.keys(data[0])
@@ -94,7 +94,7 @@ ${Object.entries(item).map(([key, value]) => `    <${key}>${value}</${key}>`).jo
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': `attachment; filename="${params.entityType}-${new Date().toISOString()}.xlsx"`
+          'Content-Disposition': `attachment; filename="${entityType}-${new Date().toISOString()}.xlsx"`
         }
       })
     }
@@ -115,7 +115,7 @@ ${Object.entries(item).map(([key, value]) => `    <${key}>${value}</${key}>`).jo
     return new NextResponse(csvRows.join('\n'), {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="${params.entityType}-${new Date().toISOString()}.csv"`
+        'Content-Disposition': `attachment; filename="${entityType}-${new Date().toISOString()}.csv"`
       }
     })
   } catch (error: any) {

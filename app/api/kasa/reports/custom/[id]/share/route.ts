@@ -7,7 +7,7 @@ import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 // POST - Share report with users
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -33,7 +33,7 @@ export async function POST(
     }
 
     const mongoose = require('mongoose')
-    const reportId = new mongoose.Types.ObjectId(params.id)
+    const reportId = new mongoose.Types.ObjectId(id)
 
     // Get report
     const report = await CustomReport.findById(reportId)

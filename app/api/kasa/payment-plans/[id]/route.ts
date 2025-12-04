@@ -8,7 +8,7 @@ import { auditLogFromRequest } from '@/lib/audit-log'
 // GET - Get payment plan by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -25,7 +25,7 @@ export async function GET(
     const canViewAll = await hasPermission(user, PERMISSIONS.PAYMENT_PLANS_VIEW)
     
     // Build query - each user sees only their own settings unless they have permission
-    const query: any = canViewAll ? { _id: params.id } : { _id: params.id, userId: user.userId }
+    const query: any = canViewAll ? { _id: id } : { _id: id, userId: user.userId }
     
     const plan = await PaymentPlan.findOne(query)
     
@@ -49,7 +49,7 @@ export async function GET(
 // PUT - Update payment plan
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -66,7 +66,7 @@ export async function PUT(
     const canUpdateAll = await hasPermission(user, PERMISSIONS.PAYMENT_PLANS_UPDATE)
     
     // Build query - each user sees only their own settings unless they have permission
-    const query: any = canUpdateAll ? { _id: params.id } : { _id: params.id, userId: user.userId }
+    const query: any = canUpdateAll ? { _id: id } : { _id: id, userId: user.userId }
     
     // Get old plan data for audit log
     const oldPlan = await PaymentPlan.findOne(query)
@@ -115,7 +115,7 @@ export async function PUT(
       
       if (Object.keys(changedFields).length > 0) {
         await auditLogFromRequest(request, user, 'payment_plan_update', 'payment_plan', {
-          entityId: params.id,
+          entityId: id,
           entityName: plan.name,
           changes: changedFields,
           description: `Updated payment plan "${plan.name}" - Changed: ${Object.keys(changedFields).join(', ')}`,
@@ -140,7 +140,7 @@ export async function PUT(
 // DELETE - Delete payment plan
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -157,7 +157,7 @@ export async function DELETE(
     const canDeleteAll = await hasPermission(user, PERMISSIONS.PAYMENT_PLANS_DELETE)
     
     // Build query - each user sees only their own settings unless they have permission
-    const query: any = canDeleteAll ? { _id: params.id } : { _id: params.id, userId: user.userId }
+    const query: any = canDeleteAll ? { _id: id } : { _id: id, userId: user.userId }
     
     // Get plan data before deleting for audit log
     const plan = await PaymentPlan.findOne(query).lean()
@@ -183,7 +183,7 @@ export async function DELETE(
 
     // Create audit log entry
     await auditLogFromRequest(request, user, 'payment_plan_delete', 'payment_plan', {
-      entityId: params.id,
+      entityId: id,
       entityName: planDoc.name || 'Unknown',
       description: `Deleted payment plan "${planDoc.name || 'Unknown'}"`,
       metadata: {

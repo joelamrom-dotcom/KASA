@@ -5,7 +5,7 @@ import { Family, FamilyMember, PaymentPlan } from '@/lib/models'
 // POST - Convert a child/member to their own family
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; memberId: string } }
+  { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
     await connectDB()
@@ -20,7 +20,7 @@ export async function POST(
     }
 
     // Get the member
-    const member = await FamilyMember.findById(params.memberId)
+    const member = await FamilyMember.findById(memberId)
     if (!member) {
       return NextResponse.json(
         { error: 'Member not found' },
@@ -29,7 +29,7 @@ export async function POST(
     }
 
     // Get the original family
-    const originalFamily = await Family.findById(params.id)
+    const originalFamily = await Family.findById(id)
     if (!originalFamily) {
       return NextResponse.json(
         { error: 'Family not found' },

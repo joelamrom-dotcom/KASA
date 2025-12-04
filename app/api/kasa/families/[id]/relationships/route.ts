@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get all relationships for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -20,7 +20,7 @@ export async function GET(
 
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
-    const familyId = new mongoose.Types.ObjectId(params.id)
+    const familyId = new mongoose.Types.ObjectId(id)
 
     const relationships = await FamilyRelationship.find({
       userId: userObjectId,
@@ -54,7 +54,7 @@ export async function GET(
 // POST - Create a relationship
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -76,7 +76,7 @@ export async function POST(
 
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
-    const familyId1 = new mongoose.Types.ObjectId(params.id)
+    const familyId1 = new mongoose.Types.ObjectId(id)
     const familyId2 = new mongoose.Types.ObjectId(relatedFamilyId)
 
     // Check if relationship already exists

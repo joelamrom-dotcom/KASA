@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get a single task
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -24,7 +24,7 @@ export async function GET(
       )
     }
     
-    const task = await Task.findById(params.id)
+    const task = await Task.findById(id)
       .populate('relatedFamilyId', 'name')
       .populate('relatedMemberId', 'firstName lastName')
       .lean()
@@ -57,7 +57,7 @@ export async function GET(
 // PUT - Update a task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -72,7 +72,7 @@ export async function PUT(
     }
     
     // Check if task exists and user has access
-    const task = await Task.findById(params.id)
+    const task = await Task.findById(id)
     if (!task) {
       return NextResponse.json(
         { error: 'Task not found' },
@@ -136,10 +136,10 @@ export async function PUT(
     }
 
     // Get old task data for audit log
-    const oldTask = await Task.findById(params.id)
+    const oldTask = await Task.findById(id)
     
     const updatedTask = await Task.findByIdAndUpdate(
-      params.id,
+      id,
       updateData,
       { new: true, runValidators: true }
     )
@@ -164,7 +164,7 @@ export async function PUT(
       await executeAutomationRules(
         {
           type: triggerType,
-          taskId: params.id,
+          taskId: id,
           familyId: (updatedTaskDoc as any).relatedFamilyId?.toString(),
           memberId: (updatedTaskDoc as any).relatedMemberId?.toString(),
           data: {
@@ -197,7 +197,7 @@ export async function PUT(
         const action = status === 'completed' ? 'task_complete' : 'task_update'
         const taskTitle = updatedTaskDoc.title || (oldTask as any).title || 'Unknown'
         await auditLogFromRequest(request, user, action, 'task', {
-          entityId: params.id,
+          entityId: id,
           entityName: taskTitle,
           changes: changedFields,
           description: status === 'completed' 
@@ -224,7 +224,7 @@ export async function PUT(
 // DELETE - Delete a task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -239,7 +239,7 @@ export async function DELETE(
     }
     
     // Check if task exists and user has access
-    const task = await Task.findById(params.id)
+    const task = await Task.findById(id)
     if (!task) {
       return NextResponse.json(
         { error: 'Task not found' },
@@ -257,7 +257,7 @@ export async function DELETE(
     
     // Create audit log entry before deletion
     await auditLogFromRequest(request, user, 'task_delete', 'task', {
-      entityId: params.id,
+      entityId: id,
       entityName: task.title,
       description: `Deleted task "${task.title}"`,
       metadata: {
@@ -266,7 +266,7 @@ export async function DELETE(
       }
     })
     
-    await Task.findByIdAndDelete(params.id)
+    await Task.findByIdAndDelete(id)
     
     return NextResponse.json({ message: 'Task deleted successfully' })
   } catch (error: any) {

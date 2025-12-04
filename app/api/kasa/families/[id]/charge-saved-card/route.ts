@@ -8,7 +8,7 @@ import { getAuthenticatedUser } from '@/lib/middleware'
 // POST - Charge a saved payment method
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   let amount: number = 0
   let memberId: string | undefined = undefined
@@ -50,7 +50,7 @@ export async function POST(
     // Get saved payment method
     const savedPaymentMethod = await SavedPaymentMethod.findById(savedPaymentMethodId)
     
-    if (!savedPaymentMethod || savedPaymentMethod.familyId.toString() !== params.id) {
+    if (!savedPaymentMethod || savedPaymentMethod.familyId.toString() !== id) {
       return NextResponse.json(
         { error: 'Saved payment method not found' },
         { status: 404 }
@@ -63,9 +63,9 @@ export async function POST(
       currency: 'usd',
       payment_method: savedPaymentMethod.stripePaymentMethodId,
       confirm: true,
-      description: `${type || 'membership'} payment for family ${params.id}`,
+      description: `${type || 'membership'} payment for family ${id}`,
       metadata: {
-        familyId: params.id,
+        familyId: id,
         savedPaymentMethodId: savedPaymentMethodId
       }
     }, {
@@ -81,7 +81,7 @@ export async function POST(
         await executeAutomationRules(
           {
             type: 'payment_failed',
-            familyId: params.id,
+            familyId: id,
             data: {
               amount: amount,
               error: errorMsg,
@@ -96,7 +96,7 @@ export async function POST(
       
       // Create task for declined payment
       await createPaymentDeclinedTask(
-        params.id,
+        id,
         null,
         amount,
         errorMsg,
@@ -111,7 +111,7 @@ export async function POST(
 
     // Create payment record in database
     const paymentData: any = {
-      familyId: params.id,
+      familyId: id,
       amount: paymentIntent.amount / 100,
       paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
       year: year || new Date().getFullYear(),
@@ -147,7 +147,7 @@ export async function POST(
 
       // Check if recurring payment already exists
       const existingRecurring = await RecurringPayment.findOne({
-        familyId: params.id,
+        familyId: id,
         savedPaymentMethodId: savedPaymentMethodId,
         isActive: true
       })
@@ -162,7 +162,7 @@ export async function POST(
       } else {
         // Create new recurring payment
         const recurringPayment = await RecurringPayment.create({
-          familyId: params.id,
+          familyId: id,
           savedPaymentMethodId: savedPaymentMethodId,
           amount: amount,
           frequency: 'monthly',
@@ -179,7 +179,7 @@ export async function POST(
           await executeAutomationRules(
             {
               type: 'recurring_payment_created',
-              familyId: params.id,
+              familyId: id,
               data: {
                 amount: amount,
                 frequency: 'monthly',
@@ -211,7 +211,7 @@ export async function POST(
     // Note: body is already parsed above, so we use the parsed body variable
     try {
       await createPaymentDeclinedTask(
-        params.id,
+        id,
         null,
         amount || 0,
         error.message || 'Unknown error',

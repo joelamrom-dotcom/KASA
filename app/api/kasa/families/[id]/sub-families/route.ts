@@ -7,12 +7,12 @@ export const dynamic = 'force-dynamic'
 // GET - Get all sub-families (families created from members of this family)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
     
-    const subFamilies = await Family.find({ parentFamilyId: params.id })
+    const subFamilies = await Family.find({ parentFamilyId: id })
       .sort({ weddingDate: -1 })
       .lean()
     

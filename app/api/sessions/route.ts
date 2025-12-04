@@ -44,13 +44,10 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * DELETE /api/sessions/[id]
- * Revoke a session
+ * DELETE /api/sessions
+ * Revoke a session (id in request body)
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest) {
   try {
     await connectDB()
     
@@ -59,7 +56,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const session = await Session.findById(params.id)
+    const { id } = await request.json()
+    const session = await Session.findById(id)
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }

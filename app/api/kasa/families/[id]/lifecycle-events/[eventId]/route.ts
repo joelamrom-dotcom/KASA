@@ -8,7 +8,7 @@ import { auditLogFromRequest } from '@/lib/audit-log'
 // GET - Get a specific lifecycle event
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; eventId: string } }
+  { params }: { params: Promise<{ id: string; eventId: string }> }
 ) {
   try {
     await connectDB()
@@ -19,8 +19,8 @@ export async function GET(
     }
     
     const event = await LifecycleEventPayment.findOne({
-      _id: params.eventId,
-      familyId: params.id,
+      _id: eventId,
+      familyId: id,
     })
     
     if (!event) {
@@ -40,7 +40,7 @@ export async function GET(
 // PUT - Update a lifecycle event
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; eventId: string } }
+  { params }: { params: Promise<{ id: string; eventId: string }> }
 ) {
   try {
     await connectDB()
@@ -52,8 +52,8 @@ export async function PUT(
     
     // Check if event exists
     const event = await LifecycleEventPayment.findOne({
-      _id: params.eventId,
-      familyId: params.id,
+      _id: eventId,
+      familyId: id,
     })
     
     if (!event) {
@@ -78,7 +78,7 @@ export async function PUT(
     if (notes !== undefined) updateData.notes = notes
     
     const updatedEvent = await LifecycleEventPayment.findByIdAndUpdate(
-      params.eventId,
+      eventId,
       updateData,
       { new: true, runValidators: true }
     )
@@ -89,8 +89,8 @@ export async function PUT(
       await executeAutomationRules(
         {
           type: 'lifecycle_event_updated',
-          familyId: params.id,
-          eventId: params.eventId,
+          familyId: id,
+          eventId: eventId,
           data: {
             oldEvent,
             updatedEvent: updatedEvent?.toObject(),
@@ -106,11 +106,11 @@ export async function PUT(
     
     // Create audit log entry
     await auditLogFromRequest(request, user, 'lifecycle_event_update', 'lifecycle_event', {
-      entityId: params.eventId,
+      entityId: eventId,
       entityName: `${updatedEvent?.eventType} - $${updatedEvent?.amount}`,
       description: `Updated lifecycle event`,
       metadata: {
-        familyId: params.id,
+        familyId: id,
         changedFields: Object.keys(updateData),
       }
     })
@@ -128,7 +128,7 @@ export async function PUT(
 // DELETE - Delete a lifecycle event
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; eventId: string } }
+  { params }: { params: Promise<{ id: string; eventId: string }> }
 ) {
   try {
     await connectDB()
@@ -144,8 +144,8 @@ export async function DELETE(
     }
     
     const event = await LifecycleEventPayment.findOneAndDelete({
-      _id: params.eventId,
-      familyId: params.id,
+      _id: eventId,
+      familyId: id,
     })
     
     if (!event) {

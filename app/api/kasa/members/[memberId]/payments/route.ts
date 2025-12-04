@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { memberId: string } }
+  { params }: { params: Promise<{ memberId: string }> }
 ) {
   try {
     await connectDB()
@@ -14,7 +14,7 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const year = searchParams.get('year')
     
-    const query: any = { memberId: params.memberId }
+    const query: any = { memberId: memberId }
     if (year) {
       query.year = parseInt(year)
     }

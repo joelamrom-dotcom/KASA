@@ -7,7 +7,7 @@ import { auditLogFromRequest } from '@/lib/audit-log'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -18,7 +18,7 @@ export async function GET(
     }
 
     const view = await SavedView.findOne({
-      _id: params.id,
+      _id: id,
       $or: [
         { userId: user.userId },
         { isPublic: true },
@@ -42,7 +42,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -52,7 +52,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const view = await SavedView.findById(params.id)
+    const view = await SavedView.findById(id)
 
     if (!view) {
       return NextResponse.json({ error: 'View not found' }, { status: 404 })
@@ -69,7 +69,7 @@ export async function PUT(
     // If setting as default, unset other defaults for this entity type
     if (isDefault) {
       await SavedView.updateMany(
-        { userId: user.userId, entityType: view.entityType, isDefault: true, _id: { $ne: params.id } },
+        { userId: user.userId, entityType: view.entityType, isDefault: true, _id: { $ne: id } },
         { $set: { isDefault: false } }
       )
     }
@@ -93,7 +93,7 @@ export async function PUT(
     
     if (Object.keys(changedFields).length > 0) {
       await auditLogFromRequest(request, user, 'saved_view_update', 'saved_view', {
-        entityId: params.id,
+        entityId: id,
         entityName: view.name,
         changes: changedFields,
         description: `Updated saved view "${view.name}"`,
@@ -116,7 +116,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -126,7 +126,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const view = await SavedView.findById(params.id)
+    const view = await SavedView.findById(id)
 
     if (!view) {
       return NextResponse.json({ error: 'View not found' }, { status: 404 })
@@ -137,7 +137,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    await SavedView.findByIdAndDelete(params.id)
+    await SavedView.findByIdAndDelete(id)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

@@ -11,7 +11,7 @@ import { auditLogFromRequest } from '@/lib/audit-log'
 // GET - Get family by ID with full details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -25,7 +25,7 @@ export async function GET(
       )
     }
     
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     
     if (!family) {
       return NextResponse.json(
@@ -43,7 +43,7 @@ export async function GET(
     // Check access - only super_admin can access any family, others only their own
     const isSuperAdmin = user.role === 'super_admin'
     const isFamilyOwner = family.userId?.toString() === user.userId
-    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    const isFamilyMember = user.role === 'family' && user.familyId === id
     
     if (!isSuperAdmin && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
@@ -81,7 +81,7 @@ export async function GET(
 // PUT - Update family
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -96,7 +96,7 @@ export async function PUT(
     }
     
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -196,7 +196,7 @@ export async function PUT(
       // Check if another family (other than this one) already has this email
       let emailQuery: any = { 
         email: emailLower,
-        _id: { $ne: params.id } // Exclude current family
+        _id: { $ne: id } // Exclude current family
       }
       
       // If not super_admin, only check within user's own families
@@ -224,7 +224,7 @@ export async function PUT(
         // If logged in as admin/super_admin, check if email conflicts with existing user roles
         if (user.role === 'admin' || user.role === 'super_admin') {
           if (existingUser.role === 'family') {
-            if (existingUser.familyId && existingUser.familyId.toString() !== params.id) {
+            if (existingUser.familyId && existingUser.familyId.toString() !== id) {
               const linkedFamily = await Family.findById(existingUser.familyId)
               if (linkedFamily) {
                 return NextResponse.json(
@@ -243,7 +243,7 @@ export async function PUT(
             // If email belongs to another admin, allow it (admins can manage multiple families)
             // But warn if it's a different admin
             if (existingUser._id.toString() !== user.userId) {
-              console.warn(`Admin ${user.email} is updating family ${params.id} with email ${body.email} that belongs to another admin ${existingUser.email}`)
+              console.warn(`Admin ${user.email} is updating family ${id} with email ${body.email} that belongs to another admin ${existingUser.email}`)
             }
           }
         } else if (user.role === 'family') {
@@ -272,7 +272,7 @@ export async function PUT(
           )
         }
         updateData.paymentPlanId = paymentPlan._id
-        console.log(`Updated family ${params.id} with payment plan ID: ${paymentPlan.name} (ID: ${body.paymentPlanId})`)
+        console.log(`Updated family ${id} with payment plan ID: ${paymentPlan.name} (ID: ${body.paymentPlanId})`)
       } catch (error) {
         console.error('Error finding payment plan by ID:', error)
         return NextResponse.json(
@@ -286,7 +286,7 @@ export async function PUT(
     
     // Use $set to explicitly set all fields
     const updatedFamily = await Family.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: updateData },
       { new: true, runValidators: true }
     )
@@ -307,7 +307,7 @@ export async function PUT(
     // Check if balance changed (calculate new balance)
     const oldBalance = family.currentPayment || 0
     const { calculateFamilyBalance } = await import('@/lib/calculations')
-    const newBalanceData = await calculateFamilyBalance(params.id)
+    const newBalanceData = await calculateFamilyBalance(id)
     const newBalance = newBalanceData.balance
     const balanceChanged = Math.abs(oldBalance - newBalance) > 0.01
     
@@ -317,7 +317,7 @@ export async function PUT(
       await executeAutomationRules(
         {
           type: 'family_updated',
-          familyId: params.id,
+          familyId: id,
           data: {
             changedFields: Object.keys(changedFields),
             paymentPlanChanged,
@@ -334,7 +334,7 @@ export async function PUT(
         await executeAutomationRules(
           {
             type: 'payment_plan_changed',
-            familyId: params.id,
+            familyId: id,
             data: {
               oldPaymentPlanId: family.paymentPlanId?.toString(),
               newPaymentPlanId: body.paymentPlanId,
@@ -349,7 +349,7 @@ export async function PUT(
         await executeAutomationRules(
           {
             type: 'family_balance_changed',
-            familyId: params.id,
+            familyId: id,
             data: {
               oldBalance,
               newBalance,
@@ -372,7 +372,7 @@ export async function PUT(
             await executeAutomationRules(
               {
                 type: 'balance_threshold',
-                familyId: params.id,
+                familyId: id,
                 data: {
                   threshold,
                   oldBalance,
@@ -403,7 +403,7 @@ export async function PUT(
     // Create audit log entry
     if (Object.keys(changedFields).length > 0) {
       await auditLogFromRequest(request, user, 'family_update', 'family', {
-        entityId: params.id,
+        entityId: id,
         entityName: updatedFamily.name,
         changes: changedFields,
         description: `Updated family "${updatedFamily.name}" - Changed: ${Object.keys(changedFields).join(', ')}`,
@@ -427,7 +427,7 @@ export async function PUT(
 // DELETE - Delete family (move to recycle bin)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -441,7 +441,7 @@ export async function DELETE(
       )
     }
     
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     
     if (!family) {
       return NextResponse.json(
@@ -468,10 +468,10 @@ export async function DELETE(
     }
 
     // Get related records to move to recycle bin
-    const members = await FamilyMember.find({ familyId: params.id })
-    const payments = await Payment.find({ familyId: params.id })
-    const withdrawals = await Withdrawal.find({ familyId: params.id })
-    const lifecycleEvents = await LifecycleEventPayment.find({ familyId: params.id })
+    const members = await FamilyMember.find({ familyId: id })
+    const payments = await Payment.find({ familyId: id })
+    const withdrawals = await Withdrawal.find({ familyId: id })
+    const lifecycleEvents = await LifecycleEventPayment.find({ familyId: id })
     
     // Move related records to recycle bin
     for (const member of members) {
@@ -488,11 +488,11 @@ export async function DELETE(
     }
     
     // Move family to recycle bin
-    await moveToRecycleBin('family', params.id, family.toObject())
+    await moveToRecycleBin('family', id, family.toObject())
     
     // Create audit log entry before deletion
     await auditLogFromRequest(request, user, 'family_delete', 'family', {
-      entityId: params.id,
+      entityId: id,
       entityName: family.name,
       description: `Deleted family "${family.name}" and moved to recycle bin`,
       metadata: {
@@ -509,7 +509,7 @@ export async function DELETE(
       await executeAutomationRules(
         {
           type: 'family_deleted',
-          familyId: params.id,
+          familyId: id,
           data: {
             name: family.name,
             email: family.email,
@@ -522,11 +522,11 @@ export async function DELETE(
       // Don't fail the deletion if automation fails
     }
 
-    await FamilyMember.deleteMany({ familyId: params.id })
-    await Payment.deleteMany({ familyId: params.id })
-    await Withdrawal.deleteMany({ familyId: params.id })
-    await LifecycleEventPayment.deleteMany({ familyId: params.id })
-    await Family.findByIdAndDelete(params.id)
+    await FamilyMember.deleteMany({ familyId: id })
+    await Payment.deleteMany({ familyId: id })
+    await Withdrawal.deleteMany({ familyId: id })
+    await LifecycleEventPayment.deleteMany({ familyId: id })
+    await Family.findByIdAndDelete(id)
 
     return NextResponse.json({ message: 'Family moved to recycle bin successfully' })
   } catch (error: any) {

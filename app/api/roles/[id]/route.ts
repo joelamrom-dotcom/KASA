@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const role = await Role.findById(params.id)
+    const role = await Role.findById(id)
       .populate('permissions', 'name displayName module action')
       .populate('createdBy', 'email firstName lastName')
       .populate('updatedBy', 'email firstName lastName')
@@ -53,7 +53,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -67,7 +67,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const role = await Role.findById(params.id)
+    const role = await Role.findById(id)
     if (!role) {
       return NextResponse.json({ error: 'Role not found' }, { status: 404 })
     }
@@ -134,7 +134,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -148,7 +148,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const role = await Role.findById(params.id)
+    const role = await Role.findById(id)
     if (!role) {
       return NextResponse.json({ error: 'Role not found' }, { status: 404 })
     }
@@ -176,7 +176,7 @@ export async function DELETE(
       description: `Deleted role: ${role.displayName}`,
     })
     
-    await Role.findByIdAndDelete(params.id)
+    await Role.findByIdAndDelete(id)
     
     return NextResponse.json({ message: 'Role deleted successfully' })
   } catch (error: any) {

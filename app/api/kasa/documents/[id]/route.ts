@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 // GET - Download document
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -27,7 +27,7 @@ export async function GET(
 
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
-    const documentId = new mongoose.Types.ObjectId(params.id)
+    const documentId = new mongoose.Types.ObjectId(id)
 
     // Build query based on permissions
     const query: any = canViewAll ? { _id: documentId } : { _id: documentId, userId }
@@ -61,7 +61,7 @@ export async function GET(
 // DELETE - Delete document
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -76,7 +76,7 @@ export async function DELETE(
 
     const mongoose = require('mongoose')
     const userId = new mongoose.Types.ObjectId(user.userId)
-    const documentId = new mongoose.Types.ObjectId(params.id)
+    const documentId = new mongoose.Types.ObjectId(id)
 
     // Build query based on permissions
     const query: any = canViewAll ? { _id: documentId } : { _id: documentId, userId }
@@ -99,7 +99,7 @@ export async function DELETE(
 
     // Create audit log entry
     await auditLogFromRequest(request, user, 'document_delete', 'document', {
-      entityId: params.id,
+      entityId: id,
       entityName: document.name,
       description: `Deleted document "${document.name}"`,
       metadata: {

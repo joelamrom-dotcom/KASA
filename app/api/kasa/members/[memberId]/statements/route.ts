@@ -6,12 +6,12 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { memberId: string } }
+  { params }: { params: Promise<{ memberId: string }> }
 ) {
   try {
     await connectDB()
     
-    const statements = await Statement.find({ memberId: params.memberId })
+    const statements = await Statement.find({ memberId: memberId })
       .sort({ date: -1 })
       .lean()
     
@@ -28,7 +28,7 @@ export async function GET(
 // POST - Generate a new statement for a member
 export async function POST(
   request: NextRequest,
-  { params }: { params: { memberId: string } }
+  { params }: { params: Promise<{ memberId: string }> }
 ) {
   try {
     await connectDB()
@@ -45,7 +45,7 @@ export async function POST(
     const { FamilyMember, Payment, LifecycleEventPayment, Statement } = await import('@/lib/models')
     const { calculateMemberBalance } = await import('@/lib/calculations')
 
-    const member = await FamilyMember.findById(params.memberId)
+    const member = await FamilyMember.findById(memberId)
     if (!member) {
       return NextResponse.json(
         { error: 'Member not found' },
@@ -57,19 +57,19 @@ export async function POST(
     const to = new Date(toDate)
 
     // Get opening balance (balance before fromDate)
-    const openingBalanceData = await calculateMemberBalance(params.memberId, new Date(from.getTime() - 1))
+    const openingBalanceData = await calculateMemberBalance(memberId, new Date(from.getTime() - 1))
     const openingBalance = openingBalanceData.balance
 
     // Get payments in date range
     const payments = await Payment.find({
-      memberId: params.memberId,
+      memberId: memberId,
       paymentDate: { $gte: from, $lte: to }
     })
     const totalIncome = payments.reduce((sum, p) => sum + p.amount, 0)
 
     // Get lifecycle events in date range (for display only, not included in balance)
     const lifecycleEvents = await LifecycleEventPayment.find({
-      memberId: params.memberId,
+      memberId: memberId,
       eventDate: { $gte: from, $lte: to }
     })
     const totalExpenses = lifecycleEvents.reduce((sum, e) => sum + e.amount, 0)
@@ -78,12 +78,12 @@ export async function POST(
     const closingBalance = openingBalance + totalIncome
 
     // Generate statement number
-    const statementCount = await Statement.countDocuments({ memberId: params.memberId })
-    const statementNumber = `STMT-MEM-${params.memberId.slice(-6)}-${statementCount + 1}`
+    const statementCount = await Statement.countDocuments({ memberId: memberId })
+    const statementNumber = `STMT-MEM-${memberId.slice(-6)}-${statementCount + 1}`
 
     const statement = await Statement.create({
       familyId: member.familyId,
-      memberId: params.memberId,
+      memberId: memberId,
       statementNumber,
       date: new Date(),
       fromDate: from,

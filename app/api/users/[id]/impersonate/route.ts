@@ -14,7 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -70,7 +70,7 @@ export async function POST(
     }
     
     // Prevent impersonating yourself
-    if (adminUser.userId === params.id) {
+    if (adminUser.userId === id) {
       return NextResponse.json(
         { error: 'Cannot impersonate yourself' },
         { status: 400 }
@@ -78,7 +78,7 @@ export async function POST(
     }
     
     // Find target user
-    const targetUser = await User.findById(params.id)
+    const targetUser = await User.findById(id)
     if (!targetUser) {
       return NextResponse.json(
         { error: 'User not found' },

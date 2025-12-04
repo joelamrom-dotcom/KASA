@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get document versions
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -19,7 +19,7 @@ export async function GET(
     }
 
     const mongoose = require('mongoose')
-    const documentId = new mongoose.Types.ObjectId(params.id)
+    const documentId = new mongoose.Types.ObjectId(id)
     const userId = new mongoose.Types.ObjectId(user.userId)
 
     const document = await Document.findOne({ _id: documentId, userId }).lean()

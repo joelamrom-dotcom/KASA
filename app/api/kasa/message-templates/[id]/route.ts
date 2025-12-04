@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get single template
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const template = await MessageTemplate.findById(params.id)
+    const template = await MessageTemplate.findById(id)
     if (!template) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 })
     }
@@ -36,7 +36,7 @@ export async function GET(
 // PUT - Update template
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -50,7 +50,7 @@ export async function PUT(
     const { name, subject, body: messageBody, bodyHtml, type, isHtml } = body
 
     const template = await MessageTemplate.findByIdAndUpdate(
-      params.id,
+      id,
       {
         name,
         subject: type === 'email' ? subject : undefined,
@@ -79,7 +79,7 @@ export async function PUT(
 // DELETE - Delete template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -89,7 +89,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    await MessageTemplate.findByIdAndDelete(params.id)
+    await MessageTemplate.findByIdAndDelete(id)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

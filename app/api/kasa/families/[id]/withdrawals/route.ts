@@ -8,7 +8,7 @@ import { auditLogFromRequest } from '@/lib/audit-log'
 // GET - Get all withdrawals for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const withdrawals = await Withdrawal.find({ familyId: params.id })
+    const withdrawals = await Withdrawal.find({ familyId: id })
       .sort({ withdrawalDate: -1 })
       .lean()
     
@@ -35,7 +35,7 @@ export async function GET(
 // POST - Create a new withdrawal
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -46,7 +46,7 @@ export async function POST(
     }
     
     // Check if family exists
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json({ error: 'Family not found' }, { status: 404 })
     }
@@ -67,7 +67,7 @@ export async function POST(
     }
     
     const withdrawal = await Withdrawal.create({
-      familyId: params.id,
+      familyId: id,
       amount: parseFloat(amount),
       withdrawalDate: new Date(withdrawalDate),
       reason: reason || undefined,
@@ -80,7 +80,7 @@ export async function POST(
       await executeAutomationRules(
         {
           type: 'withdrawal_created',
-          familyId: params.id,
+          familyId: id,
           data: {
             amount: withdrawal.amount,
             withdrawalDate: withdrawal.withdrawalDate,
@@ -100,7 +100,7 @@ export async function POST(
       entityName: `Withdrawal of $${amount}`,
       description: `Created withdrawal of $${amount} for family "${family.name}"`,
       metadata: {
-        familyId: params.id,
+        familyId: id,
         familyName: family.name,
         amount: withdrawal.amount,
         withdrawalDate: withdrawal.withdrawalDate,

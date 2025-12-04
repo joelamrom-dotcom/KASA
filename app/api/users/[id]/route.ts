@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -84,7 +84,7 @@ export async function GET(
       )
     }
     
-    const targetUser = await User.findById(params.id)
+    const targetUser = await User.findById(id)
       .select('-password -resetPasswordToken -resetPasswordExpires -emailVerificationToken -emailVerificationExpires')
       .populate('customRoleId', 'name displayName description')
       .lean()
@@ -112,7 +112,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -196,7 +196,7 @@ export async function PUT(
     const { firstName, lastName, email, role, isActive, customRoleId } = body
     
     // Prevent changing your own role (security measure)
-    const targetUser = await User.findById(params.id)
+    const targetUser = await User.findById(id)
     if (!targetUser) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -212,7 +212,7 @@ export async function PUT(
       // Check if email is already taken by another user
       const emailExists = await User.findOne({ 
         email: email.toLowerCase(),
-        _id: { $ne: params.id }
+        _id: { $ne: id }
       })
       if (emailExists) {
         return NextResponse.json(
@@ -254,7 +254,7 @@ export async function PUT(
     const oldUser = { ...targetUser.toObject() }
     
     const updatedUser = await User.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: updateData },
       { new: true, runValidators: true }
     )
@@ -274,7 +274,7 @@ export async function PUT(
       
       if (Object.keys(changedFields).length > 0) {
         await auditLogFromRequest(request, user, 'user_update', 'user', {
-          entityId: params.id,
+          entityId: id,
           entityName: `${updatedUser.firstName} ${updatedUser.lastName}`,
           changes: changedFields,
           description: `Updated user "${updatedUser.email}" - Changed: ${Object.keys(changedFields).join(', ')}`,
@@ -302,7 +302,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -360,14 +360,14 @@ export async function DELETE(
     }
     
     // Prevent deleting yourself
-    if (user.userId === params.id) {
+    if (user.userId === id) {
       return NextResponse.json(
         { error: 'Cannot delete your own account' },
         { status: 400 }
       )
     }
     
-    const targetUser = await User.findById(params.id)
+    const targetUser = await User.findById(id)
     if (!targetUser) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -375,11 +375,11 @@ export async function DELETE(
       )
     }
     
-    await User.findByIdAndDelete(params.id)
+    await User.findByIdAndDelete(id)
     
     // Create audit log entry
     await auditLogFromRequest(request, user, 'user_delete', 'user', {
-      entityId: params.id,
+      entityId: id,
       entityName: `${targetUser.firstName} ${targetUser.lastName}`,
       description: `Deleted user "${targetUser.email}"`,
       metadata: {

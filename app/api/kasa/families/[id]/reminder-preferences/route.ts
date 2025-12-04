@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get reminder preferences for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const family = await Family.findById(params.id).lean()
+    const family = await Family.findById(id).lean()
     if (!family) {
       return NextResponse.json({ error: 'Family not found' }, { status: 404 })
     }
@@ -44,7 +44,7 @@ export async function GET(
 // PUT - Update reminder preferences
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -65,7 +65,7 @@ export async function PUT(
     if (reminderAdvanceDays !== undefined) updateData.reminderAdvanceDays = reminderAdvanceDays
 
     const family = await Family.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: updateData },
       { new: true }
     )

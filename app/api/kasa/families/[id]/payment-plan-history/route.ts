@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get payment plan change history for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -20,7 +20,7 @@ export async function GET(
     }
 
     // Check if family exists and user has access
-    const family = await Family.findById(params.id)
+    const family = await Family.findById(id)
     if (!family) {
       return NextResponse.json(
         { error: 'Family not found' },
@@ -31,7 +31,7 @@ export async function GET(
     // Check permission or ownership
     const canViewAll = await hasPermission(user, PERMISSIONS.FAMILIES_VIEW)
     const isFamilyOwner = family.userId?.toString() === user.userId
-    const isFamilyMember = user.role === 'family' && user.familyId === params.id
+    const isFamilyMember = user.role === 'family' && user.familyId === id
     
     if (!canViewAll && !isFamilyOwner && !isFamilyMember) {
       return NextResponse.json(
@@ -41,7 +41,7 @@ export async function GET(
     }
 
     // Get all members for this family
-    const members = await FamilyMember.find({ familyId: params.id }).select('_id firstName lastName').lean()
+    const members = await FamilyMember.find({ familyId: id }).select('_id firstName lastName').lean()
     const memberIds = members.map(m => m._id)
 
     // Get audit logs for payment plan changes

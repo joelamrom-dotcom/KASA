@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // GET - Generate PDF for invoice
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -20,7 +20,7 @@ export async function GET(
     }
 
     const mongoose = require('mongoose')
-    const invoiceId = new mongoose.Types.ObjectId(params.id)
+    const invoiceId = new mongoose.Types.ObjectId(id)
     const userId = new mongoose.Types.ObjectId(user.userId)
 
     const invoiceResult = await Invoice.findOne({ _id: invoiceId, userId })

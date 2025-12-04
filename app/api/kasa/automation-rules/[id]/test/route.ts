@@ -8,7 +8,7 @@ import { executeAutomationRules } from '@/lib/automation-engine'
 // POST - Test an automation rule with sample data
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -22,6 +22,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
+    const { id } = await params
     const body = await request.json()
     const { triggerData } = body
     
@@ -29,7 +30,7 @@ export async function POST(
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
     
     const rule = await AutomationRule.findOne({
-      _id: params.id,
+      _id: id,
       userId: userObjectId,
     })
     

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 // GET - Generate receipt HTML/PDF for a payment
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -24,7 +24,7 @@ export async function GET(
       )
     }
     
-    const payment = await Payment.findById(params.id).populate('familyId')
+    const payment = await Payment.findById(id).populate('familyId')
     if (!payment) {
       return NextResponse.json(
         { error: 'Payment not found' },

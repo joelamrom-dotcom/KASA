@@ -7,12 +7,12 @@ export const dynamic = 'force-dynamic'
 // GET - Get all notes for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
     
-    const notes = await FamilyNote.find({ familyId: params.id })
+    const notes = await FamilyNote.find({ familyId: id })
       .sort({ createdAt: -1 }) // Newest first
       .lean()
     
@@ -29,7 +29,7 @@ export async function GET(
 // POST - Create a new note
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -45,7 +45,7 @@ export async function POST(
     }
     
     const familyNote = await FamilyNote.create({
-      familyId: params.id,
+      familyId: id,
       note: note.trim(),
       checked: false
     })
@@ -60,7 +60,7 @@ export async function POST(
         await executeAutomationRules(
           {
             type: 'note_added',
-            familyId: params.id,
+            familyId: id,
             data: {
               note: note.trim(),
               noteId: familyNote._id.toString(),

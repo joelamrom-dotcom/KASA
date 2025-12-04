@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get complete history timeline for a family
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -19,7 +19,7 @@ export async function GET(
     }
 
     const mongoose = require('mongoose')
-    const familyId = new mongoose.Types.ObjectId(params.id)
+    const familyId = new mongoose.Types.ObjectId(id)
 
     // Get audit logs for this family
     const auditLogs = await AuditLog.find({

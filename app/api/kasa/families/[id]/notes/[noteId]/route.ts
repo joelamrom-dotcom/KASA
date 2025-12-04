@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // PUT - Update a note
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; noteId: string } }
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
     await connectDB()
@@ -40,7 +40,7 @@ export async function PUT(
     }
     
     const updatedNote = await FamilyNote.findByIdAndUpdate(
-      params.noteId,
+      noteId,
       updateData,
       { new: true }
     )
@@ -65,12 +65,12 @@ export async function PUT(
 // DELETE - Delete a note (move to recycle bin)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; noteId: string } }
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
     await connectDB()
     
-    const note = await FamilyNote.findById(params.noteId)
+    const note = await FamilyNote.findById(noteId)
     
     if (!note) {
       return NextResponse.json(
@@ -80,10 +80,10 @@ export async function DELETE(
     }
 
     // Move to recycle bin
-    await moveToRecycleBin('note', params.noteId, note.toObject())
+    await moveToRecycleBin('note', noteId, note.toObject())
     
     // Delete from database
-    await FamilyNote.findByIdAndDelete(params.noteId)
+    await FamilyNote.findByIdAndDelete(noteId)
     
     return NextResponse.json({ message: 'Note moved to recycle bin successfully' })
   } catch (error: any) {

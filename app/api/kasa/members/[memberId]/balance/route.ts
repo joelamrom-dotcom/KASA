@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { memberId: string } }
+  { params }: { params: Promise<{ memberId: string }> }
 ) {
   try {
     await connectDB()
@@ -15,7 +15,7 @@ export async function GET(
     const asOfDateParam = searchParams.get('asOfDate')
     const asOfDate = asOfDateParam ? new Date(asOfDateParam) : new Date()
     
-    const balance = await calculateMemberBalance(params.memberId, asOfDate)
+    const balance = await calculateMemberBalance(memberId, asOfDate)
     
     return NextResponse.json(balance)
   } catch (error: any) {

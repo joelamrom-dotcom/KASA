@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET - Get a specific support ticket
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -37,7 +37,7 @@ export async function GET(
     }
 
     const ticket = await SupportTicket.findOne({
-      _id: params.id,
+      _id: id,
       familyId: user.familyId
     })
       .populate('assignedTo', 'firstName lastName email')
@@ -64,7 +64,7 @@ export async function GET(
 // POST - Add a message to a support ticket
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -93,7 +93,7 @@ export async function POST(
     }
 
     const ticket = await SupportTicket.findOne({
-      _id: params.id,
+      _id: id,
       familyId: user.familyId
     })
 

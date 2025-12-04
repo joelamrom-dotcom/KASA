@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 // POST - Process a refund for a payment
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -33,7 +33,7 @@ export async function POST(
       )
     }
     
-    const payment = await Payment.findById(params.id).populate('familyId')
+    const payment = await Payment.findById(id).populate('familyId')
     if (!payment) {
       return NextResponse.json(
         { error: 'Payment not found' },
@@ -123,7 +123,7 @@ export async function POST(
           amount: Math.round(refundAmount * 100), // Convert to cents
           reason: stripeReason,
           metadata: {
-            paymentId: params.id,
+            paymentId: id,
             familyId: family._id.toString(),
             refundedBy: user.userId,
             notes: notes || ''
@@ -155,7 +155,7 @@ export async function POST(
     
     // Create refund record
     const refund = await Refund.create({
-      paymentId: params.id,
+      paymentId: id,
       familyId: family._id,
       amount: refundAmount,
       refundDate: new Date(),
@@ -178,11 +178,11 @@ export async function POST(
     
     // Create audit log entry
     await auditLogFromRequest(request, user, 'payment_refund', 'payment', {
-      entityId: params.id,
+      entityId: id,
       entityName: `Refund of $${refundAmount}`,
       description: `Processed refund of $${refundAmount} for payment of $${payment.amount}${reason ? ` - Reason: ${reason}` : ''}`,
       metadata: {
-        paymentId: params.id,
+        paymentId: id,
         familyId: family._id.toString(),
         familyName: family.name,
         refundAmount,
@@ -247,7 +247,7 @@ export async function POST(
 // GET - Get refund history for a payment
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
@@ -268,7 +268,7 @@ export async function GET(
       )
     }
     
-    const payment = await Payment.findById(params.id).populate('familyId')
+    const payment = await Payment.findById(id).populate('familyId')
     if (!payment) {
       return NextResponse.json(
         { error: 'Payment not found' },
@@ -286,7 +286,7 @@ export async function GET(
       )
     }
     
-    const refunds = await Refund.find({ paymentId: params.id })
+    const refunds = await Refund.find({ paymentId: id })
       .populate('refundedBy', 'email name')
       .sort({ refundDate: -1 })
       .lean()

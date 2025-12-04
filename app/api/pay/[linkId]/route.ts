@@ -7,13 +7,13 @@ export const dynamic = 'force-dynamic'
 // GET - Get payment link details (public endpoint)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { linkId: string } }
+  { params }: { params: Promise<{ linkId: string }> }
 ) {
   try {
     await connectDB()
     
     const link = await PaymentLink.findOne({
-      linkId: params.linkId,
+      linkId: linkId,
       isActive: true
     })
       .populate('familyId', 'name email')
@@ -62,7 +62,7 @@ export async function GET(
 // POST - Process payment via link (public endpoint)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { linkId: string } }
+  { params }: { params: Promise<{ linkId: string }> }
 ) {
   try {
     await connectDB()
@@ -71,7 +71,7 @@ export async function POST(
     const { amount, paymentMethod, paymentData } = body
 
     const link = await PaymentLink.findOne({
-      linkId: params.linkId,
+      linkId: linkId,
       isActive: true
     })
       .populate('familyId')
