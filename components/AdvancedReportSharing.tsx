@@ -22,6 +22,7 @@ interface Share {
     expiresAt?: string
     accessCount: number
     maxAccessCount?: number
+    password?: string
   }
   createdAt: string
 }
