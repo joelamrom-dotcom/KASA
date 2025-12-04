@@ -55,6 +55,7 @@ export async function POST(
       )
     }
     
+    const { id } = await params
     const body = await request.json()
     const { paymentMethodId, setAsDefault } = body
 
