@@ -18,6 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const mongoose = require('mongoose')
     const userObjectId = new mongoose.Types.ObjectId(user.userId)
     const familyId = new mongoose.Types.ObjectId(id)
@@ -64,6 +65,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json()
     const { relatedFamilyId, relationshipType, customType, notes } = body
 

@@ -18,6 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const mongoose = require('mongoose')
     const familyId = new mongoose.Types.ObjectId(id)
 
