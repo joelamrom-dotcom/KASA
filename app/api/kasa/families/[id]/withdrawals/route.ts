@@ -46,6 +46,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
+    const { id } = await params
     // Check if family exists
     const family = await Family.findById(id)
     if (!family) {
