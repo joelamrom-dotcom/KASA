@@ -12,6 +12,7 @@ export async function GET(
   try {
     await connectDB()
     
+    const { linkId } = await params
     const link = await PaymentLink.findOne({
       linkId: linkId,
       isActive: true
@@ -43,10 +44,10 @@ export async function GET(
       return NextResponse.json({ error: 'Payment link has reached maximum uses' }, { status: 410 })
     }
 
-    const linkId = typeof linkDoc._id === 'string' ? linkDoc._id : linkDoc._id.toString()
+    const linkDocId = typeof linkDoc._id === 'string' ? linkDoc._id : linkDoc._id.toString()
     return NextResponse.json({
       ...linkDoc,
-      _id: linkId,
+      _id: linkDocId,
       familyId: (linkDoc.familyId as any)?._id?.toString(),
       familyName: (linkDoc.familyId as any)?.name
     })
@@ -67,6 +68,7 @@ export async function POST(
   try {
     await connectDB()
     
+    const { linkId } = await params
     const body = await request.json()
     const { amount, paymentMethod, paymentData } = body
 
