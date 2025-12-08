@@ -17,6 +17,7 @@ import AnimationOptimizer from './components/AnimationOptimizer'
 import PassiveEventListeners from './components/PassiveEventListeners'
 import PreloadKeyRequests from './components/PreloadKeyRequests'
 import ReduceJSExecution from './components/ReduceJSExecution'
+import ReactQueryProvider from './components/ReactQueryProvider'
 
 export const metadata: Metadata = {
   title: 'Real Estate SaaS Platform',
@@ -55,15 +56,17 @@ export default function RootLayout({
         <PreloadKeyRequests />
         <ReduceJSExecution />
         <PerformanceOptimizer />
-          <I18nProvider>
-            <AccessibilityWrapper>
-              <RealtimeProvider>
-                <OnboardingProvider>
-                  {children}
-                </OnboardingProvider>
-              </RealtimeProvider>
-            </AccessibilityWrapper>
-          </I18nProvider>
+          <ReactQueryProvider>
+            <I18nProvider>
+              <AccessibilityWrapper>
+                <RealtimeProvider>
+                  <OnboardingProvider>
+                    {children}
+                  </OnboardingProvider>
+                </RealtimeProvider>
+              </AccessibilityWrapper>
+            </I18nProvider>
+          </ReactQueryProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `

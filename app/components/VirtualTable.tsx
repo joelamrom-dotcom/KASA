@@ -1,7 +1,13 @@
 'use client'
 
-import { FixedSizeList as List } from 'react-window'
+import dynamic from 'next/dynamic'
 import { useEffect, useRef, useState } from 'react'
+
+// Dynamic import to avoid SSR issues with react-window
+const List: any = dynamic(() => import('react-window').then(mod => mod.List), {
+  ssr: false,
+  loading: () => <div className="animate-pulse bg-gray-200 h-96 rounded" />
+})
 
 interface Column<T> {
   key: keyof T | string

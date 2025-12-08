@@ -17,8 +17,6 @@ const nextConfig = {
     serverMinification: true,
     // Optimize server rendering
     optimizeServerReact: true,
-    // Enable performance monitoring
-    instrumentationHook: true,
     // Increase performance with more aggressive caching
     staleTimes: {
       dynamic: 30, // Cache dynamic pages for 30 seconds
