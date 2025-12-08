@@ -154,6 +154,10 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
           },
+          {
+            key: 'Link',
+            value: '</manifest.json>; rel=preload; as=manifest, </sw.js>; rel=preload; as=script',
+          },
         ],
       },
       {

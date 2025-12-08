@@ -1,8 +1,13 @@
-// Enhanced Service Worker for PWA with aggressive caching
-const CACHE_NAME = 'kasa-cache-v3'
-const STATIC_CACHE = 'kasa-static-v3'
-const API_CACHE = 'kasa-api-v3'
-const RUNTIME_CACHE = 'kasa-runtime-v3'
+// Ultra-Aggressive Service Worker for Maximum Speed
+const CACHE_VERSION = 'v4'
+const CACHE_NAME = `kasa-cache-${CACHE_VERSION}`
+const STATIC_CACHE = `kasa-static-${CACHE_VERSION}`
+const API_CACHE = `kasa-api-${CACHE_VERSION}`
+const RUNTIME_CACHE = `kasa-runtime-${CACHE_VERSION}`
+const IMAGE_CACHE = `kasa-images-${CACHE_VERSION}`
+
+// Aggressive API cache TTL (30 seconds)
+const API_CACHE_TTL = 30 * 1000
 
 // Cache static assets
 const staticAssets = [
@@ -11,12 +16,18 @@ const staticAssets = [
   '/offline',
 ]
 
-// Cache API responses (with shorter TTL)
+// Cache API responses aggressively
 const apiCachePatterns = [
   /\/api\/kasa\/families/,
   /\/api\/kasa\/payments/,
+  /\/api\/kasa\/payment-plans/,
   /\/api\/kasa\/dashboard/,
+  /\/api\/kasa\/members/,
+  /\/api\/kasa\/analytics/,
 ]
+
+// Store API cache timestamps
+const apiCacheTimes = new Map()
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
