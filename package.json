@@ -12,8 +12,9 @@
     "convert-weddings": "node scripts/convert-wedding-dates.js",
     "send-monthly-statements": "node scripts/send-monthly-statements.js",
     "process-monthly-payments": "node scripts/process-monthly-payments.js",
-    "optimize:db": "npx ts-node scripts/optimize-indexes.ts",
-    "optimize:full": "npm run optimize:db && npm run build"
+    "optimize:db": "node scripts/optimize-indexes.js",
+    "optimize:full": "npm run optimize:db && npm run build",
+    "postbuild": "node scripts/optimize-indexes.js"
   },
   "dependencies": {
     "@hebcal/core": "^6.0.5",
