@@ -33,46 +33,58 @@ async function optimizeIndexes() {
     await mongoose.connect(mongoUri)
     console.log('✅ Connected to MongoDB')
     
+    // Helper function to create index safely
+    async function createIndexSafely(collection, spec, options = {}) {
+      try {
+        await collection.createIndex(spec, options)
+      } catch (error) {
+        // Ignore if index already exists
+        if (error.code !== 85 && error.code !== 86) {
+          throw error
+        }
+      }
+    }
+    
     // Family indexes
     console.log('\n📊 Creating Family indexes...')
-    await Family.collection.createIndex({ name: 1 })
-    await Family.collection.createIndex({ hebrewName: 1 })
-    await Family.collection.createIndex({ email: 1 })
-    await Family.collection.createIndex({ phone: 1 })
-    await Family.collection.createIndex({ paymentPlanId: 1 })
-    await Family.collection.createIndex({ openBalance: -1 })
-    await Family.collection.createIndex({ weddingDate: -1 })
-    await Family.collection.createIndex({ city: 1, state: 1 })
-    await Family.collection.createIndex({ deleted: 1, deletedAt: 1 })
+    await createIndexSafely(Family.collection, { name: 1 })
+    await createIndexSafely(Family.collection, { hebrewName: 1 })
+    await createIndexSafely(Family.collection, { email: 1 })
+    await createIndexSafely(Family.collection, { phone: 1 })
+    await createIndexSafely(Family.collection, { paymentPlanId: 1 })
+    await createIndexSafely(Family.collection, { openBalance: -1 })
+    await createIndexSafely(Family.collection, { weddingDate: -1 })
+    await createIndexSafely(Family.collection, { city: 1, state: 1 })
+    await createIndexSafely(Family.collection, { deleted: 1, deletedAt: 1 })
     console.log('✅ Family indexes created')
     
     // Payment indexes
     console.log('\n💳 Creating Payment indexes...')
-    await Payment.collection.createIndex({ familyId: 1 })
-    await Payment.collection.createIndex({ paymentDate: -1 })
-    await Payment.collection.createIndex({ year: 1 })
-    await Payment.collection.createIndex({ amount: -1 })
-    await Payment.collection.createIndex({ paymentMethod: 1 })
-    await Payment.collection.createIndex({ type: 1 })
-    await Payment.collection.createIndex({ familyId: 1, paymentDate: -1 })
-    await Payment.collection.createIndex({ year: 1, type: 1 })
+    await createIndexSafely(Payment.collection, { familyId: 1 })
+    await createIndexSafely(Payment.collection, { paymentDate: -1 })
+    await createIndexSafely(Payment.collection, { year: 1 })
+    await createIndexSafely(Payment.collection, { amount: -1 })
+    await createIndexSafely(Payment.collection, { paymentMethod: 1 })
+    await createIndexSafely(Payment.collection, { type: 1 })
+    await createIndexSafely(Payment.collection, { familyId: 1, paymentDate: -1 })
+    await createIndexSafely(Payment.collection, { year: 1, type: 1 })
     console.log('✅ Payment indexes created')
     
     // PaymentPlan indexes
     console.log('\n📋 Creating PaymentPlan indexes...')
-    await PaymentPlan.collection.createIndex({ name: 1 })
-    await PaymentPlan.collection.createIndex({ yearlyPrice: 1 })
-    await PaymentPlan.collection.createIndex({ planNumber: 1 })
+    await createIndexSafely(PaymentPlan.collection, { name: 1 })
+    await createIndexSafely(PaymentPlan.collection, { yearlyPrice: 1 })
+    await createIndexSafely(PaymentPlan.collection, { planNumber: 1 })
     console.log('✅ PaymentPlan indexes created')
     
     // FamilyMember indexes
     console.log('\n👥 Creating FamilyMember indexes...')
-    await FamilyMember.collection.createIndex({ familyId: 1 })
-    await FamilyMember.collection.createIndex({ firstName: 1 })
-    await FamilyMember.collection.createIndex({ lastName: 1 })
-    await FamilyMember.collection.createIndex({ email: 1 })
-    await FamilyMember.collection.createIndex({ dateOfBirth: -1 })
-    await FamilyMember.collection.createIndex({ familyId: 1, dateOfBirth: -1 })
+    await createIndexSafely(FamilyMember.collection, { familyId: 1 })
+    await createIndexSafely(FamilyMember.collection, { firstName: 1 })
+    await createIndexSafely(FamilyMember.collection, { lastName: 1 })
+    await createIndexSafely(FamilyMember.collection, { email: 1 })
+    await createIndexSafely(FamilyMember.collection, { dateOfBirth: -1 })
+    await createIndexSafely(FamilyMember.collection, { familyId: 1, dateOfBirth: -1 })
     console.log('✅ FamilyMember indexes created')
     
     // Show index statistics
